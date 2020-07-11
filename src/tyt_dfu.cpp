@@ -1,127 +1,80 @@
-#include <tyt_dfu.hpp>
-#include <dfu_exception.hpp>
+#include <tyt_tool/tyt_dfu.hpp>
+#include <tyt_tool/dfu_exception.hpp>
 
 #include <chrono>
 #include <thread>
 #include <cstring>
 
-using namespace tytfw::dfu;
+using namespace tyt_tool::dfu;
 
-auto TYTDFU::IdentifyDevice() const -> std::string
+auto TYT::IdentifyDevice() const -> std::string
 {
-    Download({0xa2, 0x01});
-
-    //wait for dfuDOWNLOAD_IDLE
-    WaitForIdle();
-
-    //set mode back to dfuIDLE
-    Abort(); 
-
-    //read the data
-    auto data = Upload(32);
-
-    //set mode back to dfuIDLE
-    Abort();
+    auto data = ReadRegister(TYTRegister::RadioInfo);
 
     //model is null-terminated str, get len with strlen
-    auto slen = strlen((const char*)data.data());
+    auto slen = strlen((const char *)data.data());
     return std::string(data.begin(), data.begin() + slen + 1);
 }
 
-auto TYTDFU::GetState() const -> DFUState
+auto TYT::ReadRegister(const TYTRegister &reg) const -> std::vector<uint8_t>
 {
-    CheckDevice();
-    unsigned char state;
-    auto err = libusb_control_transfer(this->device, 0xa1, static_cast<uint8_t>(DFURequest::GetState), 0, 0, &state, 1, this->timeout);
-    if (err < LIBUSB_SUCCESS)
+    InitDownload();
+    Download({static_cast<uint8_t>(TYTCommand::ReadRegister),
+              static_cast<uint8_t>(reg)});
+
+    //execute command by calling GetStatus
+    auto status = GetStatus();
+    if (status.state != DFUState::DFU_DOWNLOAD_BUSY)
     {
-        throw DFUException(libusb_error_name(err));
+        throw DFUException("Read register failed");
+    } else if(status.timeout > 0) {
+        std::this_thread::sleep_for(std::chrono::nanoseconds(status.timeout));
     }
-    else
-    {
-        auto s = static_cast<DFUState>((int)state);
-        //std::cerr << "State: " << ::ToString(s) << std::endl;
-        return s;
+
+    //check the command executed ok
+    status = GetStatus();
+    if(status.state != DFUState::DFU_DOWNLOAD_IDLE) {
+        throw DFUException("Read register failed");
     }
+
+    InitUpload();
+    return Upload(TYTRegisterSize);
 }
 
-auto TYTDFU::GetStatus() const -> const DFUStatusReport
-{
-    CheckDevice();
-    auto constexpr StatusSize = 6;
-
-    unsigned char data[StatusSize];
-    auto err = libusb_control_transfer(this->device, 0xa1, static_cast<uint8_t>(DFURequest::GetStatus), 0, 0, data, StatusSize, this->timeout);
-    if (err < LIBUSB_SUCCESS)
-    {
-        throw DFUException(libusb_error_name(err));
-    }
-    else
-    {
-        return DFUStatusReport::Parse(data);
-    }
-    return DFUStatusReport::Empty();
-}
-
-auto TYTDFU::Abort() const -> void
-{
-    CheckDevice();
-    auto err = libusb_control_transfer(this->device, 0x21, static_cast<uint8_t>(DFURequest::Abort), 0, 0, nullptr, 0, this->timeout);
-    if (err < LIBUSB_SUCCESS)
-    {
-        throw DFUException(libusb_error_name(err));
-    }
-}
-
-auto TYTDFU::Detach() const -> void {
-    CheckDevice();
-    auto err = libusb_control_transfer(this->device, 0x21, static_cast<uint8_t>(DFURequest::Detach), 0, 0, nullptr, 0, this->timeout);
-    if (err < LIBUSB_SUCCESS)
-    {
-        throw DFUException(libusb_error_name(err));
-    }
-}
-
-auto TYTDFU::WaitForIdle() const -> void
-{
-    while (1)
-    {
-        auto status = GetStatus();
-        if (status.state == DFUState::dfuDOWNLOAD_IDLE)
-        {
-            break;
-        }
-        else
-        {
-            using namespace std::chrono_literals;
-            std::this_thread::sleep_for(10ms);
-        }
-    }
-}
-
-auto TYTDFU::EnterDFUMode() const -> void
+auto TYT::InitDownload() const -> void
 {
     while (1)
     {
         auto state = GetState();
-        if (state == DFUState::dfuIDLE)
-            return;
-        
         switch (state)
         {
-        case DFUState::dfuIDLE:
+        case DFUState::DFU_DOWNLOAD_IDLE:
+        case DFUState::DFU_IDLE:
             return;
-        case DFUState::dfuDOWNLOAD_IDLE:
-        case DFUState::dfuDOWNLOAD_SYNC:
-        case DFUState::dfuMANAIFEST:
-        case DFUState::dfuMANIGEST_SYNC:
-        case DFUState::dfuUPLOAD_IDLE:
+        default:
         {
             Abort();
             break;
         }
+        }
+    }
+}
+
+auto TYT::InitUpload() const -> void
+{
+    while (1)
+    {
+        auto state = GetState();
+        switch (state)
+        {
+        case DFUState::DFU_UPLOAD_IDLE:
+        case DFUState::DFU_IDLE:
+            return;
         default:
+        {
+            Abort();
             break;
+        }
         }
     }
 }

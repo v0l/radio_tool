@@ -1,5 +1,5 @@
-#include <dfu.hpp>
-#include <dfu_exception.hpp>
+#include <tyt_tool/dfu.hpp>
+#include <tyt_tool/dfu_exception.hpp>
 
 #include <sstream>
 #include <iostream>
@@ -10,7 +10,7 @@
 #include <string.h>
 #include <exception>
 
-using namespace tytfw::dfu;
+using namespace tyt_tool::dfu;
 
 bool DFU::Init()
 {
@@ -123,40 +123,41 @@ auto DFU::Open(uint16_t idx) -> bool
                 {
                     this->device = h;
 
-                    std::wcout << L"Opened: " << GetDeviceString(desc, this->device) << std::endl;
+                    //std::wcout << L"Opened: " << GetDeviceString(desc, this->device) << std::endl;
                 }
             }
             else
             {
-                std::wcout << L"Can't open this kind of device" << std::endl;
+                libusb_free_device_list(devs, 1);
+                throw DFUException("Can't open this kind of device");
             }
         }
 
         if (LIBUSB_SUCCESS != err)
         {
+            libusb_free_device_list(devs, 1);
             throw DFUException(libusb_error_name(err));
         }
     }
     else if (ndev < LIBUSB_SUCCESS)
     {
+        libusb_free_device_list(devs, 1);
         throw DFUException(libusb_error_name(ndev));
     }
     else
     {
-        std::wcerr << L"Device index must be < " << ndev << std::endl;
+        libusb_free_device_list(devs, 1);
+        throw DFUException("Device not found");
     }
     libusb_free_device_list(devs, 1);
 
     return this->device != nullptr;
 }
 
-auto DFU::CustomCT(std::vector<uint8_t> data) const
-{
-    CheckDevice();
-    auto err = libusb_control_transfer(this->device, 0x21, static_cast<uint8_t>(DFURequest::Download), 0, 0, data.data(), data.size(), this->timeout);
-    if (err < LIBUSB_SUCCESS)
-    {
-        throw DFUException(libusb_error_name(err));
+auto DFU::Close() -> bool {
+    if(this->device != nullptr) {
+        libusb_close(this->device);
+        this->device = nullptr;
     }
 }
 
@@ -187,18 +188,18 @@ auto DFU::Erase(const uint32_t addr) const
 auto DFU::Download(std::vector<uint8_t> data) const -> void
 {
     CheckDevice();
-    auto err = libusb_control_transfer(this->device, 0x21, static_cast<uint8_t>(DFURequest::Download), 0, 0, data.data(), data.size(), this->timeout);
+    auto err = libusb_control_transfer(this->device, 0x21, static_cast<uint8_t>(DFURequest::DNLOAD), 0, 0, data.data(), data.size(), this->timeout);
     if (err < LIBUSB_SUCCESS)
     {
         throw DFUException(libusb_error_name(err));
     }
 }
 
-auto DFU::Upload(const uint16_t size) const -> std::vector<uint8_t>
+auto DFU::Upload(const uint16_t size, const uint8_t wValue) const -> std::vector<uint8_t>
 {
     CheckDevice();
     auto data = std::vector<uint8_t>(size);
-    auto err = libusb_control_transfer(this->device, 0xa1, static_cast<uint8_t>(DFURequest::Upload), 0, 0, data.data(), data.size(), this->timeout);
+    auto err = libusb_control_transfer(this->device, 0xa1, static_cast<uint8_t>(DFURequest::UPLOAD), wValue, 0, data.data(), data.size(), this->timeout);
     if (err < LIBUSB_SUCCESS)
     {
         throw DFUException(libusb_error_name(err));
@@ -208,6 +209,61 @@ auto DFU::Upload(const uint16_t size) const -> std::vector<uint8_t>
         data.resize(err);
     }
     return data;
+}
+
+
+auto DFU::GetState() const -> DFUState
+{
+    CheckDevice();
+    unsigned char state;
+    auto err = libusb_control_transfer(this->device, 0xa1, static_cast<uint8_t>(DFURequest::GETSTATE), 0, 0, &state, 1, this->timeout);
+    if (err < LIBUSB_SUCCESS)
+    {
+        throw DFUException(libusb_error_name(err));
+    }
+    else
+    {
+        auto s = static_cast<DFUState>((int)state);
+        //std::cerr << "State: " << ::ToString(s) << std::endl;
+        return s;
+    }
+}
+
+auto DFU::GetStatus() const -> const DFUStatusReport
+{
+    CheckDevice();
+    auto constexpr StatusSize = 6;
+
+    unsigned char data[StatusSize];
+    auto err = libusb_control_transfer(this->device, 0xa1, static_cast<uint8_t>(DFURequest::GETSTATUS), 0, 0, data, StatusSize, this->timeout);
+    if (err < LIBUSB_SUCCESS)
+    {
+        throw DFUException(libusb_error_name(err));
+    }
+    else
+    {
+        return DFUStatusReport::Parse(data);
+    }
+    return DFUStatusReport::Empty();
+}
+
+auto DFU::Abort() const -> void
+{
+    CheckDevice();
+    auto err = libusb_control_transfer(this->device, 0x21, static_cast<uint8_t>(DFURequest::ABORT), 0, 0, nullptr, 0, this->timeout);
+    if (err < LIBUSB_SUCCESS)
+    {
+        throw DFUException(libusb_error_name(err));
+    }
+}
+
+auto DFU::Detach() const -> void {
+    CheckDevice();
+    auto err = libusb_control_transfer(this->device, 0x21, static_cast<uint8_t>(DFURequest::DETACH), 0, 0, nullptr, 0, this->timeout);
+    if (err < LIBUSB_SUCCESS)
+    {
+        throw DFUException(libusb_error_name(err));
+    }
 }
 
 auto DFU::CheckDevice() const -> void

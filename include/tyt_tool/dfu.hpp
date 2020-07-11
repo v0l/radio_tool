@@ -5,36 +5,71 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
-#include <map>
 #include <iostream>
+
 #include <libusb-1.0/libusb.h>
 
-namespace tytfw::dfu
+namespace tyt_tool::dfu
 {
     enum class DFURequest : uint8_t
     {
-        Detach = 0,
-        Download = 1,
-        Upload = 2,
-        GetStatus = 3,
-        CLRStatus = 4,
-        GetState = 5,
-        Abort = 6
+        /**
+         * Requests the device to leave DFU mode and enter the application.
+         */
+        DETACH = 0x00,
+
+        /**
+         * Requests data transfer from Host to the device in order to load them
+         * into device internal Flash memory. Includes also erase commands.
+        */
+        DNLOAD = 0x01,
+
+        /**
+         * Requests data transfer from device to Host in order to load content
+         * of device internal Flash memory into a Host file.
+         */
+        UPLOAD = 0x02,
+
+        /**
+         * Requests device to send status report to the Host (including status
+         * resulting from the last request execution and the state the device will
+         * enter immediately after this request).
+         */
+        GETSTATUS = 0x03,
+
+        /**
+         * Requests device to clear error status and move to next step.
+         */
+        CLRSTATUS = 0x04,
+
+        /**
+         * Requests the device to send only the state it will enter immediately
+         * after this request.
+         */
+        GETSTATE = 5,
+
+        /**
+         * Requests device to exit the current state/operation and enter idle
+         * state immediately.
+         */
+        ABORT = 6
     };
 
     enum class DFUState : uint8_t
     {
-        appIDLE = 0x00,
-        appDETACH = 0x01,
-        dfuIDLE = 0x02,
-        dfuDOWNLOAD_SYNC = 0x03,
-        dfuDOWNLOAD_BUSY = 0x04,
-        dfuDOWNLOAD_IDLE = 0x05,
-        dfuMANIGEST_SYNC = 0x06,
-        dfuMANAIFEST = 0x07,
-        dfuMANIFEST_WAIT_RESET = 0x08,
-        dfuUPLOAD_IDLE = 0x09,
-        dfuERROR = 0x0a
+        IDLE = 0x00,
+        DETACH = 0x01,
+        DFU_IDLE = 0x02,
+        DFU_DOWNLOAD_SYNC = 0x03,
+        DFU_DOWNLOAD_BUSY = 0x04,
+        DFU_DOWNLOAD_IDLE = 0x05,
+        DFU_MANIFEST_SYNC = 0x06,
+        DFU_MANIFEST = 0x07,
+        DFU_MANIFEST_WAIT_RESET = 0x08,
+        DFU_UPLOAD_IDLE = 0x09,
+        DFU_ERROR = 0x0a,
+        DFU_UPLOAD_SYNC = 0x91,
+        DFU_UPLOAD_BUSY = 0x92
     };
 
     enum class DFUStatus : uint8_t
@@ -44,7 +79,7 @@ namespace tytfw::dfu
         errFILE = 0x02,
         errWRITE = 0x03,
         errERASE = 0x04,
-        errCHECKERASED = 0x05,
+        errCHECK_ERASE = 0x05,
         errPROG = 0x06,
         errVERIFY = 0x07,
         errADDRESS = 0x08,
@@ -71,8 +106,8 @@ namespace tytfw::dfu
             return "errWRITE";
         case DFUStatus::errERASE:
             return "errERASE";
-        case DFUStatus::errCHECKERASED:
-            return "errCHECKERASED";
+        case DFUStatus::errCHECK_ERASE:
+            return "errCHECK_ERASE";
         case DFUStatus::errPROG:
             return "errPROG";
         case DFUStatus::errVERIFY:
@@ -101,27 +136,27 @@ namespace tytfw::dfu
     {
         switch (s)
         {
-        case DFUState::appIDLE:
+        case DFUState::IDLE:
             return "OK";
-        case DFUState::appDETACH:
+        case DFUState::DETACH:
             return "appDETACH";
-        case DFUState::dfuIDLE:
+        case DFUState::DFU_IDLE:
             return "dfuIDLE";
-        case DFUState::dfuDOWNLOAD_SYNC:
+        case DFUState::DFU_DOWNLOAD_SYNC:
             return "dfuDOWNLOAD_SYNC";
-        case DFUState::dfuDOWNLOAD_BUSY:
+        case DFUState::DFU_DOWNLOAD_BUSY:
             return "dfuDOWNLOAD_BUSY";
-        case DFUState::dfuDOWNLOAD_IDLE:
+        case DFUState::DFU_DOWNLOAD_IDLE:
             return "dfuDOWNLOAD_IDLE";
-        case DFUState::dfuMANIGEST_SYNC:
+        case DFUState::DFU_MANIFEST_SYNC:
             return "dfuMANIGEST_SYNC";
-        case DFUState::dfuMANAIFEST:
+        case DFUState::DFU_MANIFEST:
             return "dfuMANAIFEST";
-        case DFUState::dfuMANIFEST_WAIT_RESET:
+        case DFUState::DFU_MANIFEST_WAIT_RESET:
             return "dfuMANIFEST_WAIT_RESET";
-        case DFUState::dfuUPLOAD_IDLE:
+        case DFUState::DFU_UPLOAD_IDLE:
             return "dfuUPLOAD_IDLE";
-        case DFUState::dfuERROR:
+        case DFUState::DFU_ERROR:
             return "dfuERROR";
         }
         return "**UKNOWN**";
@@ -152,16 +187,16 @@ namespace tytfw::dfu
         auto ToString() const -> std::string
         {
             std::stringstream out;
-            out << "Status: 0x" << tytfw::dfu::ToString(status) << ", "
+            out << "Status: " << tyt_tool::dfu::ToString(status) << ", "
                 << "Timeout: 0x" << std::setfill('0') << std::setw(2) << std::hex << timeout << ", "
-                << "State: 0x" << tytfw::dfu::ToString(state) << ", "
+                << "State: " << tyt_tool::dfu::ToString(state) << ", "
                 << "Discarded: 0x" << std::setfill('0') << std::setw(2) << std::hex << discarded;
             return out.str();
         }
 
     private:
         DFUStatusReport()
-            : status(DFUStatus::errUNKNOWN), timeout(0), state(DFUState::dfuERROR), discarded(0)
+            : status(DFUStatus::errUNKNOWN), timeout(0), state(DFUState::DFU_ERROR), discarded(0)
         {
         }
         DFUStatusReport(DFUStatus a, uint32_t b, DFUState c, uint8_t d)
@@ -180,12 +215,20 @@ namespace tytfw::dfu
         auto ListDevices() -> std::vector<std::wstring>;
 
         auto Open(uint16_t idx) -> bool;
+        auto Close() -> bool;
+
         auto SetAddress(const uint32_t) const;
-        auto CustomCT(const std::vector<uint8_t>) const;
         auto Erase(const uint32_t) const;
         auto Download(std::vector<uint8_t>) const -> void;
-        auto Upload(const uint16_t) const -> std::vector<uint8_t>;
+        auto Upload(const uint16_t, const uint8_t wValue = 0) const -> std::vector<uint8_t>;
 
+        auto Get() const -> std::vector<uint8_t>;
+        auto ReadUnprotected() const -> void;
+
+        auto GetState() const -> DFUState;
+        auto GetStatus() const -> const DFUStatusReport;
+        auto Abort() const -> void;
+        auto Detach() const -> void;
     private:
         libusb_context *usb_ctx;
         auto GetDeviceString(const libusb_device_descriptor &, libusb_device_handle *) const -> std::wstring;
@@ -195,4 +238,4 @@ namespace tytfw::dfu
         libusb_device_handle *device;
         auto CheckDevice() const -> void;
     };
-} // namespace tytfw::dfu
+} // namespace tyt_tool::dfu

@@ -3,7 +3,7 @@
 #include <exception>
 #include <string>
 
-namespace tytfw::dfu {
+namespace tyt_tool::dfu {
     class DFUException : public std::exception {
     public:
         DFUException(const std::string& str) 
