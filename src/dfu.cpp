@@ -1,5 +1,22 @@
-#include <tyt_tool/dfu.hpp>
-#include <tyt_tool/dfu_exception.hpp>
+/**
+ * This file is part of radio_tool.
+ * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * 
+ * radio_tool is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * radio_tool is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
+ */
+#include <radio_tool/dfu/dfu.hpp>
+#include <radio_tool/dfu/dfu_exception.hpp>
 
 #include <sstream>
 #include <iostream>
@@ -10,7 +27,7 @@
 #include <string.h>
 #include <exception>
 
-using namespace tyt_tool::dfu;
+using namespace radio_tool::dfu;
 
 bool DFU::Init()
 {
@@ -158,10 +175,12 @@ auto DFU::Close() -> bool {
     if(this->device != nullptr) {
         libusb_close(this->device);
         this->device = nullptr;
+        return true;
     }
+    return false;
 }
 
-auto DFU::SetAddress(const uint32_t addr) const
+auto DFU::SetAddress(const uint32_t addr) const -> void
 {
     std::vector<uint8_t> data = {
         static_cast<uint8_t>(0x21),
@@ -173,7 +192,7 @@ auto DFU::SetAddress(const uint32_t addr) const
     Download(data);
 }
 
-auto DFU::Erase(const uint32_t addr) const
+auto DFU::Erase(const uint32_t addr) const -> void
 {
     std::vector<uint8_t> data = {
         static_cast<uint8_t>(0x41),
@@ -185,10 +204,11 @@ auto DFU::Erase(const uint32_t addr) const
     Download(data);
 }
 
-auto DFU::Download(std::vector<uint8_t> data) const -> void
+auto DFU::Download(const std::vector<uint8_t>& data, const uint16_t wValue) const -> void
 {
     CheckDevice();
-    auto err = libusb_control_transfer(this->device, 0x21, static_cast<uint8_t>(DFURequest::DNLOAD), 0, 0, data.data(), data.size(), this->timeout);
+    // tehnically we shouldnt const_cast here but libusb *?WONT?* modify this data
+    auto err = libusb_control_transfer(this->device, 0x21, static_cast<uint8_t>(DFURequest::DNLOAD), wValue, 0, const_cast<unsigned char*>(data.data()), data.size(), this->timeout);
     if (err < LIBUSB_SUCCESS)
     {
         throw DFUException(libusb_error_name(err));

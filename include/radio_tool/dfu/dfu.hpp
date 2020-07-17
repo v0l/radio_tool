@@ -1,3 +1,20 @@
+/**
+ * This file is part of radio_tool.
+ * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * 
+ * radio_tool is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * radio_tool is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
+ */
 #pragma once
 
 #include <stdint.h>
@@ -9,7 +26,7 @@
 
 #include <libusb-1.0/libusb.h>
 
-namespace tyt_tool::dfu
+namespace radio_tool::dfu
 {
     enum class DFURequest : uint8_t
     {
@@ -92,7 +109,7 @@ namespace tyt_tool::dfu
         errSTALLEDPKT = 0x0f,
     };
 
-    static constexpr auto ToString(DFUStatus s)
+    static auto ToString(DFUStatus s)
     {
         switch (s)
         {
@@ -132,32 +149,36 @@ namespace tyt_tool::dfu
         return "**UKNOWN**";
     };
 
-    static constexpr auto ToString(DFUState s)
+    static auto ToString(DFUState s)
     {
         switch (s)
         {
         case DFUState::IDLE:
-            return "OK";
+            return "IDLE";
         case DFUState::DETACH:
-            return "appDETACH";
+            return "DETACH";
         case DFUState::DFU_IDLE:
-            return "dfuIDLE";
+            return "DFU_IDLE";
         case DFUState::DFU_DOWNLOAD_SYNC:
-            return "dfuDOWNLOAD_SYNC";
+            return "DFU_DOWNLOAD_SYNC";
         case DFUState::DFU_DOWNLOAD_BUSY:
-            return "dfuDOWNLOAD_BUSY";
+            return "DFU_DOWNLOAD_BUSY";
         case DFUState::DFU_DOWNLOAD_IDLE:
-            return "dfuDOWNLOAD_IDLE";
+            return "DFU_DOWNLOAD_IDLE";
         case DFUState::DFU_MANIFEST_SYNC:
-            return "dfuMANIGEST_SYNC";
+            return "DFU_MANIFEST_SYNC";
         case DFUState::DFU_MANIFEST:
-            return "dfuMANAIFEST";
+            return "DFU_MANIFEST";
         case DFUState::DFU_MANIFEST_WAIT_RESET:
-            return "dfuMANIFEST_WAIT_RESET";
+            return "DFU_MANIFEST_WAIT_RESET";
         case DFUState::DFU_UPLOAD_IDLE:
-            return "dfuUPLOAD_IDLE";
+            return "DFU_UPLOAD_IDLE";
         case DFUState::DFU_ERROR:
-            return "dfuERROR";
+            return "DFU_ERROR";
+        case DFUState::DFU_UPLOAD_SYNC:
+            return "DFU_UPLOAD_SYNC";
+        case DFUState::DFU_UPLOAD_BUSY:
+            return "DFU_UPLOAD_BUSY";
         }
         return "**UKNOWN**";
     };
@@ -165,10 +186,10 @@ namespace tyt_tool::dfu
     class DFUStatusReport
     {
     public:
-        DFUStatus status;
-        uint32_t timeout;
-        DFUState state;
-        uint8_t discarded;
+        const DFUStatus status;
+        const uint32_t timeout;
+        const DFUState state;
+        const uint8_t discarded;
 
         static auto Parse(uint8_t data[6]) -> const DFUStatusReport
         {
@@ -187,9 +208,9 @@ namespace tyt_tool::dfu
         auto ToString() const -> std::string
         {
             std::stringstream out;
-            out << "Status: " << tyt_tool::dfu::ToString(status) << ", "
+            out << "Status: " << radio_tool::dfu::ToString(status) << ", "
                 << "Timeout: 0x" << std::setfill('0') << std::setw(2) << std::hex << timeout << ", "
-                << "State: " << tyt_tool::dfu::ToString(state) << ", "
+                << "State: " << radio_tool::dfu::ToString(state) << ", "
                 << "Discarded: 0x" << std::setfill('0') << std::setw(2) << std::hex << discarded;
             return out.str();
         }
@@ -211,15 +232,20 @@ namespace tyt_tool::dfu
     public:
         DFU(const uint16_t vid, const uint16_t pid, const uint16_t idx = 0)
             : vid(vid), pid(pid), idx(idx), timeout(500), device(nullptr) {}
+        ~DFU() {
+            Close();
+            libusb_exit(usb_ctx);
+        }
+
         auto Init() -> bool;
         auto ListDevices() -> std::vector<std::wstring>;
 
         auto Open(uint16_t idx) -> bool;
         auto Close() -> bool;
 
-        auto SetAddress(const uint32_t) const;
-        auto Erase(const uint32_t) const;
-        auto Download(std::vector<uint8_t>) const -> void;
+        auto SetAddress(const uint32_t) const -> void;
+        auto Erase(const uint32_t) const -> void;
+        auto Download(const std::vector<uint8_t> &, const uint16_t wValue = 0) const -> void;
         auto Upload(const uint16_t, const uint8_t wValue = 0) const -> std::vector<uint8_t>;
 
         auto Get() const -> std::vector<uint8_t>;
@@ -229,6 +255,7 @@ namespace tyt_tool::dfu
         auto GetStatus() const -> const DFUStatusReport;
         auto Abort() const -> void;
         auto Detach() const -> void;
+
     private:
         libusb_context *usb_ctx;
         auto GetDeviceString(const libusb_device_descriptor &, libusb_device_handle *) const -> std::wstring;
@@ -238,4 +265,26 @@ namespace tyt_tool::dfu
         libusb_device_handle *device;
         auto CheckDevice() const -> void;
     };
-} // namespace tyt_tool::dfu
+
+    /*class IDFU {
+    public:
+        virtual auto Init() -> bool = 0;
+        virtual auto ListDevices() -> std::vector<std::wstring> = 0;
+
+        virtual auto Open(uint16_t idx) -> bool = 0;
+        virtual auto Close() -> bool = 0;
+
+        virtual auto SetAddress(const uint32_t) const -> void = 0;
+        virtual auto Erase(const uint32_t) const -> void = 0;
+        virtual auto Download(const std::vector<uint8_t> &, const uint16_t wValue = 0) const -> void = 0;
+        virtual auto Upload(const uint16_t, const uint8_t wValue = 0) const -> std::vector<uint8_t> = 0;
+
+        virtual auto Get() const -> std::vector<uint8_t> = 0;
+        virtual auto ReadUnprotected() const -> void = 0;
+
+        virtual auto GetState() const -> DFUState = 0;
+        virtual auto GetStatus() const -> const DFUStatusReport = 0;
+        virtual auto Abort() const -> void = 0;
+        virtual auto Detach() const -> void = 0;
+    };*/
+} // namespace radio_tool::dfu
