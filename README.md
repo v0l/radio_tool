@@ -5,7 +5,7 @@ TYT/BaoFeng/(Others?) Firmware tool
 # Building
 Dependencies:
 ```
-sudo apt install libusb-1.0-0-dev
+sudo apt install libusb-1.0-0-dev cmake gcc
 ```
 
 ```
