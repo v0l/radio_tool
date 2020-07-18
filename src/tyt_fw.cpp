@@ -27,26 +27,12 @@ auto TYTFW::Read(const std::string &file) -> void
     if (i.is_open())
     {
         auto header = ReadHeader(i);
+        CheckHeader(header);
 
-        if(!std::equal(tyt::magic::begin.begin(), tyt::magic::begin.end(), header.magic)) {
-            throw std::runtime_error("Invalid start magic");
-        }
-
-        radio = std::string(header.radio, header.radio + strlen((const char*)header.radio));
-        if(header.counter_magic[0] > 3) {
-            throw std::runtime_error("Invalid counter magic length");
-        }
+        radio = std::string(header.radio, header.radio + strlen((const char *)header.radio));
         counterMagic = std::vector<uint8_t>(header.counter_magic, header.counter_magic + 1 + header.counter_magic[0]);
 
-        if(header.n_regions == std::numeric_limits<uint32_t>::max()) {
-            header.n_regions = 1; //if 0xFFFFFFFF then assume 1
-        }
-        uint32_t binarySize = 0;
-        if ((header.n_regions * 8) > 0x80)
-        {
-            i.close();
-            throw std::runtime_error("Memory region count out of bounds");
-        }
+        auto binarySize = 0;
         for (auto nMem = 0; nMem < header.n_regions; nMem++)
         {
             uint32_t rStart = 0, rLength = 0;
@@ -88,31 +74,73 @@ auto TYTFW::ToString() const -> std::string
     return out.str();
 }
 
-auto TYTFW::ReadHeader(std::ifstream& i) -> TYTFirmwareHeader {
+auto TYTFW::ReadHeader(std::ifstream &i) -> TYTFirmwareHeader
+{
     TYTFirmwareHeader ret = {};
     i.seekg(0, i.beg);
-    i.read((char*)&ret, sizeof(TYTFirmwareHeader));
+    i.read((char *)&ret, sizeof(TYTFirmwareHeader));
+
+    if (ret.n_regions == std::numeric_limits<uint32_t>::max())
+    {
+        ret.n_regions = 1; //if 0xFFFFFFFF then assume 1
+    }
+
     return ret;
 }
 
-auto TYTFW::SupportsFirmwareFile(const std::string& file) -> bool {
+auto TYTFW::CheckHeader(const TYTFirmwareHeader &header) -> void
+{
+    if (!std::equal(tyt::magic::begin.begin(), tyt::magic::begin.end(), header.magic))
+    {
+        throw std::runtime_error("Invalid start magic");
+    }
+
+    if (header.counter_magic[0] > 3)
+    {
+        throw std::runtime_error("Invalid counter magic length");
+    }
+
+    auto magic_match = false;
+    for (const auto &r : tyt::magic::All)
+    {
+        if (std::equal(r.second.begin(), r.second.end(), header.counter_magic))
+        {
+            magic_match = true;
+            break;
+        }
+    }
+    if (!magic_match)
+    {
+        throw std::runtime_error("Counter magic is invalid, or not supported");
+    }
+
+    uint32_t binarySize = 0;
+    if ((header.n_regions * 8) > 0x80)
+    {
+        throw std::runtime_error("Memory region count out of bounds");
+    }
+}
+
+auto TYTFW::SupportsFirmwareFile(const std::string &file) -> bool
+{
     std::ifstream i;
     i.open(file, i.binary);
-    if(i.is_open()) {
+    if (i.is_open())
+    {
         auto header = ReadHeader(i);
         i.close();
 
-        //do the basic checks first
-         if(!std::equal(tyt::magic::begin.begin(), tyt::magic::begin.end(), header.magic)) {
-            return false;
-        }
-
-        for(const auto& r : tyt::magic::All) {
-            
-        }
+        CheckHeader(header);
 
         return true;
-    } else {
+    }
+    else
+    {
         throw std::runtime_error("Can't open firmware file");
     }
+}
+
+auto TYTFW::GetRadioModel() const -> const std::string
+{
+    return GetRadioFromMagic(counterMagic);
 }

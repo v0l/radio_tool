@@ -50,7 +50,7 @@ namespace radio_tool::fw
         const std::vector<uint8_t> DM1701 = {0x01, 0x0f}; //DM-1701
 
         const std::vector<uint8_t> MD390 = {0x01, 0x10}; //MD-390
-        const std::vector<uint8_t> MD380 = {0x01, 0x0d}; //MD-380
+        const std::vector<uint8_t> MD380 = {0x01, 0x0d}; //MD-380 / MD-446
         const std::vector<uint8_t> MD280 = {0x01, 0x1b}; //MD-280
 
         const std::vector<std::pair<const std::string, const std::vector<uint8_t>>> All = {
@@ -94,6 +94,11 @@ namespace radio_tool::fw
         auto ToString() const -> std::string override;
 
         /**
+         * @note This is not the "radio group" which exists in the firmware header
+         */
+        auto GetRadioModel() const -> const std::string override;
+
+        /**
          * Get the counter magic for a specific model radio
          * @note This is the radio model not the model from the firmware file
          */
@@ -134,6 +139,7 @@ namespace radio_tool::fw
         std::string radio;
 
         static auto ReadHeader(std::ifstream&) -> TYTFirmwareHeader;
+        static auto CheckHeader(const TYTFirmwareHeader&) -> void;
     };
 
 } // namespace radio_tool::fw

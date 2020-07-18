@@ -27,10 +27,29 @@ namespace radio_tool::fw
     public:
         virtual ~FirmwareSupport() = default;
 
+        /**
+         * Read the firmware file from disk
+         */
         virtual auto Read(const std::string& fw) -> void = 0;
+
+        /**
+         * Write the firmware file to disk
+         */
         virtual auto Write(const std::string& fw) -> void = 0;
+
+        /**
+         * Returns general info about the firmware file
+         */
         virtual auto ToString() const -> std::string = 0;
 
+        /**
+         * Returns the radio model this firmware file is for
+         */
+        virtual auto GetRadioModel() const -> const std::string = 0;
+
+        /**
+         * Gets the firmware binary
+         */
         auto GetData() const -> const std::vector<uint8_t>& {
             return data;
         }
