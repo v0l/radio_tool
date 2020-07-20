@@ -24,6 +24,7 @@
 #include <iostream>
 #include <filesystem>
 #include <cxxopts.hpp>
+#include <fstream>
 
 using namespace radio_tool::fw;
 using namespace radio_tool::radio;
@@ -41,13 +42,16 @@ int main(int argc, char **argv)
 
         options.add_options("Programming")
             ("f,flash", "Flash firmware", cxxopts::value<std::string>(), "<firmware.bin>")
-            ("p,program", "Upload codeplug", cxxopts::value<std::string>(), "<codeplug.rtd>")
+            ("p,program", "Upload codeplug", cxxopts::value<std::string>(), "<codeplug.rtd>");
+            
+        options.add_options("TYT Radio")
             ("get-time", "Gets the radio time")
             ("set-time", "Sets the radio time")
             ("dump-reg", "Dump a register from the radio", cxxopts::value<uint16_t>(), "<register>")
             ("write-custom", "Send custom command to radio", cxxopts::value<std::vector<uint8_t>>(), "<data>")
             ("get-status", "Return the current DFU Status")
-            ("reboot", "Reboot the radio");
+            ("reboot", "Reboot the radio")
+            ("dump-flash", "Dump external flash memory");
 
         options.add_options("Firmware")
             ("info", "Return info about a firmware file", cxxopts::value<std::string>(), "<firmware.bin>")
@@ -58,7 +62,7 @@ int main(int argc, char **argv)
 
         if (cmd.count("help") || cmd.arguments().empty())
         {
-            std::cerr << options.help({"General", "Programming", "Firmware"}) << std::endl;
+            std::cerr << options.help({"General", "Programming", "Firmware", "TYT Radio"}) << std::endl;
             exit(0);
         }
 
@@ -90,12 +94,12 @@ int main(int argc, char **argv)
             exit(1);
         }
 
-
         auto index = cmd["device"].as<uint16_t>();
         auto radio = rdFactory.GetRadioSupport(index);
-
+        auto dfu = radio->GetDFU();
+        
         if(cmd.count("flash")) {
-            auto file = cmd["flags"].as<std::string>();
+            auto file = cmd["flash"].as<std::string>();
             radio->WriteFirmware(file);
         }
 
@@ -110,14 +114,26 @@ int main(int argc, char **argv)
             //radio_tool::PrintHex(dfu.ReadRegister(static_cast<const TYTRegister>(x)));
         }
 
+        if(cmd.count("dump-flash")) {
+            auto size = 0xc000;
+            std::ofstream outf;
+            outf.open("ext_flash.bin", outf.out | outf.binary);
+            if(outf.is_open()) {
+                auto mem = dfu.Upload(size, 2);
+                //radio_tool::PrintHex(mem);
+                outf.write((char*)mem.data(), mem.size());
+                outf.close();
+            }
+        }
+
         if(cmd.count("write-custom")) {
             auto data = cmd["write-custom"].as<std::vector<uint8_t>>();
             //dfu.SendCustom(data);
         }
 
         if(cmd.count("get-status")) {
-            //auto status = dfu.GetStatus();
-            //std::cerr << status.ToString() << std::endl;
+            auto status = dfu.GetStatus();
+            std::cerr << status.ToString() << std::endl;
         }
 
         if(cmd.count("get-time")) {

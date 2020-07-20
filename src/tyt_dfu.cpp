@@ -36,72 +36,12 @@ auto TYTDFU::IdentifyDevice() const -> std::string
 
 auto TYTDFU::ReadRegister(const TYTRegister &reg) const -> std::vector<uint8_t>
 {
-    SendCustom({
+    Download({
         static_cast<uint8_t>(TYTDFU::RegisterCommand),
         static_cast<uint8_t>(reg)
     });
 
-    InitUpload();
     return Upload(TYTDFU::RegisterSize);
-}
-
-auto TYTDFU::InitDownload() const -> void
-{
-    while (1)
-    {
-        auto state = GetState();
-        switch (state)
-        {
-        case DFUState::DFU_DOWNLOAD_IDLE:
-        case DFUState::DFU_IDLE:
-            return;
-        default:
-        {
-            Abort();
-            break;
-        }
-        }
-    }
-}
-
-auto TYTDFU::InitUpload() const -> void
-{
-    while (1)
-    {
-        auto state = GetState();
-        switch (state)
-        {
-        case DFUState::DFU_UPLOAD_IDLE:
-        case DFUState::DFU_IDLE:
-            return;
-        default:
-        {
-            Abort();
-            break;
-        }
-        }
-    }
-}
-
-
-auto TYTDFU::SendCustom(const std::vector<uint8_t>& data) const -> void {
-    InitDownload();
-    Download(data);
-
-    //execute command by calling GetStatus
-    auto status = GetStatus();
-    if (status.state != DFUState::DFU_DOWNLOAD_BUSY)
-    {
-        throw DFUException("Command execution failed");
-    } else if(status.timeout > 0) {
-        std::this_thread::sleep_for(std::chrono::nanoseconds(status.timeout));
-    }
-
-    //check the command executed ok
-    auto status2 = GetStatus();
-    if(status2.state != DFUState::DFU_DOWNLOAD_IDLE) {
-        throw DFUException("Command execution failed");
-    }
 }
 
 auto TYTDFU::GetTime() const -> const time_t {
@@ -120,7 +60,7 @@ auto TYTDFU::GetTime() const -> const time_t {
 }
 
 auto TYTDFU::SetTime() const -> void {
-    SendCustom({
+    Download({
         TYTDFU::CustomCommand, 
         static_cast<uint8_t>(TYTCommand::SetRTC)
     });
@@ -128,7 +68,7 @@ auto TYTDFU::SetTime() const -> void {
     time_t rawtime;
     time(&rawtime);
     auto timeinfo = localtime(&rawtime);
-    SendCustom({
+    Download({
         0xb5, 
         static_cast<uint8_t>(_dcb((1900 + timeinfo->tm_year) / 100)),
         static_cast<uint8_t>(_dcb(timeinfo->tm_year + 1900 - (timeinfo->tm_year + 1900) / 100 * 100)),
@@ -142,14 +82,14 @@ auto TYTDFU::SetTime() const -> void {
 }
 
 auto TYTDFU::Reboot() const -> void {
-    SendCustom({
+    Download({
         TYTDFU::CustomCommand, 
         static_cast<uint8_t>(TYTCommand::ProgrammingMode)
     });
 
     //this will normally throw an exception because the device 
     //will not respond it will reboot immediately
-    SendCustom({
+    Download({
         TYTDFU::CustomCommand,
         static_cast<uint8_t>(TYTCommand::Reboot)
     });

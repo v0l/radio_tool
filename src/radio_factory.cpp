@@ -24,15 +24,15 @@
 #include <exception>
 #include <functional>
 #include <codecvt>
+#include <cstring>
 
 using namespace radio_tool::radio;
 
 /**
  * A list of functions to test each radio handler
  */
-const std::vector<std::pair<std::function<bool(const libusb_device_descriptor &)>, std::function<std::unique_ptr<RadioSupport>()>>> RadioSupports = {
-    { TYTRadio::SupportsDevice, []() { return std::unique_ptr<TYTRadio>(new TYTRadio()); } }
-};
+const std::vector<std::pair<std::function<bool(const libusb_device_descriptor &)>, std::function<std::unique_ptr<RadioSupport>(libusb_device_handle *)>>> RadioSupports = {
+    {TYTRadio::SupportsDevice, TYTRadio::Create}};
 
 auto RadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> std::unique_ptr<RadioSupport>
 {
@@ -40,7 +40,7 @@ auto RadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> std::unique
     auto ndev = libusb_get_device_list(usb_ctx, &devs);
     int err = LIBUSB_SUCCESS;
     auto n_idx = 0;
-    
+
     if (ndev >= 0)
     {
         for (auto x = 0; x < ndev; x++)
@@ -48,11 +48,23 @@ auto RadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> std::unique
             libusb_device_descriptor desc;
             if (LIBUSB_SUCCESS == (err = libusb_get_device_descriptor(devs[x], &desc)))
             {
-                for(const auto& fnSupport : RadioSupports) {
-                    if(fnSupport.first(desc)) {
-                        if(n_idx == dev_idx) {
-                            libusb_free_device_list(devs, 1);
-                            return fnSupport.second();
+                for (const auto &fnSupport : RadioSupports)
+                {
+                    if (fnSupport.first(desc))
+                    {
+                        if (n_idx == dev_idx)
+                        {
+                            libusb_device_handle *h;
+                            if (LIBUSB_SUCCESS == (err = libusb_open(devs[x], &h)))
+                            {
+                                libusb_free_device_list(devs, 1);
+                                return fnSupport.second(h);
+                            }
+                            else
+                            {
+                                libusb_free_device_list(devs, 1);
+                                throw std::runtime_error("Failed to open device");
+                            }
                         }
                         n_idx++;
                         break;
@@ -70,13 +82,13 @@ auto RadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> std::unique
     throw std::runtime_error("Radio not supported");
 }
 
-auto RadioFactory::OpDeviceList(std::function<void(const libusb_device*, const libusb_device_descriptor&, const uint16_t &)> op) const -> void 
+auto RadioFactory::OpDeviceList(std::function<void(const libusb_device *, const libusb_device_descriptor &, const uint16_t &)> op) const -> void
 {
     libusb_device **devs;
     auto ndev = libusb_get_device_list(usb_ctx, &devs);
     int err = LIBUSB_SUCCESS;
     auto n_idx = 0;
-    
+
     if (ndev >= 0)
     {
         for (auto x = 0; x < ndev; x++)
@@ -84,8 +96,10 @@ auto RadioFactory::OpDeviceList(std::function<void(const libusb_device*, const l
             libusb_device_descriptor desc;
             if (LIBUSB_SUCCESS == (err = libusb_get_device_descriptor(devs[x], &desc)))
             {
-                for(const auto& fnSupport : RadioSupports) {
-                    if(fnSupport.first(desc)) {
+                for (const auto &fnSupport : RadioSupports)
+                {
+                    if (fnSupport.first(desc))
+                    {
                         op(devs[x], desc, n_idx);
                         n_idx++;
                         break;
@@ -102,17 +116,18 @@ auto RadioFactory::OpDeviceList(std::function<void(const libusb_device*, const l
     }
 }
 
-auto RadioFactory::ListDevices() const -> const std::vector<RadioInfo> {
+auto RadioFactory::ListDevices() const -> const std::vector<RadioInfo>
+{
     std::vector<RadioInfo> ret;
 
-    OpDeviceList([&ret, this](const libusb_device* dev, const libusb_device_descriptor& desc, const uint16_t& idx) {
+    OpDeviceList([&ret, this](const libusb_device *dev, const libusb_device_descriptor &desc, const uint16_t &idx) {
         int err = LIBUSB_SUCCESS;
         libusb_device_handle *h;
-        if (LIBUSB_SUCCESS == (err = libusb_open(const_cast<libusb_device*>(dev), &h)))
+        if (LIBUSB_SUCCESS == (err = libusb_open(const_cast<libusb_device *>(dev), &h)))
         {
             auto mfg = GetDeviceString(desc.iManufacturer, h),
-                prd = GetDeviceString(desc.iProduct, h);
-                
+                 prd = GetDeviceString(desc.iProduct, h);
+
             auto nInf = RadioInfo(mfg, prd, desc.idVendor, desc.idProduct, idx);
             ret.push_back(nInf);
             libusb_close(h);
@@ -122,7 +137,7 @@ auto RadioFactory::ListDevices() const -> const std::vector<RadioInfo> {
     return ret;
 }
 
-auto RadioFactory::GetDeviceString(const uint8_t& desc, libusb_device_handle *h) const -> std::wstring
+auto RadioFactory::GetDeviceString(const uint8_t &desc, libusb_device_handle *h) const -> std::wstring
 {
     auto err = 0;
     size_t prd_len = 0;

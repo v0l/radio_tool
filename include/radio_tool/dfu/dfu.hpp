@@ -230,18 +230,8 @@ namespace radio_tool::dfu
     class DFU
     {
     public:
-        DFU(const uint16_t vid, const uint16_t pid, const uint16_t idx = 0)
-            : vid(vid), pid(pid), idx(idx), timeout(500), device(nullptr) {}
-        ~DFU() {
-            Close();
-            libusb_exit(usb_ctx);
-        }
-
-        auto Init() -> bool;
-        auto ListDevices() -> std::vector<std::wstring>;
-
-        auto Open(uint16_t idx) -> bool;
-        auto Close() -> bool;
+        DFU(libusb_device_handle *device)
+            : timeout(500), device(device) {}
 
         auto SetAddress(const uint32_t) const -> void;
         auto Erase(const uint32_t) const -> void;
@@ -261,30 +251,19 @@ namespace radio_tool::dfu
         auto GetDeviceString(const libusb_device_descriptor &, libusb_device_handle *) const -> std::wstring;
 
     protected:
-        const uint16_t vid, pid, idx, timeout;
+        const uint16_t timeout;
         libusb_device_handle *device;
+
         auto CheckDevice() const -> void;
+        
+        /**
+         * Ensures the state is DFU_IDLE or DFU_DNLOAD_IDLE
+         */
+        auto InitDownload() const -> void;
+
+        /**
+         * Ensures the state is DFU_IDLE or DFU_DPLOAD_IDLE
+         */
+        auto InitUpload() const -> void;
     };
-
-    /*class IDFU {
-    public:
-        virtual auto Init() -> bool = 0;
-        virtual auto ListDevices() -> std::vector<std::wstring> = 0;
-
-        virtual auto Open(uint16_t idx) -> bool = 0;
-        virtual auto Close() -> bool = 0;
-
-        virtual auto SetAddress(const uint32_t) const -> void = 0;
-        virtual auto Erase(const uint32_t) const -> void = 0;
-        virtual auto Download(const std::vector<uint8_t> &, const uint16_t wValue = 0) const -> void = 0;
-        virtual auto Upload(const uint16_t, const uint8_t wValue = 0) const -> std::vector<uint8_t> = 0;
-
-        virtual auto Get() const -> std::vector<uint8_t> = 0;
-        virtual auto ReadUnprotected() const -> void = 0;
-
-        virtual auto GetState() const -> DFUState = 0;
-        virtual auto GetStatus() const -> const DFUStatusReport = 0;
-        virtual auto Abort() const -> void = 0;
-        virtual auto Detach() const -> void = 0;
-    };*/
 } // namespace radio_tool::dfu

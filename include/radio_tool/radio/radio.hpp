@@ -17,6 +17,8 @@
  */
 #pragma once
 
+#include <radio_tool/dfu/dfu.hpp>
+
 #include <string>
 #include <iomanip>
 
@@ -50,15 +52,16 @@ namespace radio_tool::radio
         virtual ~RadioSupport() = default;
 
         /**
-         * Connectes to a device by its index
-         */
-        virtual auto Open(const uint16_t &) -> bool = 0;
-
-        /**
          * Write a firmware file to the device (Firmware Upgrade)
          */
         virtual auto WriteFirmware(const std::string &file) const -> void = 0;
+        
         //virtual auto WriteCodeplug();
         //virtual auto ReadCodeplug();
+
+        /**
+         * Return the device communication handler
+         */
+        virtual auto GetDFU() const -> const dfu::DFU& = 0;
     };
 } // namespace radio_tool::radio

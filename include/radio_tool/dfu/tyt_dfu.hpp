@@ -49,10 +49,17 @@ namespace radio_tool::dfu
         static const auto RegisterCommand = 0xa2;
         static const auto RegisterSize = 1024;
 
-        TYTDFU() : DFU(VID, PID, idx) { }
+        TYTDFU(libusb_device_handle* h) : DFU(h) { }
+
+        /**
+         * Get the radio model off the device
+         */
         auto IdentifyDevice() const -> std::string;
+
+        /**
+         * Read some register off the device
+         */
         auto ReadRegister(const TYTRegister& reg) const -> std::vector<uint8_t>;
-        auto SendCustom(const std::vector<uint8_t>& data) const -> void;
 
         /**
          * Gets the current time from the radio's RTC
@@ -69,15 +76,5 @@ namespace radio_tool::dfu
          * Reboot the device
          */
         auto Reboot() const -> void;
-    protected:
-        /**
-         * Ensures the state is DFU_IDLE or DFU_DNLOAD_IDLE
-         */
-        auto InitDownload() const -> void;
-
-        /**
-         * Ensures the state is DFU_IDLE or DFU_DPLOAD_IDLE
-         */
-        auto InitUpload() const -> void;
     };
 } // namespace radio_tool::dfu
