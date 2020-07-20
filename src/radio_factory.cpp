@@ -150,5 +150,8 @@ auto RadioFactory::GetDeviceString(const uint8_t &desc, libusb_device_handle *h)
         throw std::runtime_error(libusb_error_name(err));
     }
 
-    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().from_bytes((const char *)prd + 1, (const char *)prd + prd_len);
+    //Encoded as UTF-16 (LE), Prefixed with length and some other byte.
+    typedef std::codecvt_utf16<char16_t, 1114111UL, std::little_endian> cvt;
+    auto u16 = std::wstring_convert<cvt, char16_t>().from_bytes((const char *)prd + 2, (const char *)prd + prd_len);
+    return std::wstring(u16.begin(), u16.end());
 }
