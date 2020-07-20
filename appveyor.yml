@@ -1,0 +1,22 @@
+version: 1.0.{build}
+
+image:
+- Visual Studio 2019
+- Visual Studio 2017
+
+configuration:
+- Debug
+- Release
+
+environment:
+  matrix:
+  - DBUILD_SHARED_LIBS: 0
+  - DBUILD_SHARED_LIBS: 1
+  - DBUILD_TESTING: 0
+  - DBUILD_TESTING: 1
+
+before_build:
+- cmd: cmake -H. -B./build -DBUILD_SHARED_LIBS=%DBUILD_SHARED_LIBS% -DBUILD_TESTING=%DBUILD_TESTING%
+
+build:
+  verbosity: normal
