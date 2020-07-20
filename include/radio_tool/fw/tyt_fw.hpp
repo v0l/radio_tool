@@ -92,6 +92,8 @@ namespace radio_tool::fw
         auto Read(const std::string &file) -> void override;
         auto Write(const std::string &file) -> void override;
         auto ToString() const -> std::string override;
+        auto Decrypt() -> void override;
+        auto Encrypt() -> void override;
 
         /**
          * @note This is not the "radio group" which exists in the firmware header
@@ -140,6 +142,7 @@ namespace radio_tool::fw
 
         static auto ReadHeader(std::ifstream&) -> TYTFirmwareHeader;
         static auto CheckHeader(const TYTFirmwareHeader&) -> void;
+        auto ApplyXOR() -> void;
     };
 
 } // namespace radio_tool::fw

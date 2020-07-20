@@ -1,35 +1,6 @@
 cmake_minimum_required(VERSION 3.0.0)
 project(radio_tool_tests VERSION 0.1.0)
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Release)
-endif()
-
-string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)
-
-if(NOT CMAKE_GENERATOR_PLATFORM)
-  set(CMAKE_GENERATOR_PLATFORM x64)
-endif()
-
-#message("Using ${CMAKE_CXX_COMPILER_ID}")
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-  set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-  set(CMAKE_CXX_FLAGS_DEBUG "-g")
-  set(CMAKE_CXX_FLAGS_RELEASE "-Og")
-elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  set(VCPKG_INCLUDE_DIR $ENV{VCPKG_ROOT}\\installed\\${CMAKE_GENERATOR_PLATFORM}-windows\\include)
-  if(${CMAKE_BUILD_TYPE_LOWER} STREQUAL release)
-	set(VCPKG_LIB_DIR $ENV{VCPKG_ROOT}\\installed\\${CMAKE_GENERATOR_PLATFORM}-windows\\lib)
-  elseif (${CMAKE_BUILD_TYPE_LOWER} STREQUAL debug)
-    set(VCPKG_LIB_DIR $ENV{VCPKG_ROOT}\\installed\\${CMAKE_GENERATOR_PLATFORM}-windows\\debug\\lib)
-  endif()
-  message("-- VCPKG include dir: ${VCPKG_INCLUDE_DIR}")
-  message("-- VCPKG lib dir: ${VCPKG_LIB_DIR}")
-endif()
-
 include(ExternalData)
 set(ExternalData_URL_TEMPLATES
     "https://v0l.io/radio_tool/firmware/%(algo)/%(hash)"
@@ -40,8 +11,9 @@ add_executable(test_fw test_fw.cpp)
 target_include_directories(test_fw PUBLIC ../include)
 target_link_libraries(test_fw radiotool)
 
-if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
-  target_link_libraries(test_fw usb-1.0)
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
+  target_link_libraries(test_fw PkgConfig::LibUSB)
+  target_include_directories(test_fw PUBLIC ${LibUSB_INCLUDEDIR})
 elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_include_directories(test_fw PUBLIC ${VCPKG_INCLUDE_DIR})
   target_link_directories(test_fw PRIVATE ${VCPKG_LIB_DIR})

@@ -18,12 +18,22 @@
 #pragma once
 
 #include <radio_tool/fw/fw.hpp>
+#include <radio_tool/fw/tyt_fw.hpp>
 
 #include <string>
 #include <memory>
+#include <functional>
 
 namespace radio_tool::fw
 {
+    /**
+     * A list of functions to test each firmware handler,
+     * and a function to create a new instance of the handler
+     */
+    const std::vector<std::pair<std::function<bool(const std::string &)>, std::function<std::unique_ptr<FirmwareSupport>()>>> FirmwareSupports = {
+        {TYTFW::SupportsFirmwareFile, TYTFW::Create}
+    };
+
     class FirmwareFactory
     {
     public:
@@ -31,6 +41,6 @@ namespace radio_tool::fw
          * Return a handler for the firmware file
          * @note Normally used for firmware only operations
          */
-        auto GetFirmwareHandler(const std::string &) const -> std::unique_ptr<FirmwareSupport>;
+        static auto GetFirmwareHandler(const std::string &) -> std::unique_ptr<FirmwareSupport>;
     };
 } // namespace radio_tool::fw

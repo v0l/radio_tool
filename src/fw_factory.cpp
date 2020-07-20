@@ -16,15 +16,15 @@
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
 #include <radio_tool/fw/fw_factory.hpp>
-#include <radio_tool/fw/all_firmware_support.hpp>
 
 using namespace radio_tool::fw;
 
-auto FirmwareFactory::GetFirmwareHandler(const std::string& file) const -> std::unique_ptr<FirmwareSupport>
+auto FirmwareFactory::GetFirmwareHandler(const std::string& file) -> std::unique_ptr<FirmwareSupport>
 {
     for(const auto& fn : FirmwareSupports) {
         if(fn.first(file)) {
             return fn.second();
         }
     }
+    throw std::runtime_error("Firmware file not supported");
 }

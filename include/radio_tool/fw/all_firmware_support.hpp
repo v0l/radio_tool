@@ -17,18 +17,11 @@
  */
 #pragma once
 
-#include <radio_tool/fw/tyt_fw.hpp>
 
 #include <vector>
 #include <functional>
 
 namespace radio_tool::fw
 {
-    /**
-     * A list of functions to test each firmware handler,
-     * and a function to create a new instance of the handler
-     */
-    const std::vector<std::pair<std::function<bool(const std::string &)>, std::function<std::unique_ptr<FirmwareSupport>()>>> FirmwareSupports = {
-        {TYTFW::SupportsFirmwareFile, TYTFW::Create}
-    };
+    
 } // namespace radio_tool::fw

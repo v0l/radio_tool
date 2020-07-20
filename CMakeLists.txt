@@ -2,24 +2,18 @@ cmake_minimum_required(VERSION 3.0.0)
 project(radio_tool VERSION 0.1.0)
 
 option(BUILD_TESTING "Enable tests" OFF)
-if(BUILD_TESTING)
-  include(CTest)
-  enable_testing()
-  add_subdirectory(test)
-endif()
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
-
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)
 
 if(NOT CMAKE_GENERATOR_PLATFORM)
   set(CMAKE_GENERATOR_PLATFORM x64)
 endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
@@ -36,6 +30,12 @@ elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   endif()
   message("-- VCPKG include dir: ${VCPKG_INCLUDE_DIR}")
   message("-- VCPKG lib dir: ${VCPKG_LIB_DIR}")
+endif()
+
+if(BUILD_TESTING)
+  include(CTest)
+  enable_testing()
+  add_subdirectory(test)
 endif()
 
 set(ALL_SRC 
@@ -70,6 +70,7 @@ elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(radiotool libusb-1.0)
   target_link_libraries(radio_tool libusb-1.0)
 endif()
+
 install(TARGETS radio_tool)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})

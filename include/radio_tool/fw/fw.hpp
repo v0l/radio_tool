@@ -48,11 +48,22 @@ namespace radio_tool::fw
         virtual auto GetRadioModel() const -> const std::string = 0;
 
         /**
+         * Decrypt the firmware data
+         */
+        virtual auto Decrypt() -> void = 0;
+
+        /**
+         * Encrypt the firmware data
+         */
+        virtual auto Encrypt() -> void = 0;
+        
+        /**
          * Gets the firmware binary
          */
         auto GetData() const -> const std::vector<uint8_t>& {
             return data;
         }
+
         auto GetMemoryRanges() const -> const std::vector<std::pair<uint32_t, uint32_t>>& {
             return memory_ranges;
         }

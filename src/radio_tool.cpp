@@ -38,11 +38,13 @@ int main(int argc, char **argv)
         options.add_options("General")
             ("h,help", "Show this message")
             ("list", "List devices")
-            ("d,device", "Device to use", cxxopts::value<uint16_t>(), "<index>");
+            ("d,device", "Device to use", cxxopts::value<uint16_t>(), "<index>")
+            ("i,in", "Input file", cxxopts::value<std::string>(), "<file>")
+            ("o,out", "Output file", cxxopts::value<std::string>(), "<file>");
 
         options.add_options("Programming")
-            ("f,flash", "Flash firmware", cxxopts::value<std::string>(), "<firmware.bin>")
-            ("p,program", "Upload codeplug", cxxopts::value<std::string>(), "<codeplug.rtd>");
+            ("f,flash", "Flash firmware")
+            ("p,program", "Upload codeplug");
             
         options.add_options("TYT Radio")
             ("get-time", "Gets the radio time")
@@ -51,12 +53,12 @@ int main(int argc, char **argv)
             ("write-custom", "Send custom command to radio", cxxopts::value<std::vector<uint8_t>>(), "<data>")
             ("get-status", "Return the current DFU Status")
             ("reboot", "Reboot the radio")
-            ("dump-flash", "Dump external flash memory");
+            ("dump-bootloader", "Dump bootloader (Mac only)");
 
         options.add_options("Firmware")
-            ("info", "Return info about a firmware file", cxxopts::value<std::string>(), "<firmware.bin>")
-            ("wrap", "Wrap a firmware bin", cxxopts::value<std::string>(), "<firmware.bin>")
-            ("unwrap", "Unwrap a fimrware file", cxxopts::value<std::string>(), "<firmware.bin>");
+            ("info", "Return info about a firmware file")
+            ("wrap", "Wrap a firmware bin")
+            ("unwrap", "Unwrap a fimrware file");
 
         auto cmd = options.parse(argc, argv);
 
@@ -69,13 +71,62 @@ int main(int argc, char **argv)
         //do non device specific commands
         if (cmd.count("info"))
         {
-            auto file = cmd["info"].as<std::string>();
-            
-            auto fwFact = FirmwareFactory();
-            auto fw = fwFact.GetFirmwareHandler(file);
-            fw->Read(file);
-            std::cerr << fw->ToString();
-            exit(0);
+            if(cmd.count("in")) 
+            {
+                auto file = cmd["in"].as<std::string>();
+                
+                auto fw = FirmwareFactory::GetFirmwareHandler(file);
+                fw->Read(file);
+                std::cerr << fw->ToString();
+                exit(0);
+            } 
+            else 
+            {
+                std::cerr << "Input file not specified" << std::endl;
+                exit(1);
+            }
+        }
+
+        if(cmd.count("unwrap")) 
+        {
+            if(cmd.count("in") && cmd.count("out")) 
+            {
+                auto in_file = cmd["in"].as<std::string>();
+                auto out_file = cmd["out"].as<std::string>();
+                
+                auto fw_handler = FirmwareFactory::GetFirmwareHandler(in_file);
+                fw_handler->Read(in_file);
+                fw_handler->Decrypt();
+
+                auto r_offset = 0;
+                for(const auto& rn : fw_handler->GetMemoryRanges()) 
+                {
+                    std::stringstream ss_name;
+                    ss_name << out_file << "_0x" << std::setw(8) << std::setfill('0') << std::hex << rn.first;
+
+                    std::ofstream fw_out;
+                    fw_out.open(ss_name.str(), std::ios_base::out | std::ios_base::binary);
+                    fw_out.exceptions(std::ios_base::badbit);
+                    if(fw_out.is_open()) 
+                    {
+                        auto data = fw_handler->GetData();
+                        fw_out.write((const char*)data.data() + r_offset, rn.second);
+                        fw_out.close();
+                    } 
+                    else 
+                    {
+                        std::cerr << "Failed to open output file: " << out_file << std::endl;
+                        exit(1);
+                    }
+                    r_offset += rn.second;
+                }
+                exit(0);
+            }
+            else 
+            {
+                std::cerr << "Input/Output file not specified" << std::endl;
+                exit(1);
+            }
         }
         
         auto rdFactory = RadioFactory();
@@ -90,7 +141,7 @@ int main(int argc, char **argv)
 
         if (!cmd.count("device"))
         {
-            std::wcout << L"You must select a device" << std::endl;
+            std::cout << "You must select a device" << std::endl;
             exit(1);
         }
 
@@ -98,12 +149,22 @@ int main(int argc, char **argv)
         auto radio = rdFactory.GetRadioSupport(index);
         auto dfu = radio->GetDFU();
         
-        if(cmd.count("flash")) {
-            auto file = cmd["flash"].as<std::string>();
-            radio->WriteFirmware(file);
+        if(cmd.count("flash")) 
+        {
+            if(cmd.count("in")) 
+            {
+                auto file = cmd["in"].as<std::string>();
+                radio->WriteFirmware(file);
+            } 
+            else 
+            {
+                std::cerr << "Input file not specified" << std::endl;
+                exit(1);
+            }
         }
 
-        if(cmd.count("program")) {
+        if(cmd.count("program")) 
+        {
 
         }
 
@@ -114,48 +175,76 @@ int main(int argc, char **argv)
             //radio_tool::PrintHex(dfu.ReadRegister(static_cast<const TYTRegister>(x)));
         }
 
-        if(cmd.count("dump-flash")) {
-            auto size = 0xc000;
-            std::ofstream outf;
-            outf.open("ext_flash.bin", outf.out | outf.binary);
-            if(outf.is_open()) {
-                auto mem = dfu.Upload(size, 2);
-                //radio_tool::PrintHex(mem);
-                outf.write((char*)mem.data(), mem.size());
-                outf.close();
+        if(cmd.count("dump-bootloader")) 
+        {
+            if(cmd.count("out")) 
+            {
+                auto file = cmd["out"].as<std::string>();
+                auto size = 0xc000;
+                std::ofstream outf;
+                outf.open(file, std::ios_base::out | std::ios_base::binary);
+                if(outf.is_open()) 
+                {
+                    auto mem = dfu.Upload(size, 2);
+                    //radio_tool::PrintHex(mem);
+                    outf.write((char*)mem.data(), mem.size());
+                    outf.close();
+                }
+                else 
+                {
+                    std::cerr << "Failed to open output file: " << file << std::endl;
+                    exit(1);
+                }
+            }
+            else 
+            {
+                std::cerr << "Output file not specified" << std::endl;
+                exit(1);
             }
         }
 
-        if(cmd.count("write-custom")) {
+
+        if(cmd.count("write-custom")) 
+        {
             auto data = cmd["write-custom"].as<std::vector<uint8_t>>();
-            //dfu.SendCustom(data);
+            dfu.Download(data);
         }
 
-        if(cmd.count("get-status")) {
+        if(cmd.count("get-status")) 
+        {
             auto status = dfu.GetStatus();
             std::cerr << status.ToString() << std::endl;
         }
 
-        if(cmd.count("get-time")) {
+        if(cmd.count("get-time")) 
+        {
             //auto tm = dfu.GetTime();
             //std::cerr << ctime(&tm);
         }
 
-        if(cmd.count("set-time")) {
+        if(cmd.count("set-time")) 
+        {
             //dfu.SetTime();
         }
 
-        if(cmd.count("reboot")){
+        if(cmd.count("reboot"))
+        {
             //dfu.Reboot();
         }
     }
     catch (const radio_tool::dfu::DFUException& dfuEx) 
     {
-        std::cout << "Error: " << dfuEx.what() << std::endl;
+        std::cerr << "DFU Error: " << dfuEx.what() << std::endl;
+         exit(1);
     }
     catch (const cxxopts::OptionException &e)
     {
-        std::cout << "error parsing options: " << e.what() << std::endl;
+        std::cerr << "error parsing options: " << e.what() << std::endl;
         exit(1);
+    }
+    catch (const std::exception &gex) 
+    {
+        std::cerr << "Error: " << gex.what() << std::endl;
+         exit(1);
     }
 }

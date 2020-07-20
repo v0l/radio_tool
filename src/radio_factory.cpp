@@ -16,9 +16,6 @@
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
 #include <radio_tool/radio/radio_factory.hpp>
-
-#include <radio_tool/radio/tyt_radio.hpp>
-
 #include <libusb-1.0/libusb.h>
 
 #include <exception>
@@ -27,12 +24,6 @@
 #include <cstring>
 
 using namespace radio_tool::radio;
-
-/**
- * A list of functions to test each radio handler
- */
-const std::vector<std::pair<std::function<bool(const libusb_device_descriptor &)>, std::function<std::unique_ptr<RadioSupport>(libusb_device_handle *)>>> RadioSupports = {
-    {TYTRadio::SupportsDevice, TYTRadio::Create}};
 
 auto RadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> std::unique_ptr<RadioSupport>
 {

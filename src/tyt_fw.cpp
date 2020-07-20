@@ -17,6 +17,8 @@
  */
 #include <radio_tool/fw/tyt_fw.hpp>
 
+#include <radio_tool/fw/cipher/dm1701.hpp>
+
 using namespace radio_tool::fw;
 
 auto TYTFW::Read(const std::string &file) -> void
@@ -143,4 +145,29 @@ auto TYTFW::SupportsFirmwareFile(const std::string &file) -> bool
 auto TYTFW::GetRadioModel() const -> const std::string
 {
     return GetRadioFromMagic(counterMagic);
+}
+
+
+auto TYTFW::Decrypt() -> void {
+    ApplyXOR();
+}
+
+auto TYTFW::Encrypt() -> void {
+    ApplyXOR();
+}
+
+auto TYTFW::ApplyXOR() -> void {
+    const unsigned char* xor_model = nullptr;
+    uint32_t xor_len = 0;
+
+    using namespace fw::cipher;
+
+    auto model = GetRadioFromMagic(counterMagic);
+    if(model == "DM1701") {
+        xor_model = dm1701;
+    }
+
+    for(auto z = 0; z < data.size(); z++) {
+        data[z] = data[z] ^ xor_model[z % dm1701_length];
+    }
 }

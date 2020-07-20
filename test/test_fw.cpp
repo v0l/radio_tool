@@ -8,9 +8,7 @@ int main(int, char** argv) {
 
     std::cout << "Testing: " << file << " (" << radio << ")" << std::endl;
 
-    auto fwF = radio_tool::fw::FirmwareFactory();
-
-    auto h = fwF.GetFirmwareHandler(file);
+    auto h = radio_tool::fw::FirmwareFactory::GetFirmwareHandler(file);
     h->Read(file);
 
     std::cout << h->ToString();
