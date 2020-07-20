@@ -37,12 +37,13 @@ namespace radio_tool::radio
             {
                 throw std::runtime_error(libusb_error_name(err));
             }
-
+#ifndef WIN32
             libusb_set_log_cb(
                 usb_ctx, [](libusb_context *ctx, enum libusb_log_level level, const char *str) {
                     std::wcout << str << std::endl;
                 },
                 LIBUSB_LOG_CB_CONTEXT);
+#endif
         }
         
         ~RadioFactory()

@@ -21,7 +21,6 @@
 #include <stdint.h>
 #include <iostream>
 #include <sstream>
-#include <math.h>
 
 namespace radio_tool
 {
@@ -65,6 +64,6 @@ namespace radio_tool
 
     static constexpr auto _dcb(const uint8_t &c)
     {
-        return (floor(c / 10) * 16) + (c % 10);
+        return ((int)(c / 10) * 16) + (c % 10);
     }
 } // namespace radio_tool

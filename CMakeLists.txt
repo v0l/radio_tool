@@ -15,9 +15,27 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 
-set(CMAKE_CXX_FLAGS "-Wall -Wextra")
-set(CMAKE_CXX_FLAGS_DEBUG "-g")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)
+
+if(NOT CMAKE_GENERATOR_PLATFORM)
+  set(CMAKE_GENERATOR_PLATFORM x64)
+endif()
+
+#message("Using ${CMAKE_CXX_COMPILER_ID}")
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+  set(CMAKE_CXX_FLAGS "-Wall -Wextra")
+  set(CMAKE_CXX_FLAGS_DEBUG "-g")
+  set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  set(VCPKG_INCLUDE_DIR $ENV{VCPKG_ROOT}\\installed\\${CMAKE_GENERATOR_PLATFORM}-windows\\include)
+  if(${CMAKE_BUILD_TYPE_LOWER} STREQUAL release)
+	set(VCPKG_LIB_DIR $ENV{VCPKG_ROOT}\\installed\\${CMAKE_GENERATOR_PLATFORM}-windows\\lib)
+  elseif (${CMAKE_BUILD_TYPE_LOWER} STREQUAL debug)
+    set(VCPKG_LIB_DIR $ENV{VCPKG_ROOT}\\installed\\${CMAKE_GENERATOR_PLATFORM}-windows\\debug\\lib)
+  endif()
+  message("-- VCPKG include dir: ${VCPKG_INCLUDE_DIR}")
+  message("-- VCPKG lib dir: ${VCPKG_LIB_DIR}")
+endif()
 
 set(ALL_SRC 
     src/radio_tool.cpp
@@ -32,13 +50,24 @@ set(ALL_SRC
 
 add_library(radiotool ${ALL_SRC})
 target_include_directories(radiotool PUBLIC include)
-target_link_libraries(radiotool usb-1.0)
 
 add_executable(radio_tool src/radio_tool.cpp)
 target_include_directories(radio_tool PUBLIC include)
-target_link_libraries(radio_tool usb-1.0)
 target_link_libraries(radio_tool radiotool)
 
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU)
+  target_link_libraries(radiotool usb-1.0)
+  target_link_libraries(radio_tool usb-1.0)
+elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
+  target_include_directories(radiotool PUBLIC ${VCPKG_INCLUDE_DIR})
+  target_link_directories(radiotool PRIVATE ${VCPKG_LIB_DIR})
+  target_include_directories(radio_tool PUBLIC ${VCPKG_INCLUDE_DIR})
+  target_link_directories(radio_tool PRIVATE ${VCPKG_LIB_DIR})
+  
+  target_link_libraries(radiotool libusb-1.0)
+  target_link_libraries(radio_tool libusb-1.0)
+
+endif()
 install(TARGETS radio_tool)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
