@@ -24,4 +24,4 @@ before_build:
 
 build:
   verbosity: normal
-  project: %APPVEYOR_BUILD_FOLDER%/build/radio_tool.sln
+  project: build/radio_tool.sln
