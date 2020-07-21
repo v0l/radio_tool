@@ -19,10 +19,14 @@ install:
 - .\vcpkg install libusb:x86-windows libusb:x64-windows
 - cd %APPVEYOR_BUILD_FOLDER%
 
+cache:
+  - %VCPKG_ROOT%\installed\
+
 before_build:
 - cmd: cmake -H. -B./build -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTING=%DBUILD_TESTING%
 
 after_build:
+- cmd: cd %APPVEYOR_BUILD_FOLDER%\build && ctest -C %CONFIGURATION%
 - cmd: 7z a radio_tool_%CONFIGURATION%_%APPVEYOR_BUILD_VERSION%.zip %APPVEYOR_BUILD_FOLDER%\build\%CONFIGURATION%\*
 
 artifacts:
