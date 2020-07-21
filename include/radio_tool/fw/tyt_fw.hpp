@@ -121,6 +121,8 @@ namespace radio_tool::fw
         static auto GetRadioFromMagic(const std::vector<uint8_t> &cm) -> const std::string
         {
             for(const auto& r : tyt::magic::All) {
+                if (r.second.size() != cm.size()) continue;
+                /* GCC doesnt seem to mind which is longer, MSVC tries to read past the end of [first2] */
                 if(std::equal(cm.begin(), cm.end(), r.second.begin())){
                     return r.first;
                 }

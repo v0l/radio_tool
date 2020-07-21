@@ -105,6 +105,7 @@ auto TYTFW::CheckHeader(const TYTFirmwareHeader &header) -> void
     auto magic_match = false;
     for (const auto &r : tyt::magic::All)
     {
+        //header.counter_magic should always be longer than r.second
         if (std::equal(r.second.begin(), r.second.end(), header.counter_magic))
         {
             magic_match = true;
