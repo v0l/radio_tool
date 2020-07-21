@@ -71,6 +71,16 @@ elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   target_link_libraries(radio_tool libusb-1.0)
 endif()
 
+if(XOR_TOOL_INC)
+  if (EXISTS "${XOR_TOOL_INC}/xor_tool.hpp")
+    message("-- XOR Tool found")
+    add_definitions(-DXOR_TOOL)
+    include_directories(${XOR_TOOL_INC})
+  else()
+    message(SEND_ERROR "xor_tool.hpp not found (Make sure to specifiy an absolute path)")
+  endif()
+endif()
+
 install(TARGETS radio_tool)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})

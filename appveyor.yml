@@ -27,7 +27,7 @@ before_build:
 
 after_build:
 - cmd: cd %APPVEYOR_BUILD_FOLDER%\build && ctest -C %CONFIGURATION%
-- cmd: 7z a radio_tool_%CONFIGURATION%_%APPVEYOR_BUILD_VERSION%.zip %APPVEYOR_BUILD_FOLDER%\build\%CONFIGURATION%\*
+- cmd: cd %APPVEYOR_BUILD_FOLDER% && 7z a radio_tool_%CONFIGURATION%_%APPVEYOR_BUILD_VERSION%.zip %APPVEYOR_BUILD_FOLDER%\build\%CONFIGURATION%\*
 
 artifacts:
   - path: radio_tool_%CONFIGURATION%_%APPVEYOR_BUILD_VERSION%.zip

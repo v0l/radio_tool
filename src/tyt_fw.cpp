@@ -17,8 +17,6 @@
  */
 #include <radio_tool/fw/tyt_fw.hpp>
 
-#include <radio_tool/fw/cipher/dm1701.hpp>
-
 using namespace radio_tool::fw;
 
 auto TYTFW::Read(const std::string &file) -> void
@@ -148,27 +146,37 @@ auto TYTFW::GetRadioModel() const -> const std::string
     return GetRadioFromMagic(counterMagic);
 }
 
-
-auto TYTFW::Decrypt() -> void {
+auto TYTFW::Decrypt() -> void
+{
     ApplyXOR();
 }
 
-auto TYTFW::Encrypt() -> void {
+auto TYTFW::Encrypt() -> void
+{
     ApplyXOR();
 }
 
-auto TYTFW::ApplyXOR() -> void {
-    const unsigned char* xor_model = nullptr;
-    uint32_t xor_len = 0;
+auto TYTFW::ApplyXOR() -> void
+{
+    const unsigned char *xor_model = nullptr;
+    uint32_t xor_len = 1024; //TODO: Change this
 
-    using namespace fw::cipher;
 
     auto model = GetRadioFromMagic(counterMagic);
-    if(model == "DM1701") {
-        xor_model = dm1701;
+    for(const auto& xor_radio : tyt::cipher::All) {
+        if(xor_radio.first == model) {
+            xor_model = xor_radio.second;
+            break;
+        }
+    }
+    
+    if(xor_model == nullptr)
+    {
+        throw std::runtime_error("No cipher found");
     }
 
-    for(auto z = 0; z < data.size(); z++) {
-        data[z] = data[z] ^ xor_model[z % dm1701_length];
+    for (auto z = 0; z < data.size(); z++)
+    {
+        data[z] = data[z] ^ xor_model[z % xor_len];
     }
 }

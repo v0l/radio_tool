@@ -21,6 +21,10 @@
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
 
+#ifdef XOR_TOOL
+#include <xor_tool.hpp>
+#endif
+
 #include <iostream>
 #include <filesystem>
 #include <cxxopts.hpp>
@@ -58,7 +62,11 @@ int main(int argc, char **argv)
         options.add_options("Firmware")
             ("info", "Return info about a firmware file")
             ("wrap", "Wrap a firmware bin")
+#ifdef XOR_TOOL
+            ("make-xor", "Try to make an XOR key for the input firmware")        
+#endif
             ("unwrap", "Unwrap a fimrware file");
+
 
         auto cmd = options.parse(argc, argv);
 
@@ -128,6 +136,27 @@ int main(int argc, char **argv)
                 exit(1);
             }
         }
+
+#ifdef XOR_TOOL
+        if(cmd.count("make-xor")) 
+        {
+            if(cmd.count("in")) 
+            {
+                auto in_file = cmd["in"].as<std::string>();                
+                auto fw_handler = FirmwareFactory::GetFirmwareHandler(in_file);
+                fw_handler->Read(in_file);
+                
+                auto data = fw_handler->GetData();
+                radio_tool::PrintHex(radio_tool::fw::XORTool::MakeXOR(data));
+                exit(0);
+            }
+            else 
+            {
+                std::cerr << "Input/Output file not specified" << std::endl;
+                exit(1);
+            }
+        }
+#endif
         
         auto rdFactory = RadioFactory();
         if (cmd.count("list"))

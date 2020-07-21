@@ -18,6 +18,11 @@
 #pragma once
 
 #include <radio_tool/fw/fw.hpp>
+#include <radio_tool/fw/cipher/uv3x0.hpp>
+#include <radio_tool/fw/cipher/dm1701.hpp>
+#include <radio_tool/fw/cipher/md380.hpp>
+#include <radio_tool/fw/cipher/md9600.hpp>
+
 #include <fstream>
 #include <cstring>
 #include <sstream>
@@ -29,13 +34,15 @@ namespace radio_tool::fw
     {
         using namespace std::literals::string_literals;
 
+        //OutSecurityBin\0\0
         const std::vector<uint8_t> begin = {0x4f, 0x75, 0x74, 0x53, 0x65, 0x63, 0x75, 0x72, 0x69, 0x74, 0x79, 0x42, 0x69, 0x6e, 0x00, 0x00};
+        //OutSecurityBinEnd
         const std::vector<uint8_t> end = {0x4f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x42, 0x69, 0x6e, 0x44, 0x61, 0x74, 0x61, 0x45, 0x6e, 0x64};
 
         /*
          * +GPS = Both GPS and Non-GPS versions have the same magic value
          * CSV = DMR Database upload as CSV support
-         * REC = ??
+         * REC = Recording
          */
         const std::vector<uint8_t> MD2017_D = {0x02, 0x19, 0x0c}; //MD-2017 (REC)
         const std::vector<uint8_t> MD2017_S = {0x02, 0x18, 0x0c}; //MD-2017 GPS (REC)
@@ -44,8 +51,8 @@ namespace radio_tool::fw
 
         const std::vector<uint8_t> MD9600 = {0x01, 0x14}; //MD-9600 (REC/CSV) +GPS
 
-        const std::vector<uint8_t> UV390 = {0x02, 0x16, 0x0c}; //MD-UV390 (REC/CSV) +GPS
-        const std::vector<uint8_t> UV380 = {0x02, 0x17, 0x0c}; //MD-UV380 (REC/CSV) +GPS
+        const std::vector<uint8_t> UV3X0_GPS = {0x02, 0x16, 0x0c}; //MD-UV3X0 (REC/CSV)(GPS) / RT3S
+        const std::vector<uint8_t> UV3X0 = {0x02, 0x17, 0x0c};     //MD-UV3X0 (REC/CSV) / RT3S
 
         const std::vector<uint8_t> DM1701 = {0x01, 0x0f}; //DM-1701
 
@@ -59,19 +66,37 @@ namespace radio_tool::fw
             {"MD2017"s, MD2017_V},
             {"MD2017 GPS"s, MD2017_P},
             {"MD9600"s, MD9600},
-            {"UV390"s, UV390},
-            {"UV380"s, UV380},
+            {"UV3X0 GPS"s, UV3X0_GPS},
+            {"UV3X0"s, UV3X0},
             {"DM1701"s, DM1701},
             {"MD390"s, MD390},
             {"MD380"s, MD380},
             {"MD280"s, MD280}
         };
-    } // namespace magic
+    } // namespace tyt::magic
+
+    namespace tyt::cipher
+    {
+        using namespace std::literals::string_literals;
+
+        const std::vector<std::pair<const std::string, const uint8_t *>> All = {
+            {"MD2017"s, fw::cipher::uv3x0},
+            {"MD2017 GPS"s, fw::cipher::uv3x0},
+            {"MD9600"s, fw::cipher::md9600},
+            {"UV3X0"s, fw::cipher::uv3x0},
+            {"UV3X0 GPS"s, fw::cipher::uv3x0},
+            {"DM1701"s, fw::cipher::dm1701},
+            {"MD390"s, fw::cipher::md380},
+            {"MD380"s, fw::cipher::md380},
+            {"MD280"s, fw::cipher::md380}
+        };
+    }
 
     /**
      * Stores the start of the TYT Firmware file header
      */
-    typedef struct {
+    typedef struct
+    {
         uint8_t magic[16];
         uint8_t radio[16];
         uint32_t n1, n2, n3, n4;
@@ -106,8 +131,10 @@ namespace radio_tool::fw
          */
         static auto GetCounterMagic(const std::string &radio) -> const std::vector<uint8_t>
         {
-            for(const auto& r : tyt::magic::All) {
-                if(r.first.compare(radio) == 0){
+            for (const auto &r : tyt::magic::All)
+            {
+                if (r.first.compare(radio) == 0)
+                {
                     return r.second;
                 }
             }
@@ -120,20 +147,25 @@ namespace radio_tool::fw
          */
         static auto GetRadioFromMagic(const std::vector<uint8_t> &cm) -> const std::string
         {
-            for(const auto& r : tyt::magic::All) {
-                if (r.second.size() != cm.size()) continue;
+            for (const auto &r : tyt::magic::All)
+            {
+                if (r.second.size() != cm.size())
+                    continue;
                 /* GCC doesnt seem to mind which is longer, MSVC tries to read past the end of [first2] */
-                if(std::equal(cm.begin(), cm.end(), r.second.begin())){
+                if (std::equal(cm.begin(), cm.end(), r.second.begin()))
+                {
                     return r.first;
                 }
             }
             throw std::runtime_error("Radio not supported");
         }
 
-        static auto SupportsFirmwareFile(const std::string& file) -> bool;
-        static auto Create() -> std::unique_ptr<FirmwareSupport> {
+        static auto SupportsFirmwareFile(const std::string &file) -> bool;
+        static auto Create() -> std::unique_ptr<FirmwareSupport>
+        {
             return std::make_unique<TYTFW>();
         }
+
     private:
         std::vector<uint8_t> counterMagic; //2-3 bytes
 
@@ -142,8 +174,8 @@ namespace radio_tool::fw
             n3, n4;
         std::string radio;
 
-        static auto ReadHeader(std::ifstream&) -> TYTFirmwareHeader;
-        static auto CheckHeader(const TYTFirmwareHeader&) -> void;
+        static auto ReadHeader(std::ifstream &) -> TYTFirmwareHeader;
+        static auto CheckHeader(const TYTFirmwareHeader &) -> void;
         auto ApplyXOR() -> void;
     };
 
