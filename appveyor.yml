@@ -20,7 +20,7 @@ install:
 - cd %APPVEYOR_BUILD_FOLDER%
 
 cache:
-  - %VCPKG_ROOT%\installed\
+  - '%VCPKG_ROOT%\installed'
 
 before_build:
 - cmd: cmake -H. -B./build -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTING=%DBUILD_TESTING%
