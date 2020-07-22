@@ -64,7 +64,7 @@ auto DFU::Download(const std::vector<uint8_t>& data, const uint16_t wValue) cons
     {
         throw DFUException("Command execution failed");
     } else if(status.timeout > 0) {
-        std::this_thread::sleep_for(std::chrono::nanoseconds(status.timeout));
+        //std::this_thread::sleep_for(std::chrono::nanoseconds(status.timeout));
     }
 
     //check the command executed ok

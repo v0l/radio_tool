@@ -21,17 +21,20 @@ install:
 
 cache:
   - '%VCPKG_ROOT%\installed'
+  - '%APPVEYOR_BUILD_FOLDER%\build\ExternalData\Objects'
 
 before_build:
 - cmd: cmake -H. -B./build -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTING=%DBUILD_TESTING%
 
 after_build:
-- cmd: cd %APPVEYOR_BUILD_FOLDER%\build && ctest -C %CONFIGURATION%
 - cmd: cd %APPVEYOR_BUILD_FOLDER% && 7z a radio_tool_%CONFIGURATION%_%APPVEYOR_BUILD_VERSION%.zip %APPVEYOR_BUILD_FOLDER%\build\%CONFIGURATION%\*
+
+test_script:
+- cmd: cd %APPVEYOR_BUILD_FOLDER%\build && ctest -C %CONFIGURATION% --timeout 600 --output-on-failure
 
 artifacts:
   - path: radio_tool_%CONFIGURATION%_%APPVEYOR_BUILD_VERSION%.zip
-    name: radio_tool_%CONFIGURATION%_%APPVEYOR_BUILD_VERSION%
+    name: %CONFIGURATION%_bin
 
 build:
   verbosity: normal

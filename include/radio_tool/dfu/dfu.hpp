@@ -231,7 +231,7 @@ namespace radio_tool::dfu
     {
     public:
         DFU(libusb_device_handle *device)
-            : timeout(500), device(device) {}
+            : timeout(5000), device(device) {}
 
         auto SetAddress(const uint32_t) const -> void;
         auto Erase(const uint32_t) const -> void;

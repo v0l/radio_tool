@@ -17,6 +17,7 @@
  */
 #include <radio_tool/radio/tyt_radio.hpp>
 #include <radio_tool/fw/tyt_fw.hpp>
+#include <radio_tool/util/flash.hpp>
 
 #include <math.h>
 #include <iomanip>
@@ -25,7 +26,8 @@
 
 using namespace radio_tool::radio;
 
-auto TYTRadio::ToString() const -> const std::string {
+auto TYTRadio::ToString() const -> const std::string
+{
     std::stringstream out;
 
     auto model = dfu.IdentifyDevice();
@@ -40,57 +42,49 @@ auto TYTRadio::ToString() const -> const std::string {
 
 auto TYTRadio::WriteFirmware(const std::string &file) const -> void
 {
+    constexpr auto TransferSize = 1024u;
+
     auto fw = fw::TYTFW();
     fw.Read(file);
 
-    constexpr auto WipeBlockSize = 0x10000;
+    dfu.SendTYTCommand(dfu::TYTCommand::FirmwareUpgrade);
 
-    auto GetSector = [](const uint32_t& addr) {
-        //<start>, <sector-size>, <n-sectors>
-        const std::vector<std::tuple<uint32_t, uint16_t, uint8_t>> MemMapSTM32F405 = {
-            /* Aliased flash memory */
-            { 0x00000000, 0x000fffff, 1},
+    auto bOffset = 0; //binary data offset
+    for (auto &r : fw.GetMemoryRanges())
+    {
+        flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.first, r.first + r.second, [this](const uint32_t &addr, const uint32_t &size, const flash::FlashSector &sector) {
+            std::cerr << "Erasing: 0x" << std::setw(8) << std::setfill('0') << std::hex << addr
+                      << " [Size=0x" << std::hex << size << "]" << std::endl
+                      << "-- " << sector.ToString() << std::endl;
 
-            /* FLASH */
-            { 0x08000000, 16000, 4 },
-            { 0x08010000, 64000, 1 },
-            { 0x08020000, 128000, 6 }
-        };
-        auto sec_offset = 0;
-        for(const auto& rx : MemMapSTM32F405) {
-            auto range_begin = std::get<0>(rx);
-            auto sector_size = std::get<1>(rx);
-            auto sectors = std::get<2>(rx);
-            auto range_max = range_begin + (sector_size * sectors);
-            if(addr > range_begin && addr < range_max) {
-                auto in_sector = ((addr - range_begin) / sector_size) + sec_offset;
-                return std::make_pair(in_sector, rx);
-            }
-            else 
+            dfu.Erase(addr);
+        });
+
+        flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.first, r.first + r.second, [this, &bOffset, &fw, &r, &TransferSize](const uint32_t &addr, const uint32_t &size, const flash::FlashSector &sector) {
+            auto blocks = (int)std::ceil(size / TransferSize);
+            auto binary_data = fw.GetData();
+
+            std::cerr << "Writing: 0x" << std::setw(8) << std::setfill('0') << std::hex << addr
+                      << " [Size=0x" << std::hex << size << "]" << std::endl;
+            dfu.SetAddress(addr);
+            for(auto wValue = 0; wValue < blocks; wValue++) 
             {
-                sec_offset += sectors;
+                auto block_offset = TransferSize * wValue;
+                auto binary_offset = bOffset + block_offset;
+                auto to_write = std::vector<uint8_t>(
+                    binary_data.begin() + binary_offset, 
+                    binary_data.begin() + binary_offset + std::min(TransferSize, r.second - block_offset)
+                );
+
+                std::cerr
+                    << "-- wValue=0x" << std::setw(2) << std::setfill('0') << std::hex << (2 + wValue)
+                    << ", Size=0x" << to_write.size()
+                    << std::endl;
+                dfu.Download(to_write, 2 + wValue);
             }
-        }
-        throw std::runtime_error("Invalid address");
-    };
+            bOffset += std::min(size, r.second);
+        });
 
-    for (auto &r : fw.GetMemoryRanges())
-    {
-        auto end = r.first + r.second;
-        for (auto a = r.first; a < end + (end % WipeBlockSize); a += WipeBlockSize)
-        {
-            auto sec_info = GetSector(a);
-            std::cerr << "Wiping: 0x" << std::setw(8) << std::setfill('0') << std::hex << a << std::endl;
-            dfu.Erase(a);
-        }
-    }
-
-    for (auto &r : fw.GetMemoryRanges())
-    {
-        auto nBlocks = ceil(r.second / BlockSize);
-        for (auto wValue = 2; wValue < nBlocks; wValue++)
-        {
-            
-        }
+        bOffset += r.second;
     }
 }

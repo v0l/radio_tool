@@ -20,10 +20,10 @@
 #include <radio_tool/radio/radio.hpp>
 #include <radio_tool/dfu/tyt_dfu.hpp>
 
+#include <functional>
+
 namespace radio_tool::radio
 {
-    static constexpr auto BlockSize = 2048;
-
     class TYTRadio : public RadioSupport
     {
     public:

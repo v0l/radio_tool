@@ -36,15 +36,14 @@ auto TYTDFU::IdentifyDevice() const -> std::string
 
 auto TYTDFU::ReadRegister(const TYTRegister &reg) const -> std::vector<uint8_t>
 {
-    Download({
-        static_cast<uint8_t>(TYTDFU::RegisterCommand),
-        static_cast<uint8_t>(reg)
-    });
+    Download({static_cast<uint8_t>(TYTDFU::RegisterCommand),
+              static_cast<uint8_t>(reg)});
 
     return Upload(TYTDFU::RegisterSize);
 }
 
-auto TYTDFU::GetTime() const -> const time_t {
+auto TYTDFU::GetTime() const -> const time_t
+{
     InitUpload();
     auto time = ReadRegister(TYTRegister::RTC);
 
@@ -55,21 +54,20 @@ auto TYTDFU::GetTime() const -> const time_t {
     t.tm_hour = _bcd(time[4]);
     t.tm_min = _bcd(time[5]);
     t.tm_sec = _bcd(time[6]);
-    
+
     return mktime(&t);
 }
 
-auto TYTDFU::SetTime() const -> void {
-    Download({
-        TYTDFU::CustomCommand, 
-        static_cast<uint8_t>(TYTCommand::SetRTC)
-    });
+auto TYTDFU::SetTime() const -> void
+{
+    Download({TYTDFU::CustomCommand,
+              static_cast<uint8_t>(TYTCommand::SetRTC)});
 
     time_t rawtime;
     time(&rawtime);
     auto timeinfo = localtime(&rawtime);
     Download({
-        0xb5, 
+        0xb5,
         static_cast<uint8_t>(_dcb((1900 + timeinfo->tm_year) / 100)),
         static_cast<uint8_t>(_dcb(timeinfo->tm_year + 1900 - (timeinfo->tm_year + 1900) / 100 * 100)),
         static_cast<uint8_t>(_dcb(timeinfo->tm_mon + 1)),
@@ -81,16 +79,19 @@ auto TYTDFU::SetTime() const -> void {
     //Reboot();
 }
 
-auto TYTDFU::Reboot() const -> void {
-    Download({
-        TYTDFU::CustomCommand, 
-        static_cast<uint8_t>(TYTCommand::ProgrammingMode)
-    });
+auto TYTDFU::Reboot() const -> void
+{
+    Download({TYTDFU::CustomCommand,
+              static_cast<uint8_t>(TYTCommand::ProgrammingMode)});
 
-    //this will normally throw an exception because the device 
+    //this will normally throw an exception because the device
     //will not respond it will reboot immediately
-    Download({
-        TYTDFU::CustomCommand,
-        static_cast<uint8_t>(TYTCommand::Reboot)
-    });
+    Download({TYTDFU::CustomCommand,
+              static_cast<uint8_t>(TYTCommand::Reboot)});
+}
+
+auto TYTDFU::SendTYTCommand(const TYTCommand &cmd) const -> void
+{
+    Download({TYTDFU::CustomCommand,
+              static_cast<uint8_t>(cmd)});
 }

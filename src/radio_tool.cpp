@@ -193,6 +193,7 @@ int main(int argc, char **argv)
             {
                 auto file = cmd["in"].as<std::string>();
                 radio->WriteFirmware(file);
+                std::cout << "Done!" << std::endl;
             } 
             else 
             {

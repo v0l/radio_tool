@@ -27,7 +27,8 @@ namespace radio_tool::dfu
     enum class TYTCommand : uint8_t {
         ProgrammingMode = 0x01,
         SetRTC = 0x02,
-        Reboot = 0x05
+        Reboot = 0x05,
+        FirmwareUpgrade = 0x31
     };
 
     enum class TYTRegister : uint8_t {
@@ -76,5 +77,10 @@ namespace radio_tool::dfu
          * Reboot the device
          */
         auto Reboot() const -> void;
+
+        /**
+         * Send a TYT Command to the device
+         */
+        auto SendTYTCommand(const TYTCommand& cmd) const -> void;
     };
 } // namespace radio_tool::dfu
