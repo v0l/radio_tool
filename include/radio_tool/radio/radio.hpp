@@ -63,5 +63,10 @@ namespace radio_tool::radio
          * Return the device communication handler
          */
         virtual auto GetDFU() const -> const dfu::DFU& = 0;
+
+        /**
+         * Get general info about the radio
+         */
+        virtual auto ToString() const -> const std::string = 0;
     };
 } // namespace radio_tool::radio

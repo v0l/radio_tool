@@ -78,17 +78,18 @@ namespace radio_tool::fw
     namespace tyt::cipher
     {
         using namespace std::literals::string_literals;
+        using namespace fw::cipher;
 
-        const std::vector<std::pair<const std::string, const uint8_t *>> All = {
-            {"MD2017"s, fw::cipher::uv3x0},
-            {"MD2017 GPS"s, fw::cipher::uv3x0},
-            {"MD9600"s, fw::cipher::md9600},
-            {"UV3X0"s, fw::cipher::uv3x0},
-            {"UV3X0 GPS"s, fw::cipher::uv3x0},
-            {"DM1701"s, fw::cipher::dm1701},
-            {"MD390"s, fw::cipher::md380},
-            {"MD380"s, fw::cipher::md380},
-            {"MD280"s, fw::cipher::md380}
+        const std::vector<std::tuple<const std::string, const uint8_t *, const uint16_t>> All = {
+            {"MD2017"s, uv3x0, uv3x0_length},
+            {"MD2017 GPS"s, uv3x0, uv3x0_length},
+            {"MD9600"s, md9600, md9600_length},
+            {"UV3X0"s, uv3x0, uv3x0_length},
+            {"UV3X0 GPS"s, uv3x0, uv3x0_length},
+            {"DM1701"s, dm1701, dm1701_length},
+            {"MD390"s, md380, md380_length},
+            {"MD380"s, md380, md380_length},
+            {"MD280"s, md380, md380_length}
         };
     }
 

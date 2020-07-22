@@ -49,18 +49,21 @@ int main(int argc, char **argv)
         options.add_options("Programming")
             ("f,flash", "Flash firmware")
             ("p,program", "Upload codeplug");
-            
+        
+        options.add_options("All radio")
+            ("info", "Print some info about the radio")
+            ("write-custom", "Send custom command to radio", cxxopts::value<std::vector<uint8_t>>(), "<data>")
+            ("get-status", "Return the current DFU Status");
+
         options.add_options("TYT Radio")
             ("get-time", "Gets the radio time")
             ("set-time", "Sets the radio time")
             ("dump-reg", "Dump a register from the radio", cxxopts::value<uint16_t>(), "<register>")
-            ("write-custom", "Send custom command to radio", cxxopts::value<std::vector<uint8_t>>(), "<data>")
-            ("get-status", "Return the current DFU Status")
             ("reboot", "Reboot the radio")
             ("dump-bootloader", "Dump bootloader (Mac only)");
 
         options.add_options("Firmware")
-            ("info", "Return info about a firmware file")
+            ("fw-info", "Return info about a firmware file")
             ("wrap", "Wrap a firmware bin")
 #ifdef XOR_TOOL
             ("make-xor", "Try to make an XOR key for the input firmware")        
@@ -72,12 +75,12 @@ int main(int argc, char **argv)
 
         if (cmd.count("help") || cmd.arguments().empty())
         {
-            std::cerr << options.help({"General", "Programming", "Firmware", "TYT Radio"}) << std::endl;
+            std::cerr << options.help({"General", "Programming", "Firmware", "All radio", "TYT Radio"}) << std::endl;
             exit(0);
         }
 
         //do non device specific commands
-        if (cmd.count("info"))
+        if (cmd.count("fw-info"))
         {
             if(cmd.count("in")) 
             {
@@ -178,6 +181,12 @@ int main(int argc, char **argv)
         auto radio = rdFactory.GetRadioSupport(index);
         auto dfu = radio->GetDFU();
         
+        if(cmd.count("info")) 
+        {
+            std::cout << radio->ToString() << std::endl;
+            exit(1);
+        }
+
         if(cmd.count("flash")) 
         {
             if(cmd.count("in")) 

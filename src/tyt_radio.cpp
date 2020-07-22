@@ -25,6 +25,19 @@
 
 using namespace radio_tool::radio;
 
+auto TYTRadio::ToString() const -> const std::string {
+    std::stringstream out;
+
+    auto model = dfu.IdentifyDevice();
+    auto time = dfu.GetTime();
+
+    out << "== TYT Radio Info ==" << std::endl
+        << "Radio: " << model << std::endl
+        << "RTC: " << ctime(&time);
+
+    return out.str();
+}
+
 auto TYTRadio::WriteFirmware(const std::string &file) const -> void
 {
     auto fw = fw::TYTFW();

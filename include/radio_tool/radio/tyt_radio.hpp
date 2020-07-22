@@ -31,6 +31,7 @@ namespace radio_tool::radio
             : dfu(h) {}
 
         auto WriteFirmware(const std::string &file) const -> void override;
+        auto ToString() const -> const std::string override;
 
         static auto SupportsDevice(const libusb_device_descriptor &dev) -> bool
         {

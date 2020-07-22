@@ -164,8 +164,13 @@ auto TYTFW::ApplyXOR() -> void
 
     auto model = GetRadioFromMagic(counterMagic);
     for(const auto& xor_radio : tyt::cipher::All) {
-        if(xor_radio.first == model) {
-            xor_model = xor_radio.second;
+        const auto& g_0 = std::get<0>(xor_radio);
+        const auto& g_1 = std::get<1>(xor_radio);
+        const auto& g_2 = std::get<2>(xor_radio);
+
+        if(g_0 == model) {
+            xor_model = g_1;
+            xor_len = g_2;
             break;
         }
     }
