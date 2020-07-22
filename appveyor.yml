@@ -34,7 +34,7 @@ test_script:
 
 artifacts:
   - path: radio_tool_%CONFIGURATION%_%APPVEYOR_BUILD_VERSION%.zip
-    name: %CONFIGURATION%_bin
+    name: '%CONFIGURATION%_bin'
 
 build:
   verbosity: normal
