@@ -21,6 +21,7 @@
 #include <optional>
 #include <iomanip>
 #include <functional>
+#include <algorithm>
 
 #include <stdint.h>
 
@@ -104,7 +105,7 @@ namespace radio_tool::flash
             auto ret = std::vector<FlashSector>();
             for(auto x = 0; x < sectors; x++) 
             {
-                ret.push_back({x, start_addr + (sector_size * x), sector_size});
+                ret.push_back(FlashSector(x, start_addr + (sector_size * x), sector_size));
             }
             return ret;
         }
@@ -119,7 +120,7 @@ namespace radio_tool::flash
             {
                 if(const auto& sec_info = flash::FlashUtil::GetSector(map, addr)) 
                 {
-                    const auto n_bytes = std::min(end, sec_info->End()) - addr;
+                    auto n_bytes = std::min(end, sec_info->End()) - addr;
 
                     fnOp(addr, n_bytes, sec_info.value());
 

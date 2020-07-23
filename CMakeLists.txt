@@ -30,6 +30,7 @@ elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   endif()
   message("-- VCPKG include dir: ${VCPKG_INCLUDE_DIR}")
   message("-- VCPKG lib dir: ${VCPKG_LIB_DIR}")
+  add_definitions(-DNOMINMAX -DVC_EXTRALEAN -DWIN32_LEAN_AND_MEAN)
 endif()
 
 if(BUILD_TESTING)
