@@ -21,6 +21,7 @@
 #include <optional>
 #include <iomanip>
 #include <functional>
+#include <algorithm>
 
 #include <stdint.h>
 
@@ -122,7 +123,7 @@ namespace radio_tool::flash
             {
                 if(const auto& sec_info = flash::FlashUtil::GetSector(map, addr)) 
                 {
-                    const auto n_bytes = std::min(end, sec_info->End()) - addr;
+                    auto n_bytes = std::min(end, sec_info->End()) - addr;
 
                     fnOp(addr, n_bytes, sec_info.value());
 
