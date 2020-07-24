@@ -6,19 +6,25 @@ set(ExternalData_URL_TEMPLATES
     "https://v0l.io/radio_tool/firmware/%(algo)/%(hash)"
  )
 
-#Test TYT Firmware parsing
-add_executable(test_fw test_fw.cpp)
-target_include_directories(test_fw PUBLIC ../include)
-target_link_libraries(test_fw radiotool)
-
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
-  target_link_libraries(test_fw PkgConfig::LibUSB)
-  target_include_directories(test_fw PUBLIC ${LibUSB_INCLUDEDIR})
+  link_libraries(PkgConfig::LibUSB)
+  include_directories(${LibUSB_INCLUDEDIR})
 elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
-  target_include_directories(test_fw PUBLIC ${VCPKG_INCLUDE_DIR})
-  target_link_directories(test_fw PRIVATE ${VCPKG_LIB_DIR})
-  target_link_libraries(test_fw libusb-1.0)
+  include_directories(${VCPKG_INCLUDE_DIR})
+  link_directories(${VCPKG_LIB_DIR})
+  link_libraries(libusb-1.0)
 endif()
+
+include_directories(../include)
+link_libraries(radiotool)
+
+if(XOR_TOOL_INC)
+  add_executable(test_xor test_xor_tool.cpp)
+  include_directories(${XOR_TOOL_INC})
+  add_definitions(-DXOR_TOOL)
+endif()
+
+add_executable(test_fw test_fw.cpp)
 
 #Add firmware tests, "radio" is the model returned from GetRadioModel()
 function(AddFirmwareTest file radio)
@@ -26,6 +32,12 @@ function(AddFirmwareTest file radio)
         NAME test_fw_${file}
         COMMAND test_fw DATA{./firmware/${file}} ${radio}
     )
+    if(XOR_TOOL_INC)
+      ExternalData_Add_Test(data_${file}
+          NAME test_xor_${file}
+          COMMAND test_xor DATA{./firmware/${file}}
+      )
+    endif()
     ExternalData_Add_Target(data_${file})
 endfunction()
 

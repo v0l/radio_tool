@@ -26,7 +26,7 @@ namespace radio_tool
 {
     static auto PrintHex(const std::vector<uint8_t> &data) -> void
     {
-        auto c = 1;
+        auto c = 1u;
 
         constexpr auto asciiZero = 0x30;
         constexpr auto asciiA = 0x61 - 0x0a;
@@ -34,6 +34,7 @@ namespace radio_tool
         constexpr auto wordSize = 4;
         constexpr auto wordCount = 4;
 
+        char eol_ascii[wordSize * wordCount + 1] = {};
         char aV, bV;
         std::stringstream prnt;
         for (const auto &v : data)
@@ -43,13 +44,23 @@ namespace radio_tool
             aV = (a <= 9 ? asciiZero : asciiA) + a;
             bV = (b <= 9 ? asciiZero : asciiA) + b;
             prnt << bV << aV << " ";
-            if (c % (wordSize * wordCount) == 0 && c != data.size())
+
+            auto col = c % (wordSize * wordCount);
+            eol_ascii[col] = v >= 32 && v <= 127 ? (char)v : '.';
+            if (col == 0 && c != data.size())
             {
-                prnt << std::endl;
+                prnt << " " << eol_ascii << std::endl;
             }
             else if (c % wordSize == 0)
             {
                 prnt << "  ";
+            }
+            if(c == data.size()) {
+                if(col > 0) 
+                {
+                    eol_ascii[col + 1] = 0;
+                }
+                prnt << (col != 0 ? " " : "") << eol_ascii;
             }
             c++;
         }

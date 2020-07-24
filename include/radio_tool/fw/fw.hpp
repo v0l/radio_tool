@@ -22,6 +22,35 @@
 
 namespace radio_tool::fw
 {
+    class FirmwareSegment
+    {
+    public:
+        FirmwareSegment(const uint16_t &idx, const uint32_t &addr, const uint32_t &size, const std::vector<uint8_t>::const_iterator &begin, const std::vector<uint8_t>::const_iterator &end)
+            : index(idx), address(addr), size(size), data(begin, end)
+        {
+        }
+
+        /**
+         * Index of the segment
+         */
+        const uint16_t index;
+
+        /**
+         * The address the segment should be written to on the device
+         */
+        const uint32_t address;
+
+        /**
+         * The size of the data segment
+         */
+        const uint32_t size;
+
+        /**
+         * A copy of the data from the firwmare file
+         */
+        const std::vector<uint8_t> data;
+    };
+
     class FirmwareSupport
     {
     public:
@@ -30,12 +59,12 @@ namespace radio_tool::fw
         /**
          * Read the firmware file from disk
          */
-        virtual auto Read(const std::string& fw) -> void = 0;
+        virtual auto Read(const std::string &fw) -> void = 0;
 
         /**
          * Write the firmware file to disk
          */
-        virtual auto Write(const std::string& fw) -> void = 0;
+        virtual auto Write(const std::string &fw) -> void = 0;
 
         /**
          * Returns general info about the firmware file
@@ -56,17 +85,39 @@ namespace radio_tool::fw
          * Encrypt the firmware data
          */
         virtual auto Encrypt() -> void = 0;
-        
+
         /**
          * Gets the firmware binary
          */
-        auto GetData() const -> const std::vector<uint8_t>& {
+        auto GetData() const -> const std::vector<uint8_t> &
+        {
             return data;
         }
 
-        auto GetMemoryRanges() const -> const std::vector<std::pair<uint32_t, uint32_t>>& {
-            return memory_ranges;
+        /**
+         * Get segments to write in the firmware
+         */
+        auto GetDataSegments() const -> const std::vector<FirmwareSegment>
+        {
+            std::vector<FirmwareSegment> ret;
+
+            auto r_idx = 0u;
+            auto r_offset = 0u;
+            for(const auto& r : memory_ranges) 
+            {
+                ret.push_back(FirmwareSegment(
+                    r_idx++, 
+                    r.first, 
+                    r.second, 
+                    data.begin() + r_offset,
+                    data.begin() + r_offset + r.second
+                ));
+                r_offset += r.second;
+            }
+
+            return ret;
         }
+
     protected:
         /**
          * The firmware binary

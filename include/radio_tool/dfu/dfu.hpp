@@ -186,12 +186,18 @@ namespace radio_tool::dfu
     class DFUStatusReport
     {
     public:
+        DFUStatusReport(const DFUStatus &status, const uint32_t &timeout, const DFUState &state, const uint8_t &discarded)
+            : status(status), timeout(timeout), state(state), discarded(discarded)
+        {
+            //std::cerr << ToString() << std::endl;
+        }
+
         const DFUStatus status;
         const uint32_t timeout;
         const DFUState state;
         const uint8_t discarded;
 
-        static auto Parse(uint8_t data[6]) -> const DFUStatusReport
+        static auto Parse(const uint8_t data[6]) -> const DFUStatusReport
         {
             return DFUStatusReport(
                 static_cast<DFUStatus>((int)data[0]),
@@ -220,11 +226,6 @@ namespace radio_tool::dfu
             : status(DFUStatus::errUNKNOWN), timeout(0), state(DFUState::DFU_ERROR), discarded(0)
         {
         }
-        DFUStatusReport(DFUStatus a, uint32_t b, DFUState c, uint8_t d)
-            : status(a), timeout(b), state(c), discarded(d)
-        {
-            //std::cerr << ToString() << std::endl;
-        }
     };
 
     class DFU
@@ -233,10 +234,10 @@ namespace radio_tool::dfu
         DFU(libusb_device_handle *device)
             : timeout(5000), device(device) {}
 
-        auto SetAddress(const uint32_t) const -> void;
-        auto Erase(const uint32_t) const -> void;
-        auto Download(const std::vector<uint8_t> &, const uint16_t wValue = 0) const -> void;
-        auto Upload(const uint16_t, const uint8_t wValue = 0) const -> std::vector<uint8_t>;
+        auto SetAddress(const uint32_t &) const -> void;
+        auto Erase(const uint32_t &) const -> void;
+        auto Download(const std::vector<uint8_t> &, const uint16_t &wValue = 0) const -> void;
+        auto Upload(const uint16_t &, const uint8_t &wValue = 0) const -> std::vector<uint8_t>;
 
         auto Get() const -> std::vector<uint8_t>;
         auto ReadUnprotected() const -> void;
@@ -255,7 +256,7 @@ namespace radio_tool::dfu
         libusb_device_handle *device;
 
         auto CheckDevice() const -> void;
-        
+
         /**
          * Ensures the state is DFU_IDLE or DFU_DNLOAD_IDLE
          */

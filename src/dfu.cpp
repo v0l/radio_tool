@@ -24,7 +24,7 @@
 
 using namespace radio_tool::dfu;
 
-auto DFU::SetAddress(const uint32_t addr) const -> void
+auto DFU::SetAddress(const uint32_t &addr) const -> void
 {
     std::vector<uint8_t> data = {
         static_cast<uint8_t>(0x21),
@@ -36,7 +36,7 @@ auto DFU::SetAddress(const uint32_t addr) const -> void
     Download(data);
 }
 
-auto DFU::Erase(const uint32_t addr) const -> void
+auto DFU::Erase(const uint32_t &addr) const -> void
 {
     std::vector<uint8_t> data = {
         static_cast<uint8_t>(0x41),
@@ -48,7 +48,7 @@ auto DFU::Erase(const uint32_t addr) const -> void
     Download(data);
 }
 
-auto DFU::Download(const std::vector<uint8_t>& data, const uint16_t wValue) const -> void
+auto DFU::Download(const std::vector<uint8_t>& data, const uint16_t &wValue) const -> void
 {
     InitDownload();
     // tehnically we shouldnt const_cast here but libusb *?WONT?* modify this data
@@ -74,7 +74,7 @@ auto DFU::Download(const std::vector<uint8_t>& data, const uint16_t wValue) cons
     }
 }
 
-auto DFU::Upload(const uint16_t size, const uint8_t wValue) const -> std::vector<uint8_t>
+auto DFU::Upload(const uint16_t &size, const uint8_t &wValue) const -> std::vector<uint8_t>
 {
     InitUpload();
     auto data = std::vector<uint8_t>(size);

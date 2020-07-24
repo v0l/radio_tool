@@ -109,19 +109,16 @@ int main(int argc, char **argv)
                 fw_handler->Read(in_file);
                 fw_handler->Decrypt();
 
-                auto r_offset = 0;
-                for(const auto& rn : fw_handler->GetMemoryRanges()) 
+                for(const auto& rn : fw_handler->GetDataSegments()) 
                 {
                     std::stringstream ss_name;
-                    ss_name << out_file << "_0x" << std::setw(8) << std::setfill('0') << std::hex << rn.first;
+                    ss_name << out_file << "_0x" << std::setw(8) << std::setfill('0') << std::hex << rn.address;
 
                     std::ofstream fw_out;
                     fw_out.open(ss_name.str(), std::ios_base::out | std::ios_base::binary);
-                    fw_out.exceptions(std::ios_base::badbit);
                     if(fw_out.is_open()) 
                     {
-                        auto data = fw_handler->GetData();
-                        fw_out.write((const char*)data.data() + r_offset, rn.second);
+                        fw_out.write((const char*)rn.data.data(), rn.data.size());
                         fw_out.close();
                     } 
                     else 
@@ -129,7 +126,6 @@ int main(int argc, char **argv)
                         std::cerr << "Failed to open output file: " << out_file << std::endl;
                         exit(1);
                     }
-                    r_offset += rn.second;
                 }
                 exit(0);
             }
@@ -149,8 +145,18 @@ int main(int argc, char **argv)
                 auto fw_handler = FirmwareFactory::GetFirmwareHandler(in_file);
                 fw_handler->Read(in_file);
                 
-                auto data = fw_handler->GetData();
-                radio_tool::PrintHex(radio_tool::fw::XORTool::MakeXOR(data));
+                auto key = radio_tool::fw::XORTool::MakeXOR(fw_handler->GetData());
+                for(const auto& region : fw_handler->GetDataSegments()) 
+                {
+                    if(radio_tool::fw::XORTool::Verify(region.address, region.data, key))
+                    {
+                        std::cout 
+                            << "Region @ 0x" << std::setfill('0') << std::setw(8) << std::hex << region.address
+                            << " appears to be a valid vector_table" << std::endl;
+                    }
+                }
+
+                radio_tool::PrintHex(key);
                 exit(0);
             }
             else 
