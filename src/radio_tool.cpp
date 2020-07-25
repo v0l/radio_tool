@@ -17,6 +17,7 @@
  */
 #include <radio_tool/radio/radio_factory.hpp>
 #include <radio_tool/fw/fw_factory.hpp>
+#include <radio_tool/codeplug/codeplug_factory.hpp>
 
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
@@ -32,6 +33,7 @@
 
 using namespace radio_tool::fw;
 using namespace radio_tool::radio;
+using namespace radio_tool::codeplug;
 
 int main(int argc, char **argv)
 {
@@ -40,11 +42,12 @@ int main(int argc, char **argv)
         cxxopts::Options options(argv[0]);
 
         options.add_options("General")
-            ("h,help", "Show this message")
-            ("list", "List devices")
+            ("h,help", "Show this message", cxxopts::value<std::string>(), "<command>")
+            ("l,list", "List devices")
             ("d,device", "Device to use", cxxopts::value<uint16_t>(), "<index>")
             ("i,in", "Input file", cxxopts::value<std::string>(), "<file>")
-            ("o,out", "Output file", cxxopts::value<std::string>(), "<file>");
+            ("o,out", "Output file", cxxopts::value<std::string>(), "<file>")
+            ("L,list-radios", "List supported radios");
 
         options.add_options("Programming")
             ("f,flash", "Flash firmware")
@@ -53,7 +56,7 @@ int main(int argc, char **argv)
         options.add_options("All radio")
             ("info", "Print some info about the radio")
             ("write-custom", "Send custom command to radio", cxxopts::value<std::vector<uint8_t>>(), "<data>")
-            ("get-status", "Return the current DFU Status");
+            ("get-status", "Print the current DFU Status");
 
         options.add_options("TYT Radio")
             ("get-time", "Gets the radio time")
@@ -63,19 +66,53 @@ int main(int argc, char **argv)
             ("dump-bootloader", "Dump bootloader (Mac only)");
 
         options.add_options("Firmware")
-            ("fw-info", "Return info about a firmware file")
-            ("wrap", "Wrap a firmware bin")
+            ("fw-info", "Print info about a firmware file")
+            ("wrap", "Wrap a firmware bin (use --help wrap, for more info)")
 #ifdef XOR_TOOL
             ("make-xor", "Try to make an XOR key for the input firmware")        
 #endif
             ("unwrap", "Unwrap a fimrware file");
 
+        options.add_options("Codeplug")
+            ("codeplug-info", "Print info about a codeplug file");
+
+        options.add_options("Wrap")
+            ("s,section", "Add a section for wrapping", cxxopts::value<std::vector<std::string>>(), "<0x08000000:region_0.bin>")
+            ("r,radio", "Radio to build firmware file for", cxxopts::value<std::string>(), "<DM1701>");
 
         auto cmd = options.parse(argc, argv);
 
         if (cmd.count("help") || cmd.arguments().empty())
         {
-            std::cerr << options.help({"General", "Programming", "Firmware", "All radio", "TYT Radio"}) << std::endl;
+            std::vector<std::string> help_groups;
+
+            auto section = cmd.count("help") ? cmd["help"].as<std::string>() : std::string();
+            if(!section.empty()) 
+            {
+                for(const auto& g : options.groups()) 
+                {
+                    if(g.size() != section.size()) continue;
+                    if(std::equal(g.begin(), g.end(), section.begin(), [](char a, char b) {
+                        return std::toupper(a) == std::toupper(b);
+                    })) {
+                        help_groups.push_back(g);
+                    }
+                }
+            } 
+            else 
+            {
+                help_groups = {"General", "Programming", "Firmware", "All radio", "TYT Radio", "Codeplug"};
+            }
+            std::cerr << options.help(help_groups) << std::endl;
+            exit(0);
+        }
+
+        if(cmd.count("list-radios"))
+        {
+            for(const auto& radio : RadioFactory::ListRadioSupport())
+            {
+                std::cerr << radio << std::endl;
+            }
             exit(0);
         }
 
@@ -94,6 +131,38 @@ int main(int argc, char **argv)
             else 
             {
                 std::cerr << "Input file not specified" << std::endl;
+                exit(1);
+            }
+        }
+
+        if(cmd.count("codeplug-info"))
+        {
+            if(cmd.count("in")) 
+            {
+                auto file = cmd["in"].as<std::string>();
+                
+                auto h = CodeplugFactory::GetCodeplugHandler(file);
+                h->Read(file);
+                std::cerr << h->ToString();
+                exit(0);
+            } 
+            else 
+            {
+                std::cerr << "Input file not specified" << std::endl;
+                exit(1);
+            }
+        }
+
+        if(cmd.count("wrap"))
+        {
+            std::string out;
+            if(cmd.count("out")) 
+            {
+                out = cmd["out"].as<std::string>();
+            } 
+            else 
+            {
+                std::cerr << "Output file not specified" << std::endl;
                 exit(1);
             }
         }

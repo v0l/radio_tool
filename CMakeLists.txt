@@ -42,12 +42,12 @@ endif()
 set(ALL_SRC 
     src/radio_tool.cpp
     src/dfu.cpp
-    src/radio.cpp
-    src/fw_factory.cpp
     src/radio_factory.cpp
     src/tyt_radio.cpp
     src/tyt_dfu.cpp
     src/tyt_fw.cpp
+    src/cs_fw.cpp
+    src/rdt.cpp
 )
 
 add_library(radiotool ${ALL_SRC})

@@ -97,7 +97,7 @@ namespace radio_tool::fw
         /**
          * Get segments to write in the firmware
          */
-        auto GetDataSegments() const -> const std::vector<FirmwareSegment>
+        virtual auto GetDataSegments() const -> const std::vector<FirmwareSegment>
         {
             std::vector<FirmwareSegment> ret;
 

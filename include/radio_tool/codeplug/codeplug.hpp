@@ -15,16 +15,36 @@
  * You should have received a copy of the GNU General Public License
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
-#include <radio_tool/fw/fw_factory.hpp>
+#pragma once
 
-using namespace radio_tool::fw;
+#include <vector>
+#include <string>
 
-auto FirmwareFactory::GetFirmwareHandler(const std::string& file) -> std::unique_ptr<FirmwareSupport>
+#include <stdint.h>
+
+namespace radio_tool::codeplug
 {
-    for(const auto& fn : FirmwareSupports) {
-        if(fn.first(file)) {
-            return fn.second();
-        }
-    }
-    throw std::runtime_error("Firmware file not supported");
+    class CodeplugSupport
+    {
+    public:
+        /**
+         * Read a codeplug from disk
+         */
+        virtual auto Read(const std::string&) -> void = 0;
+
+        /**
+         * Write a codeplug to disk
+         */
+        virtual auto Write(const std::string&) const -> void = 0;
+
+        /**
+         * Get the codeplug data to write to a device
+         */
+        virtual auto GetData() const -> const std::vector<uint8_t> = 0;
+
+        /**
+         * Get some general info about the loaded codeplug
+         */
+        virtual auto ToString() const -> const std::string = 0;
+    };
 }

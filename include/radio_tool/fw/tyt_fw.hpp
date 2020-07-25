@@ -161,7 +161,14 @@ namespace radio_tool::fw
             throw std::runtime_error("Radio not supported");
         }
 
+        /**
+         * Tests a file if its a valid firmware file
+         */
         static auto SupportsFirmwareFile(const std::string &file) -> bool;
+
+        /**
+         * Create an instance of this class for the firmware factory
+         */
         static auto Create() -> std::unique_ptr<FirmwareSupport>
         {
             return std::make_unique<TYTFW>();

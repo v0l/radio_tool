@@ -73,6 +73,22 @@ namespace radio_tool::radio
          * Get a string from a USB descriptor
          */
         auto GetDeviceString(const uint8_t &, libusb_device_handle *) const -> std::wstring;
+
+        /**
+         * Lists radio models supporting ALL operations
+         */
+        static auto ListRadioSupport() -> std::vector<std::string>
+        {
+            std::vector<std::string> ret;
+
+            //add TYT radios with cipher support
+            for(const auto& rd : tyt::SupportedModels) 
+            {
+                ret.push_back(rd);
+            }
+            
+            return ret;
+        }
     private:
         auto OpDeviceList(std::function<void(const libusb_device *, const libusb_device_descriptor &, const uint16_t &)>) const -> void;
 

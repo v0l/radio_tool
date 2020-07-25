@@ -57,4 +57,27 @@ namespace radio_tool::radio
         uint16_t dev_index;
         const dfu::TYTDFU dfu;
     };
+
+    namespace tyt 
+    {
+        using namespace std::literals::string_literals;
+
+        /**
+         * A list of supported radios
+         */
+        const std::vector<std::string> SupportedModels = {
+            "TYT MD-380"s,
+            "TYT MD-390"s,
+            "TYT MD-2017"s,
+            "TYT MD-UV380"s,
+            "TYT MD-UV390"s,
+            "TYT MD-9600"s,
+            "BaoFeng DM-1701"s,
+            "Retevis RT3"s,
+            "Retevis RT8"s,
+            "Retevis RT82"s,
+            "Retevis RT3S"s,
+            "Retevis RT84"s
+        };
+    }
 } // namespace radio_tool::radio

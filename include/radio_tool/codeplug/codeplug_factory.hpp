@@ -17,17 +17,34 @@
  */
 #pragma once
 
-#include <radio_tool/radio/tyt_radio.hpp>
+#include <radio_tool/codeplug/codeplug.hpp>
+#include <radio_tool/codeplug/rdt.hpp>
 
-#include <vector>
+#include <string>
+#include <memory>
 #include <functional>
 
-namespace radio_tool::radio
+namespace radio_tool::codeplug
 {
     /**
-     * A list of functions to test each radio handler
+     * All codeplug handlers
      */
-    const std::vector<std::pair<std::function<bool(const libusb_device_descriptor &)>, std::function<std::unique_ptr<RadioSupport>()>>> RadioSupports = {
-        { TYTRadio::SupportsDevice, []() { return std::make_unique<TYTRadio>(); } }
+    const std::vector<std::pair<std::function<bool(const std::string &)>, std::function<std::unique_ptr<CodeplugSupport>()>>> AllCodeplugs = {
+        {RDT::SupportsCodeplug, RDT::Create}
     };
-}
+
+    class CodeplugFactory
+    {
+    public:
+        static auto GetCodeplugHandler(const std::string &file) -> std::unique_ptr<CodeplugSupport>
+        {
+            for (const auto &try_this : AllCodeplugs)
+            {
+                if (try_this.first(file))
+                {
+                    return try_this.second();
+                }
+            }
+        }
+    };
+} // namespace radio_tool::codeplug

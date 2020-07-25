@@ -19,8 +19,6 @@
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
 
-#include <chrono>
-#include <thread>
 #include <cstring>
 
 using namespace radio_tool::dfu;
@@ -47,15 +45,7 @@ auto TYTDFU::GetTime() const -> const time_t
     InitUpload();
     auto time = ReadRegister(TYTRegister::RTC);
 
-    std::tm t = {};
-    t.tm_year = ((_bcd(time[0]) * 100) + _bcd(time[1])) - 1900;
-    t.tm_mon = _bcd(time[2]) - 1;
-    t.tm_mday = _bcd(time[3]);
-    t.tm_hour = _bcd(time[4]);
-    t.tm_min = _bcd(time[5]);
-    t.tm_sec = _bcd(time[6]);
-
-    return mktime(&t);
+    return ParseBCDTimestamp(time.data());
 }
 
 auto TYTDFU::SetTime() const -> void
@@ -66,16 +56,10 @@ auto TYTDFU::SetTime() const -> void
     time_t rawtime;
     time(&rawtime);
     auto timeinfo = localtime(&rawtime);
-    Download({
-        0xb5,
-        static_cast<uint8_t>(_dcb((1900 + timeinfo->tm_year) / 100)),
-        static_cast<uint8_t>(_dcb(timeinfo->tm_year + 1900 - (timeinfo->tm_year + 1900) / 100 * 100)),
-        static_cast<uint8_t>(_dcb(timeinfo->tm_mon + 1)),
-        static_cast<uint8_t>(_dcb(timeinfo->tm_mday)),
-        static_cast<uint8_t>(_dcb(timeinfo->tm_hour)),
-        static_cast<uint8_t>(_dcb(timeinfo->tm_min)),
-        static_cast<uint8_t>(_dcb(timeinfo->tm_sec)),
-    });
+    auto ts = MakeBCDTimestamp(*timeinfo);
+    ts.insert(ts.begin(), 0xb5);
+
+    Download(ts);
     //Reboot();
 }
 

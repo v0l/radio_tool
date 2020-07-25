@@ -19,6 +19,7 @@
 
 #include <radio_tool/fw/fw.hpp>
 #include <radio_tool/fw/tyt_fw.hpp>
+#include <radio_tool/fw/cs_fw.hpp>
 
 #include <string>
 #include <memory>
@@ -27,11 +28,11 @@
 namespace radio_tool::fw
 {
     /**
-     * A list of functions to test each firmware handler,
-     * and a function to create a new instance of the handler
+     * All firmware handlers
      */
-    const std::vector<std::pair<std::function<bool(const std::string &)>, std::function<std::unique_ptr<FirmwareSupport>()>>> FirmwareSupports = {
-        {TYTFW::SupportsFirmwareFile, TYTFW::Create}
+    const std::vector<std::pair<std::function<bool(const std::string &)>, std::function<std::unique_ptr<FirmwareSupport>()>>> AllFirmwareHandlers = {
+        {TYTFW::SupportsFirmwareFile, TYTFW::Create},
+        {CSFW::SupportsFirmwareFile, CSFW::Create}
     };
 
     class FirmwareFactory
@@ -41,6 +42,16 @@ namespace radio_tool::fw
          * Return a handler for the firmware file
          * @note Normally used for firmware only operations
          */
-        static auto GetFirmwareHandler(const std::string &) -> std::unique_ptr<FirmwareSupport>;
+        static auto GetFirmwareHandler(const std::string &file) -> std::unique_ptr<FirmwareSupport>
+        {
+            for (const auto &fn : AllFirmwareHandlers)
+            {
+                if (fn.first(file))
+                {
+                    return fn.second();
+                }
+            }
+            throw std::runtime_error("Firmware file not supported");
+        }
     };
 } // namespace radio_tool::fw
