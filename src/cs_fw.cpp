@@ -26,6 +26,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <iterator>
 
 using namespace radio_tool::fw;
 
@@ -45,16 +46,25 @@ auto CSFW::Read(const std::string &fw) -> void
         {
             throw std::runtime_error("Invalid firmware file");
         }
-        if(header.imagesize + header.imageHeaderSize + 0x02 /* I have 2 bytes extra idk why */ != len)
+        if(header.imagesize + header.imageHeaderSize + sizeof(uint16_t) != len)
         {
             throw std::runtime_error("Invalid firmware header");
         }
 
         data.resize(header.imagesize);
         in_file.read((char*)data.data(), header.imagesize);
+        in_file.read((char*)&checksum, sizeof(uint16_t));
         in_file.close();
 
         memory_ranges.push_back({header.baseaddr_offset, header.imagesize});
+
+        //test checksum
+        auto cs_check = MakeChecksum();
+        if(cs_check != checksum)
+        {
+            //checksum not working right now
+            //throw std::runtime_error("Invalid checksum");
+        }
     }
     else 
     {
@@ -64,7 +74,18 @@ auto CSFW::Read(const std::string &fw) -> void
 
 auto CSFW::Write(const std::string &fw) -> void
 {
+    std::ofstream of(fw, std::ios_base::binary);
+    if(of.is_open())
+    {
+        auto data = MakeFiledata();
+        of.write((char*)data.data(), data.size());
 
+        auto iter = data.begin();
+        auto cs = CSChecksum(iter, data.size());
+        of.write((char*)&cs, sizeof(cs));
+
+        of.close();
+    }
 }
 
 auto CSFW::ToString() const -> std::string
@@ -74,6 +95,7 @@ auto CSFW::ToString() const -> std::string
     out << "== Connect Systems Firmware ==" << std::endl
         << "Image Size: " << std::fixed << std::setprecision(2) << (header.imagesize / 1024.0) << " KiB" << std::endl
         << "Version:    " << header.version << std::endl
+        << "Checksum:   0x" << std::setw(4) << std::setfill('0') << std::hex << checksum << std::endl
         << "Data Segments: " << std::endl;
 
     auto n = 0u;
@@ -89,7 +111,14 @@ auto CSFW::ToString() const -> std::string
 
 auto CSFW::GetRadioModel() const -> const std::string
 {
-    return "CS800"; //TODO: find a way to detect firmware radio model
+    //TODO: find a way to detect firmware radio model
+    return "CS800"; 
+}
+
+
+auto CSFW::SetRadioModel(const std::string&) -> void
+{
+    //dont do anything (yet)
 }
 
 auto CSFW::Decrypt() -> void
@@ -122,8 +151,7 @@ auto CSFW::SupportsFirmwareFile(const std::string &file) -> bool
         }
 
         //test image size matches
-        auto test_len = header.imagesize + header.imageHeaderSize;
-        if(test_len + 0x02 /* I have 2 bytes extra idk why */ != len)
+        if(header.imagesize + header.imageHeaderSize + sizeof(uint16_t) != len)
         {
             return false;
         }
@@ -131,4 +159,37 @@ auto CSFW::SupportsFirmwareFile(const std::string &file) -> bool
         return true;
     }
     return false;
+}
+
+auto CSFW::SupportsRadioModel(const std::string &model) -> bool
+{
+    //TODO: Make this better
+    if(model == "CS800")
+    {
+        return true;
+    }
+    return false;
+}
+
+auto CSFW::MakeChecksum() const -> const uint16_t
+{
+    auto to_check = MakeFiledata();
+    auto iter = to_check.begin();
+    auto cs = CSChecksum(iter, to_check.size());
+    return cs;
+}
+
+auto CSFW::MakeFiledata() const -> std::vector<uint8_t>
+{
+    std::vector<uint8_t> to_check;
+    to_check.reserve(header.imageHeaderSize + header.imagesize);
+    for(auto ih = 0; ih < sizeof(CS800D_header); ih++)
+    {
+        to_check.push_back(((uint8_t*)&header)[ih]);
+    }
+    for(const auto& d : data)
+    {
+        to_check.push_back(d);
+    }
+    return to_check;
 }

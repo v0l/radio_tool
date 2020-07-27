@@ -50,6 +50,7 @@ auto RDT::Write(const std::string &) const -> void
 
 auto RDT::GetData() const -> const std::vector<uint8_t>
 {
+    throw std::runtime_error("Not implemented");
 }
 
 auto RDT::ToString() const -> const std::string

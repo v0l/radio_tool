@@ -30,6 +30,43 @@
 
 namespace radio_tool::fw
 {
+    /**
+     * Class to store all config for each TYT radio model
+     */
+    class TYTRadioConfig
+    {
+    public:
+        TYTRadioConfig(const std::string &model, const std::string &fw_model, const std::vector<uint8_t> &c_magic, const uint8_t *cipher, const uint32_t &cipher_l)
+            : radio_model(model), firmware_model(fw_model), counter_magic(c_magic), cipher(cipher), cipher_len(cipher_l)
+        {
+        }
+
+        /**
+         * The model of the radio
+         */
+        const std::string radio_model;
+
+        /**
+         * The model in the firmware file
+         */
+        const std::string firmware_model;
+
+        /**
+         * The magic counter value for this radio
+         */
+        const std::vector<uint8_t> counter_magic;
+
+        /**
+         * The cipher key for encrypting/decrypting the firmwar
+         */
+        const uint8_t *cipher;
+
+        /**
+         * The length of the cipher
+         */
+        const uint32_t cipher_len;
+    };
+
     namespace tyt::magic
     {
         using namespace std::literals::string_literals;
@@ -59,40 +96,25 @@ namespace radio_tool::fw
         const std::vector<uint8_t> MD390 = {0x01, 0x10}; //MD-390
         const std::vector<uint8_t> MD380 = {0x01, 0x0d}; //MD-380 / MD-446
         const std::vector<uint8_t> MD280 = {0x01, 0x1b}; //MD-280
-
-        const std::vector<std::pair<const std::string, const std::vector<uint8_t>>> All = {
-            {"MD2017"s, MD2017_D},
-            {"MD2017 GPS"s, MD2017_S},
-            {"MD2017"s, MD2017_V},
-            {"MD2017 GPS"s, MD2017_P},
-            {"MD9600"s, MD9600},
-            {"UV3X0 GPS"s, UV3X0_GPS},
-            {"UV3X0"s, UV3X0},
-            {"DM1701"s, DM1701},
-            {"MD390"s, MD390},
-            {"MD380"s, MD380},
-            {"MD280"s, MD280}
-        };
     } // namespace tyt::magic
 
-    namespace tyt::cipher
+    namespace tyt::config
     {
-        using namespace std::literals::string_literals;
-        using namespace fw::cipher;
-
-        const std::vector<std::tuple<const std::string, const uint8_t *, const uint16_t>> All = {
-            {"MD2017"s, uv3x0, uv3x0_length},
-            {"MD2017 GPS"s, uv3x0, uv3x0_length},
-            {"MD9600"s, md9600, md9600_length},
-            {"UV3X0"s, uv3x0, uv3x0_length},
-            {"UV3X0 GPS"s, uv3x0, uv3x0_length},
-            {"DM1701"s, dm1701, dm1701_length},
-            {"MD390"s, md380, md380_length},
-            {"MD380"s, md380, md380_length},
-            {"MD280"s, md380, md380_length}
+        const std::vector<TYTRadioConfig> All = {
+            TYTRadioConfig("MD2017" /* REC */, "MD-9600", tyt::magic::MD2017_D, cipher::uv3x0, cipher::uv3x0_length),
+            TYTRadioConfig("MD2017 GPS" /* REC */, "MD-9600", tyt::magic::MD2017_S, cipher::uv3x0, cipher::uv3x0_length),
+            TYTRadioConfig("MD2017" /* CSV */, "MD-9600", tyt::magic::MD2017_V, cipher::uv3x0, cipher::uv3x0_length),
+            TYTRadioConfig("MD2017 GPS" /* CSV */, "MD-9600", tyt::magic::MD2017_P, cipher::uv3x0, cipher::uv3x0_length),
+            TYTRadioConfig("MD9600", "MD-9600", tyt::magic::MD9600, cipher::md9600, cipher::md9600_length),
+            TYTRadioConfig("UV3X0 GPS", "MD-9600", tyt::magic::UV3X0_GPS, cipher::uv3x0, cipher::uv3x0_length),
+            TYTRadioConfig("UV3X0", "MD-9600", tyt::magic::UV3X0, cipher::uv3x0, cipher::uv3x0_length),
+            TYTRadioConfig("DM1701", "DM1701", tyt::magic::DM1701, cipher::dm1701, cipher::dm1701_length),
+            TYTRadioConfig("MD390", "JST51", tyt::magic::MD390, cipher::md380, cipher::md380_length),
+            TYTRadioConfig("MD380", "JST51", tyt::magic::MD380, cipher::md380, cipher::md380_length),
+            TYTRadioConfig("MD446", "JST51", tyt::magic::MD380, cipher::md380, cipher::md380_length),
+            TYTRadioConfig("MD280", "JST51", tyt::magic::MD280, cipher::md380, cipher::md380_length)
         };
     }
-
     /**
      * Stores the start of the TYT Firmware file header
      */
@@ -120,9 +142,10 @@ namespace radio_tool::fw
         auto ToString() const -> std::string override;
         auto Decrypt() -> void override;
         auto Encrypt() -> void override;
+        auto SetRadioModel(const std::string&) -> void override;
 
         /**
-         * @note This is not the "radio group" which exists in the firmware header
+         * @note This is not the "firmware_model" which exists in the firmware header
          */
         auto GetRadioModel() const -> const std::string override;
 
@@ -132,11 +155,11 @@ namespace radio_tool::fw
          */
         static auto GetCounterMagic(const std::string &radio) -> const std::vector<uint8_t>
         {
-            for (const auto &r : tyt::magic::All)
+            for (const auto &r : tyt::config::All)
             {
-                if (r.first.compare(radio) == 0)
+                if (r.radio_model == radio)
                 {
-                    return r.second;
+                    return r.counter_magic;
                 }
             }
             throw std::runtime_error("Radio not supported");
@@ -148,14 +171,14 @@ namespace radio_tool::fw
          */
         static auto GetRadioFromMagic(const std::vector<uint8_t> &cm) -> const std::string
         {
-            for (const auto &r : tyt::magic::All)
+            for (const auto &r : tyt::config::All)
             {
-                if (r.second.size() != cm.size())
+                if (r.counter_magic.size() != cm.size())
                     continue;
                 /* GCC doesnt seem to mind which is longer, MSVC tries to read past the end of [first2] */
-                if (std::equal(cm.begin(), cm.end(), r.second.begin()))
+                if (std::equal(cm.begin(), cm.end(), r.counter_magic.begin()))
                 {
-                    return r.first;
+                    return r.radio_model;
                 }
             }
             throw std::runtime_error("Radio not supported");
@@ -165,6 +188,11 @@ namespace radio_tool::fw
          * Tests a file if its a valid firmware file
          */
         static auto SupportsFirmwareFile(const std::string &file) -> bool;
+
+        /**
+         * Tests if a radio model is supported by this firmware handler
+         */
+        static auto SupportsRadioModel(const std::string &model) -> bool;
 
         /**
          * Create an instance of this class for the firmware factory
@@ -180,7 +208,7 @@ namespace radio_tool::fw
         uint32_t n1,
             n2, // appears to be some kind of bootloader version
             n3, n4;
-        std::string radio;
+        std::string firmware_model, radio_model;
 
         static auto ReadHeader(std::ifstream &) -> TYTFirmwareHeader;
         static auto CheckHeader(const TYTFirmwareHeader &) -> void;

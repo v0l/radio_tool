@@ -36,20 +36,21 @@ Usage:
   ./radio_tool [OPTION...]
 
  General options:
-  -h, --help            Show this message
-      --list            List devices
+  -h, --help <command>  Show this message
+  -l, --list            List devices
   -d, --device <index>  Device to use
   -i, --in <file>       Input file
   -o, --out <file>      Output file
+  -L, --list-radios     List supported radios
 
  Programming options:
   -f, --flash    Flash firmware
   -p, --program  Upload codeplug
 
  Firmware options:
-      --fw-info   Print info about a firmware file
-      --wrap      Wrap a firmware bin
-      --unwrap    Unwrap a fimrware file
+      --fw-info  Print info about a firmware file
+      --wrap     Wrap a firmware bin (use --help wrap, for more info)
+      --unwrap   Unwrap a fimrware file
 
  All radio options:
       --info                 Print some info about the radio
@@ -67,7 +68,19 @@ Usage:
       --codeplug-info  Print info about a codeplug file
 ```
 
-## Flash firmware
+## Flash Firmware
 ```
 ./radio_tool -d 0 -f -i new_firmware.bin
+```
+
+## Wrap Firmware
+```
+./radio_tool --wrap -o wrapped.bin -r DM1701 -s 0x0800C000:main.bin
+```
+
+## Unwrap Firmware
+Output file in this case is a file prefix, the filename will be `unwrapped_0x0800C000` and others if you have
+firmware will more than one segment
+```
+./radio_tool --unwrap -i wrapped.bin -o unwrapped
 ```

@@ -27,12 +27,30 @@
 
 namespace radio_tool::fw
 {
+    class FirmwareSupportTest
+    {
+    public:
+        FirmwareSupportTest(
+            std::function<bool(const std::string &)> &&fnFile,
+            std::function<bool(const std::string &)> &&fnRadio,
+            std::function<std::unique_ptr<FirmwareSupport>()> &&fnCreate
+        ) : SupportsRadioModel(fnRadio), SupportsFirmwareFile(fnFile), CreateHandler(fnCreate)
+        {
+
+        }
+        const std::function<bool(const std::string &)> SupportsFirmwareFile;
+
+        const std::function<bool(const std::string &)> SupportsRadioModel;
+
+        const std::function<std::unique_ptr<FirmwareSupport>()> CreateHandler;
+    };
+
     /**
      * All firmware handlers
      */
-    const std::vector<std::pair<std::function<bool(const std::string &)>, std::function<std::unique_ptr<FirmwareSupport>()>>> AllFirmwareHandlers = {
-        {TYTFW::SupportsFirmwareFile, TYTFW::Create},
-        {CSFW::SupportsFirmwareFile, CSFW::Create}
+    const std::vector<FirmwareSupportTest> AllFirmwareHandlers = {
+        FirmwareSupportTest(TYTFW::SupportsFirmwareFile, TYTFW::SupportsRadioModel, TYTFW::Create),
+        FirmwareSupportTest(CSFW::SupportsFirmwareFile, CSFW::SupportsRadioModel, CSFW::Create)
     };
 
     class FirmwareFactory
@@ -42,16 +60,32 @@ namespace radio_tool::fw
          * Return a handler for the firmware file
          * @note Normally used for firmware only operations
          */
-        static auto GetFirmwareHandler(const std::string &file) -> std::unique_ptr<FirmwareSupport>
+        static auto GetFirmwareFileHandler(const std::string &file) -> std::unique_ptr<FirmwareSupport>
         {
             for (const auto &fn : AllFirmwareHandlers)
             {
-                if (fn.first(file))
+                if (fn.SupportsFirmwareFile(file))
                 {
-                    return fn.second();
+                    return fn.CreateHandler();
                 }
             }
             throw std::runtime_error("Firmware file not supported");
+        }
+
+        /**
+         * Return a handler for the firmware file
+         * @note Normally used for firmware only operations
+         */
+        static auto GetFirmwareModelHandler(const std::string &model) -> std::unique_ptr<FirmwareSupport>
+        {
+            for (const auto &fn : AllFirmwareHandlers)
+            {
+                if (fn.SupportsRadioModel(model))
+                {
+                    return fn.CreateHandler();
+                }
+            }
+            throw std::runtime_error("Firmware model not supported");
         }
     };
 } // namespace radio_tool::fw

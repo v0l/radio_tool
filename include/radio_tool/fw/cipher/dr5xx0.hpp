@@ -1,6 +1,5 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 CSFWTOOL https://github.com/KG5RKI/CSFWTOOL
  * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
  * 
  * radio_tool is free software: you can redistribute it and/or modify

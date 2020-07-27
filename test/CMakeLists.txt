@@ -25,6 +25,7 @@ if(XOR_TOOL_INC)
 endif()
 
 add_executable(test_fw test_fw.cpp)
+add_executable(test_util test_util.cpp)
 
 #Add firmware tests, "radio" is the model returned from GetRadioModel()
 function(AddFirmwareTest file radio)

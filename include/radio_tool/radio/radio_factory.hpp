@@ -81,11 +81,7 @@ namespace radio_tool::radio
         {
             std::vector<std::string> ret;
 
-            //add TYT radios with cipher support
-            for(const auto& rd : tyt::SupportedModels) 
-            {
-                ret.push_back(rd);
-            }
+            //TODO: redo
             
             return ret;
         }

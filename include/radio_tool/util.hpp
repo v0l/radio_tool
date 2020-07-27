@@ -22,6 +22,8 @@
 #include <iostream>
 #include <sstream>
 #include <chrono>
+#include <algorithm>
+#include <iterator>
 
 namespace radio_tool
 {
@@ -112,5 +114,92 @@ namespace radio_tool
         {
             data[z] = data[z] ^ xor_key[z % key_len];
         }
+    }
+
+    static auto BSDChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> const uint16_t
+    {
+        int32_t checksum = 0u;
+
+        for (auto i = 0; i < size; i++)
+        {
+            checksum = (checksum >> 1) + ((checksum & 1) << 15);
+            checksum += *data;
+            checksum &= 0xffff;
+            std::advance(data, 1);
+        }
+        return checksum;
+    }
+
+    static auto Fletcher16(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> uint16_t
+    {
+        constexpr auto block_size = 5802;
+        uint32_t c0 = 0, c1 = 0;
+        uint32_t i;
+        int32_t len = size;
+
+        // Found by solving for c1 overflow:
+        // n > 0 and n * (n+1) / 2 * (2^8-1) < (2^32-1).
+        for (c0 = c1 = 0; len > 0; len -= block_size)
+        {
+            auto blocklen = std::min(block_size, len);
+            for (i = 0; i < blocklen; ++i)
+            {
+                c0 = c0 + (*data);
+                c1 = c1 + c0;
+                std::advance(data, 1);
+            }
+            c0 = c0 % 255;
+            c1 = c1 % 255;
+        }
+        //auto f0 = c0;
+        //c0 = 0xff - ((c0 + c1) % 0xff);
+        //c1 = 0xff - ((f0 + c0) % 0xff);
+        return (c1 << 8 | c0);
+    }
+
+    static auto InternetChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> uint16_t
+    {
+        int32_t sum = 0, 
+            count = size;
+
+        // Main summing loop
+        while (count > 1)
+        {
+            sum = sum + (*data);
+            count = count - 2;
+            std::advance(data, 1);
+        }
+
+        // Add left-over byte, if any
+        if (count > 0)
+        {
+            sum = sum + (*data);
+        }
+
+        // Fold 32-bit sum to 16 bits
+        while (sum >> 16)
+        {
+            sum = (sum & 0xFFFF) + (sum >> 16);
+        }
+
+        return (~sum);
+    }
+
+    /**
+     * Connect Systems checksum
+     */
+    static auto CSChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> uint16_t
+    {
+        uint16_t sum = 0;
+
+        for(auto i = 0; i < size; i++)
+        {
+            sum += (*data);
+            std::advance(data, 1);
+        }
+
+        int8_t c0 = (int)((int)(unsigned int)sum / 5 & 0xffffU) >> 8;
+	    uint8_t c1 = ((int)(unsigned int)sum / 5 & 0xffU);
+        return (c1 << 8 | c0);
     }
 } // namespace radio_tool

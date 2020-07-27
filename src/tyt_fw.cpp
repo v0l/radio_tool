@@ -30,8 +30,9 @@ auto TYTFW::Read(const std::string &file) -> void
         auto header = ReadHeader(i);
         CheckHeader(header);
 
-        radio = std::string(header.radio, header.radio + strlen((const char *)header.radio));
+        firmware_model = std::string(header.radio, header.radio + strlen((const char *)header.radio));
         counterMagic = std::vector<uint8_t>(header.counter_magic, header.counter_magic + 1 + header.counter_magic[0]);
+        radio_model = GetRadioFromMagic(counterMagic);
 
         auto binarySize = 0;
         for (auto nMem = 0; nMem < header.n_regions; nMem++)
@@ -56,14 +57,66 @@ auto TYTFW::Read(const std::string &file) -> void
 
 auto TYTFW::Write(const std::string &file) -> void
 {
+    std::ofstream fout(file, std::ios_base::binary);
+    if(fout.is_open())
+    {
+        //make header
+        TYTFirmwareHeader h = {};
+        h.n1 = 0x30000230;
+        h.n2 = 0x47004000;
+        std::copy(tyt::magic::begin.begin(), tyt::magic::begin.end(), h.magic);
+        std::copy(firmware_model.begin(), firmware_model.end(), h.radio);
+        for(auto cx = 0; cx < 76; cx++)
+        {
+            if(cx > 0x20) 
+            {
+                h.counter_magic[cx] = 0xff;
+            } 
+            else 
+            {
+                h.counter_magic[cx] = cx;
+            }
+        }
+        std::copy(counterMagic.begin(), counterMagic.end(), h.counter_magic);
+        h.n_regions = memory_ranges.size();
+
+        //write the header
+        fout.write((char*)&h, sizeof(TYTFirmwareHeader));
+
+        //write region info
+        for(const auto &rx : memory_ranges)
+        {
+            fout.write((char*)&rx.first, sizeof(uint32_t));
+            fout.write((char*)&rx.second, sizeof(uint32_t));
+        }
+
+        //add padding
+        for(auto pad_x = 0; pad_x < 0x80 - (sizeof(uint32_t) * memory_ranges.size() * 2); pad_x++)
+        {
+            fout.put(0xff);
+        }
+
+        //write firmware data
+        fout.write((char*)data.data(), data.size());
+
+        //add footer padding
+        for(auto pad_end = 0; pad_end < 0x100 - 16; pad_end++)
+        {
+            fout.put(0xff);
+        }
+
+        //add end magic
+        fout.write((char*)tyt::magic::end.data(), tyt::magic::end.size());
+
+        fout.close();
+    }
 }
 
 auto TYTFW::ToString() const -> std::string
 {
     std::stringstream out;
-    auto radioMagic = GetRadioFromMagic(counterMagic);
     out << "== TYT Firmware == " << std::endl
-        << "Radio: " << radio << " (" << radioMagic << ")" << std::endl
+        << "Radio: " << firmware_model << " (" << radio_model << ")" << std::endl
         << "Size:  " << std::fixed << std::setprecision(2) << (data.size() / 1024.0) << " KiB" << std::endl
         << "Data Segments: " << std::endl;
     auto n = 0;
@@ -103,10 +156,10 @@ auto TYTFW::CheckHeader(const TYTFirmwareHeader &header) -> void
     }
 
     auto magic_match = false;
-    for (const auto &r : tyt::magic::All)
+    for (const auto &r : tyt::config::All)
     {
         //header.counter_magic should always be longer than r.second
-        if (std::equal(r.second.begin(), r.second.end(), header.counter_magic))
+        if (std::equal(r.counter_magic.begin(), r.counter_magic.end(), header.counter_magic))
         {
             magic_match = true;
             break;
@@ -150,9 +203,36 @@ auto TYTFW::SupportsFirmwareFile(const std::string &file) -> bool
     }
 }
 
+auto TYTFW::SupportsRadioModel(const std::string &model) -> bool
+{
+    for(const auto &mx : tyt::config::All)
+    {
+        if(mx.radio_model == model)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 auto TYTFW::GetRadioModel() const -> const std::string
 {
     return GetRadioFromMagic(counterMagic);
+}
+
+
+auto TYTFW::SetRadioModel(const std::string &model) -> void
+{
+    for(const auto &rg : tyt::config::All)
+    {
+        if(rg.radio_model == model)
+        {
+            counterMagic = rg.counter_magic;
+            radio_model = rg.radio_model;
+            firmware_model = rg.firmware_model;
+            break;
+        }
+    }
 }
 
 auto TYTFW::Decrypt() -> void
@@ -167,20 +247,15 @@ auto TYTFW::Encrypt() -> void
 
 auto TYTFW::ApplyXOR() -> void
 {
-    const unsigned char *xor_model = nullptr;
+    const uint8_t *xor_model = nullptr;
     uint32_t xor_len = 1024;
 
-    auto model = GetRadioFromMagic(counterMagic);
-    for (const auto &xor_radio : tyt::cipher::All)
+    for (const auto &r : tyt::config::All)
     {
-        const auto &g_0 = std::get<0>(xor_radio);
-        const auto &g_1 = std::get<1>(xor_radio);
-        const auto &g_2 = std::get<2>(xor_radio);
-
-        if (g_0 == model)
+        if (std::equal(r.counter_magic.begin(), r.counter_magic.end(), counterMagic.begin()))
         {
-            xor_model = g_1;
-            xor_len = g_2;
+            xor_model = r.cipher;
+            xor_len = r.cipher_len;
             break;
         }
     }

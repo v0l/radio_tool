@@ -35,6 +35,20 @@ using namespace radio_tool::fw;
 using namespace radio_tool::radio;
 using namespace radio_tool::codeplug;
 
+
+template<class T>
+auto GetOptionOrErr(const cxxopts::ParseResult &cmd, const std::string &v, const std::string &err) -> const T&
+{
+    if(cmd.count(v))
+    {
+        return cmd[v].as<T>();
+    }
+    else
+    {
+        throw std::runtime_error(err);
+    }
+}
+
 int main(int argc, char **argv)
 {
     try
@@ -77,7 +91,7 @@ int main(int argc, char **argv)
             ("codeplug-info", "Print info about a codeplug file");
 
         options.add_options("Wrap")
-            ("s,section", "Add a section for wrapping", cxxopts::value<std::vector<std::string>>(), "<0x08000000:region_0.bin>")
+            ("s,segment", "Add a segment for wrapping", cxxopts::value<std::vector<std::string>>(), "<0x08000000:region_0.bin>")
             ("r,radio", "Radio to build firmware file for", cxxopts::value<std::string>(), "<DM1701>");
 
         auto cmd = options.parse(argc, argv);
@@ -119,120 +133,135 @@ int main(int argc, char **argv)
         //do non device specific commands
         if (cmd.count("fw-info"))
         {
-            if(cmd.count("in")) 
-            {
-                auto file = cmd["in"].as<std::string>();
-                
-                auto fw = FirmwareFactory::GetFirmwareHandler(file);
-                fw->Read(file);
-                std::cerr << fw->ToString();
-                exit(0);
-            } 
-            else 
-            {
-                std::cerr << "Input file not specified" << std::endl;
-                exit(1);
-            }
+            auto file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
+            
+            auto fw = FirmwareFactory::GetFirmwareFileHandler(file);
+            fw->Read(file);
+            std::cerr << fw->ToString();
+            exit(0);
         }
 
         if(cmd.count("codeplug-info"))
         {
-            if(cmd.count("in")) 
-            {
-                auto file = cmd["in"].as<std::string>();
-                
-                auto h = CodeplugFactory::GetCodeplugHandler(file);
-                h->Read(file);
-                std::cerr << h->ToString();
-                exit(0);
-            } 
-            else 
-            {
-                std::cerr << "Input file not specified" << std::endl;
-                exit(1);
-            }
+            auto file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
+            
+            auto h = CodeplugFactory::GetCodeplugHandler(file);
+            h->Read(file);
+            std::cerr << h->ToString();
+            exit(0);
         }
 
         if(cmd.count("wrap"))
         {
-            std::string out;
-            if(cmd.count("out")) 
+            auto out = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
+            auto radio = GetOptionOrErr<std::string>(cmd, "radio", "Radio not specified");
+            auto segments = GetOptionOrErr<std::vector<std::string>>(cmd, "segment", "Must specify at least 1 segment");
+
+            auto fw = FirmwareFactory::GetFirmwareModelHandler(radio);
+            fw->SetRadioModel(radio);
+            for(const auto &sx : segments)
             {
-                out = cmd["out"].as<std::string>();
-            } 
-            else 
-            {
-                std::cerr << "Output file not specified" << std::endl;
-                exit(1);
+                auto schar = sx.find(':');
+                if(schar != sx.npos)
+                {
+                    uint32_t addr = 0;
+                    auto addr_str = sx.substr(0, schar);
+                    auto start_hex = addr_str.find("0x");
+                    if(start_hex != addr_str.npos)
+                    {
+                        addr = std::stoi(addr_str.substr(start_hex + 2), 0, 16);
+                    }
+                    else
+                    {
+                        addr = std::stoi(addr_str, 0, 10);
+                    }
+                    
+                    auto filename = sx.substr(schar + 1);
+                    std::cerr << "Adding segment 0x" 
+                        << std::hex << std::setw(8) << std::setfill('0') << addr
+                        << " from file " << filename << std::endl;
+
+                    std::ifstream f_seg(filename, f_seg.binary);
+                    if(f_seg.is_open())
+                    {
+                        f_seg.seekg(0, f_seg.end);
+                        auto len = f_seg.tellg();
+                        f_seg.seekg(0, f_seg.beg);
+
+                        std::vector<uint8_t> seg_data;
+                        seg_data.resize(len);
+                        f_seg.read((char*)seg_data.data(), len);
+                        f_seg.close();
+
+                        fw->AppendSegment(addr, seg_data);
+                    }
+                    else 
+                    {
+                        throw std::runtime_error("Cant open file for segment");
+                    }
+                }
+                else 
+                {
+                    throw std::invalid_argument("Segments must be in the format '0x0000:filename.bin'");
+                }
             }
+
+            fw->Encrypt();
+            fw->Write(out);
+            std::cerr << "Done!" << std::endl;
+            exit(0);
         }
 
         if(cmd.count("unwrap")) 
         {
-            if(cmd.count("in") && cmd.count("out")) 
-            {
-                auto in_file = cmd["in"].as<std::string>();
-                auto out_file = cmd["out"].as<std::string>();
-                
-                auto fw_handler = FirmwareFactory::GetFirmwareHandler(in_file);
-                fw_handler->Read(in_file);
-                fw_handler->Decrypt();
+            auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
+            auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
+            
+            auto fw_handler = FirmwareFactory::GetFirmwareFileHandler(in_file);
+            fw_handler->Read(in_file);
+            fw_handler->Decrypt();
 
-                for(const auto& rn : fw_handler->GetDataSegments()) 
+            for(const auto& rn : fw_handler->GetDataSegments()) 
+            {
+                std::stringstream ss_name;
+                ss_name << out_file << "_0x" << std::setw(8) << std::setfill('0') << std::hex << rn.address;
+
+                std::ofstream fw_out;
+                fw_out.open(ss_name.str(), std::ios_base::out | std::ios_base::binary);
+                if(fw_out.is_open()) 
                 {
-                    std::stringstream ss_name;
-                    ss_name << out_file << "_0x" << std::setw(8) << std::setfill('0') << std::hex << rn.address;
-
-                    std::ofstream fw_out;
-                    fw_out.open(ss_name.str(), std::ios_base::out | std::ios_base::binary);
-                    if(fw_out.is_open()) 
-                    {
-                        fw_out.write((const char*)rn.data.data(), rn.data.size());
-                        fw_out.close();
-                    } 
-                    else 
-                    {
-                        std::cerr << "Failed to open output file: " << out_file << std::endl;
-                        exit(1);
-                    }
+                    fw_out.write((const char*)rn.data.data(), rn.data.size());
+                    fw_out.close();
+                } 
+                else 
+                {
+                    std::cerr << "Failed to open output file: " << out_file << std::endl;
+                    exit(1);
                 }
-                exit(0);
             }
-            else 
-            {
-                std::cerr << "Input/Output file not specified" << std::endl;
-                exit(1);
-            }
+            exit(0);
         }
 
 #ifdef XOR_TOOL
         if(cmd.count("make-xor")) 
         {
-            if(cmd.count("in")) 
+            auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");          
+            auto fw_handler = FirmwareFactory::GetFirmwareFileHandler(in_file);
+            fw_handler->Read(in_file);
+            
+            auto key = radio_tool::fw::XORTool::MakeXOR(fw_handler->GetData());
+            for(const auto& region : fw_handler->GetDataSegments()) 
             {
-                auto in_file = cmd["in"].as<std::string>();                
-                auto fw_handler = FirmwareFactory::GetFirmwareHandler(in_file);
-                fw_handler->Read(in_file);
-                
-                auto key = radio_tool::fw::XORTool::MakeXOR(fw_handler->GetData());
-                for(const auto& region : fw_handler->GetDataSegments()) 
+                if(radio_tool::fw::XORTool::Verify(region.address, region.data, key))
                 {
-                    if(radio_tool::fw::XORTool::Verify(region.address, region.data, key))
-                    {
-                        std::cout 
-                            << "Region @ 0x" << std::setfill('0') << std::setw(8) << std::hex << region.address
-                            << " appears to be a valid vector_table" << std::endl;
-                    }
+                    std::cout 
+                        << "Region @ 0x" << std::setfill('0') << std::setw(8) << std::hex << region.address
+                        << " appears to be a valid vector_table" << std::endl;
                 }
+            }
 
-                radio_tool::PrintHex(key);
-                exit(0);
-            }
-            else 
-            {
-                std::cerr << "Input/Output file not specified" << std::endl;
-                exit(1);
-            }
+            radio_tool::PrintHex(key);
+            exit(0);
         }
 #endif
         
@@ -264,17 +293,9 @@ int main(int argc, char **argv)
 
         if(cmd.count("flash")) 
         {
-            if(cmd.count("in")) 
-            {
-                auto file = cmd["in"].as<std::string>();
-                radio->WriteFirmware(file);
-                std::cout << "Done!" << std::endl;
-            } 
-            else 
-            {
-                std::cerr << "Input file not specified" << std::endl;
-                exit(1);
-            }
+            auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
+            radio->WriteFirmware(in_file);
+            std::cout << "Done!" << std::endl;
         }
 
         if(cmd.count("program")) 
@@ -291,28 +312,20 @@ int main(int argc, char **argv)
 
         if(cmd.count("dump-bootloader")) 
         {
-            if(cmd.count("out")) 
+            auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Input file not specified");
+            auto size = 0xc000;
+            std::ofstream outf;
+            outf.open(out_file, std::ios_base::out | std::ios_base::binary);
+            if(outf.is_open()) 
             {
-                auto file = cmd["out"].as<std::string>();
-                auto size = 0xc000;
-                std::ofstream outf;
-                outf.open(file, std::ios_base::out | std::ios_base::binary);
-                if(outf.is_open()) 
-                {
-                    auto mem = dfu.Upload(size, 2);
-                    //radio_tool::PrintHex(mem);
-                    outf.write((char*)mem.data(), mem.size());
-                    outf.close();
-                }
-                else 
-                {
-                    std::cerr << "Failed to open output file: " << file << std::endl;
-                    exit(1);
-                }
+                auto mem = dfu.Upload(size, 2);
+                //radio_tool::PrintHex(mem);
+                outf.write((char*)mem.data(), mem.size());
+                outf.close();
             }
             else 
             {
-                std::cerr << "Output file not specified" << std::endl;
+                std::cerr << "Failed to open output file: " << out_file << std::endl;
                 exit(1);
             }
         }

@@ -47,17 +47,20 @@ namespace radio_tool::fw
     class CSFW : public FirmwareSupport
     {
     public:
-        auto Read(const std::string &fw) -> void;
-        auto Write(const std::string &fw) -> void;
-        auto ToString() const -> std::string;
-        auto GetRadioModel() const -> const std::string;
-        auto Decrypt() -> void;
-        auto Encrypt() -> void;
+        auto Read(const std::string &fw) -> void override;
+        auto Write(const std::string &fw) -> void override;
+        auto ToString() const -> std::string override;
+        auto GetRadioModel() const -> const std::string override;
+        auto SetRadioModel(const std::string&) -> void override;
+        auto Decrypt() -> void override;
+        auto Encrypt() -> void override;
 
         /**
          * Tests a file if its a valid firmware file
          */
         static auto SupportsFirmwareFile(const std::string &file) -> bool;
+
+        static auto SupportsRadioModel(const std::string &model) -> bool;
 
         /**
          * Create an instance of this class for the firmware factory
@@ -68,5 +71,9 @@ namespace radio_tool::fw
         }
     private:
         CS800D_header header;
+        uint16_t checksum;
+
+        auto MakeChecksum() const -> const uint16_t;
+        auto MakeFiledata() const -> std::vector<uint8_t>;
     };
 } // namespace radio_tool::fw

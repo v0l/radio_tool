@@ -77,6 +77,11 @@ namespace radio_tool::fw
         virtual auto GetRadioModel() const -> const std::string = 0;
 
         /**
+         * Set the radio model this firmware file is for
+         */
+        virtual auto SetRadioModel(const std::string&) -> void = 0;
+
+        /**
          * Decrypt the firmware data
          */
         virtual auto Decrypt() -> void = 0;
@@ -117,6 +122,21 @@ namespace radio_tool::fw
 
             return ret;
         }
+
+        /**
+         * Adds a data segment to this firmware
+         * @note Normally used when wrapping new firmware
+         * @remarks Data will be padded if its too short
+         */
+        virtual auto AppendSegment(const uint32_t &addr, const std::vector<uint8_t> &new_data) -> void
+        {
+            auto padding = new_data.size() % 0x200;
+            auto new_size = new_data.size() + padding;
+            data.reserve(data.size() + new_size);
+            std::copy(new_data.begin(), new_data.end(), std::back_inserter(data));
+            std::fill_n(std::back_inserter(data), padding, 0xff);
+            memory_ranges.push_back({addr, new_size});
+        }   
 
     protected:
         /**
