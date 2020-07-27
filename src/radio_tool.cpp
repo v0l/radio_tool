@@ -181,7 +181,7 @@ int main(int argc, char **argv)
                         << std::hex << std::setw(8) << std::setfill('0') << addr
                         << " from file " << filename << std::endl;
 
-                    std::ifstream f_seg(filename, f_seg.binary);
+                    std::ifstream f_seg(filename, std::ios_base::binary);
                     if(f_seg.is_open())
                     {
                         f_seg.seekg(0, f_seg.end);
