@@ -21,7 +21,8 @@ int main(int argc, char **argv)
 
     if (h->GetRadioModel() != std::string(radio))
     {
-        throw std::runtime_error("Firmware model incorrect");
+        std::cerr << "Firmware model incorrect" << std::endl;
+        exit(1);
     }
 
     //test read/write
@@ -39,7 +40,8 @@ int main(int argc, char **argv)
     
     if(len_a != len_b)
     {
-        throw std::runtime_error("Write test failed, file lengths dont match");
+        std::cerr << "Write test failed, file lengths dont match" << std::endl;
+        exit(1);
     }
     
     fa.seekg(0, std::ios_base::beg);
@@ -69,7 +71,8 @@ int main(int argc, char **argv)
             std::stringstream ssmsg;
             ssmsg << "Write test failed, files are not the same @ 0x"
                 << std::hex << pos;
-            throw std::runtime_error(ssmsg.str());
+            std::cerr << ssmsg.str() << std::endl;
+            exit(1);
         }
     }
 
