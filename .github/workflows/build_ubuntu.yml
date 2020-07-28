@@ -18,13 +18,16 @@ jobs:
         cmake -DBUILD_TESTING=1 -DCMAKE_BUILD_TYPE=Release ..
     - name: make
       run: |
+        cd ${{github.workspace}}/build
         make -j4
     - name: test
       run: |
+        cd ${{github.workspace}}/build
         ctest -C Release --timeout 600 --output-on-failure
     - name: pack
       run: |
-        cpack
+        cd ${{github.workspace}}/build
+        cpack -C Release
     - uses: actions/upload-artifact@v2
       with:
         name: release-artifacts
