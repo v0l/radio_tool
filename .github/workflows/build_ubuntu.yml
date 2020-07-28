@@ -1,0 +1,35 @@
+name: CMake Build Ubuntu
+on:
+  push:
+    branches: [ master ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: get-libusb
+      run: |
+        sudo apt update
+        sudo apt install libusb-1.0-0-dev cmake
+    - name: run-cmake
+      run: |
+        cd ${{github.workspace}}
+        mkdir build && cd build
+        cmake -DBUILD_TESTING=1 -DCMAKE_BUILD_TYPE=Release ..
+    - name: make
+      run: |
+        make -j4
+    - name: test
+      run: |
+        ctest -C Release --timeout 600 --output-on-failure
+    - name: pack
+      run: |
+        cpack
+    - uses: actions/upload-artifact@v2
+      with:
+        name: release-artifacts
+        path: |
+          ${{github.workspace}}/build/*.sha256
+          ${{github.workspace}}/build/*.deb
+          ${{github.workspace}}/build/*.tar.gz
+          ${{github.workspace}}/build/*.tar.xz
