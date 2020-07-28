@@ -10,7 +10,7 @@ jobs:
     - name: get-libusb
       run: |
         sudo apt update
-        sudo apt install libusb-1.0-0-dev cmake
+        sudo apt install libusb-1.0-0-dev cmake gcc
     - name: run-cmake
       run: |
         cd ${{github.workspace}}
