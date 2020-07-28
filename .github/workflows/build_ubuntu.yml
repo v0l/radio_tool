@@ -15,7 +15,7 @@ jobs:
       run: |
         cd ${{github.workspace}}
         mkdir build && cd build
-        cmake -DBUILD_TESTING=1 -DCMAKE_BUILD_TYPE=Release ..
+        cmake -DBUILD_TESTING=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/bin/gcc-9 -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 ..
     - name: make
       run: |
         cd ${{github.workspace}}/build
