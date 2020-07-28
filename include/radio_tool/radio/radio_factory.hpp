@@ -44,7 +44,7 @@ namespace radio_tool::radio
             {
                 throw std::runtime_error(libusb_error_name(err));
             }
-#ifndef WIN32
+#if defined(LIBUSB_API_VERSION) && (LIBUSB_API_VERSION >= 0x01000107)
             libusb_set_log_cb(
                 usb_ctx, [](libusb_context *ctx, enum libusb_log_level level, const char *str) {
                     std::wcout << str << std::endl;
@@ -82,7 +82,7 @@ namespace radio_tool::radio
             std::vector<std::string> ret;
 
             //TODO: redo
-            
+
             return ret;
         }
     private:
