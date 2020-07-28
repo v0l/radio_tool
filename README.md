@@ -4,7 +4,13 @@ TYT/BaoFeng/(Others?) Firmware tool
 
 # Download
 
-For windows you can download the build artifacts from [AppVeyor](https://ci.appveyor.com/project/v0l/radio-tool)
+Windows: [AppVeyor](https://ci.appveyor.com/project/v0l/radio-tool)
+
+Linux: [Github Actions](https://github.com/v0l/radio_tool/actions)
+
+![AppVeyor](https://ci.appveyor.com/api/projects/status/github/v0l/radio_tool?svg=true)
+
+![Release](https://github.com/v0l/radio_tool/workflows/Release/badge.svg)
 
 Linux/Mac should use the build instructions below
 

@@ -1,4 +1,4 @@
-name: CMake Build Ubuntu
+name: Release
 on:
   push:
     branches: [ master ]
@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    - name: get-libusb
+    - name: apt-install
       run: |
         sudo apt update
         sudo apt install libusb-1.0-0-dev cmake gcc-9
@@ -30,9 +30,11 @@ jobs:
         cpack -C Release
     - uses: actions/upload-artifact@v2
       with:
-        name: release-artifacts
+        name: release-deb
         path: |
-          ${{github.workspace}}/build/*.sha256
           ${{github.workspace}}/build/*.deb
-          ${{github.workspace}}/build/*.tar.gz
+          ${{github.workspace}}/build/*.deb.sha256
+        name: release-tar
+        path: |
+          ${{github.workspace}}/build/*.tar.xz.sha256
           ${{github.workspace}}/build/*.tar.xz
