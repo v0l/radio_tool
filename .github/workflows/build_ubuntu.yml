@@ -5,12 +5,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            gcc: 9
     steps:
     - uses: actions/checkout@v2
     - name: get-libusb
       run: |
         sudo apt update
-        sudo apt install libusb-1.0-0-dev cmake gcc
+        sudo apt install libusb-1.0-0-dev cmake
     - name: run-cmake
       run: |
         cd ${{github.workspace}}
