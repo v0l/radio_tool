@@ -1,4 +1,4 @@
-name: Release
+name: UbuntuRelease
 on:
   push:
     branches: [ master ]
@@ -34,6 +34,8 @@ jobs:
         path: |
           ${{github.workspace}}/build/*.deb
           ${{github.workspace}}/build/*.deb.sha256
+    - uses: actions/upload-artifact@v2
+      with:
         name: release-tar
         path: |
           ${{github.workspace}}/build/*.tar.xz.sha256

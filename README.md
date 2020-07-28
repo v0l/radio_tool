@@ -10,13 +10,13 @@ Linux: [Github Actions](https://github.com/v0l/radio_tool/actions)
 
 ![AppVeyor](https://ci.appveyor.com/api/projects/status/github/v0l/radio_tool?svg=true)
 
-![Release](https://github.com/v0l/radio_tool/workflows/Release/badge.svg)
+![Release](https://github.com/v0l/radio_tool/workflows/UbuntuRelease/badge.svg)
 
-Linux/Mac should use the build instructions below
+Otherwise you can use the instructions below to build
 
 # Building
-Dependencies Linux (Ubuntu/Debian)
-:
+Dependencies Linux (Ubuntu/Debian):
+
 ```
 sudo apt install libusb-1.0-0-dev cmake gcc
 ```
