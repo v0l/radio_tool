@@ -130,11 +130,15 @@ namespace radio_tool::fw
          */
         virtual auto AppendSegment(const uint32_t &addr, const std::vector<uint8_t> &new_data) -> void
         {
-            auto padding = new_data.size() % 0x200;
-            auto new_size = new_data.size() + padding;
+            constexpr auto allign = 0x200u;
+            auto extra = new_data.size() % allign;
+            auto new_size = new_data.size() + (extra > 0 ? allign - extra : 0);
             data.reserve(data.size() + new_size);
             std::copy(new_data.begin(), new_data.end(), std::back_inserter(data));
-            std::fill_n(std::back_inserter(data), padding, 0xff);
+            if(extra > 0)
+            {
+                std::fill_n(std::back_inserter(data), allign - extra, 0xff);
+            }
             memory_ranges.push_back({addr, new_size});
         }   
 
