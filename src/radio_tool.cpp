@@ -166,10 +166,9 @@ int main(int argc, char **argv)
                 {
                     uint32_t addr = 0;
                     auto addr_str = sx.substr(0, schar);
-                    auto start_hex = addr_str.find("0x");
-                    if(start_hex != addr_str.npos)
+                    if(addr_str.find("0x") != addr_str.npos)
                     {
-                        addr = std::stoi(addr_str.substr(start_hex + 2), 0, 16);
+                        addr = std::stoi(addr_str, 0, 16);
                     }
                     else
                     {
