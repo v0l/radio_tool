@@ -15,7 +15,15 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+#Git version
+include(GetGitRevisionDescription)
+get_git_head_revision(GIT_REFSPEC GIT_SHA1)
+git_describe(GIT_SHA1_SHORT "--always")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/version.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp" @ONLY)
+
+#FindLIBUSB
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
   find_package(LibUSB REQUIRED)
   set(CMAKE_CXX_FLAGS "-Wall -Wextra")
@@ -48,6 +56,7 @@ set(ALL_SRC
     src/tyt_fw.cpp
     src/cs_fw.cpp
     src/rdt.cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp"
 )
 
 add_library(radiotool ${ALL_SRC})

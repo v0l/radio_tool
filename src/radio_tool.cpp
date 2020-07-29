@@ -21,6 +21,7 @@
 
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
+#include <radio_tool/version.hpp>
 
 #ifdef XOR_TOOL
 #include <xor_tool.hpp>
@@ -53,7 +54,11 @@ int main(int argc, char **argv)
 {
     try
     {
-        cxxopts::Options options(argv[0]);
+        std::stringstream ssVersion;
+        ssVersion << g_PROJECT_NAME << " v" << g_PROJECT_VERSION << "-" << g_GIT_SHA1_SHORT;
+        auto version = ssVersion.str();
+
+        cxxopts::Options options(argv[0], version);
 
         options.add_options("General")
             ("h,help", "Show this message", cxxopts::value<std::string>(), "<command>")
