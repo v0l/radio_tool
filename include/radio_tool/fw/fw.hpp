@@ -130,8 +130,7 @@ namespace radio_tool::fw
          */
         virtual auto AppendSegment(const uint32_t &addr, const std::vector<uint8_t> &new_data) -> void
         {
-            constexpr auto allign = 0x200u;
-            auto extra = new_data.size() % allign;
+            auto extra = allign != 0 ? new_data.size() % allign : 0;
             auto new_size = new_data.size() + (extra > 0 ? allign - extra : 0);
             data.reserve(data.size() + new_size);
             std::copy(new_data.begin(), new_data.end(), std::back_inserter(data));
@@ -143,6 +142,18 @@ namespace radio_tool::fw
         }   
 
     protected:
+        /**
+         * Constructor with segment allignment
+         */
+        FirmwareSupport(const uint32_t &allign = 0) 
+            : allign(allign) 
+        { }
+
+        /**
+         * Segment memory allignment
+         */
+        const uint32_t allign;
+
         /**
          * The firmware binary
          */

@@ -108,5 +108,5 @@ AddFirmwareTest(RT3S_GPS_REC__S16.06.bin "UV3X0 GPS")
 AddFirmwareTest(RT3S_REC__D16.06.bin "UV3X0")
 
 #CS800
-#AddFirmwareTest(CS800D_Host_MS.30.14_Use_Flashburn3.0_Upgrade.bin "CS800")
-#AddFirmwareTest(TEST_CS800_4000__Mobile_M100000_Host_S3.02.07_Auth_Test_Ver_1_.bin "CS800")
+AddFirmwareTest(CS800D_Host_MS.30.14_Use_Flashburn3.0_Upgrade.bin "CS800")
+AddFirmwareTest(TEST_CS800_4000__Mobile_M100000_Host_S3.02.07_Auth_Test_Ver_1_.bin "CS800")

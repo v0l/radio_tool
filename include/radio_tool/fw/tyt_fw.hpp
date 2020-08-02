@@ -133,9 +133,8 @@ namespace radio_tool::fw
     public:
         TYTFW() {}
         TYTFW(const std::vector<uint8_t> &cMagic)
-            : counterMagic(cMagic)
-        {
-        }
+            : counterMagic(cMagic), FirmwareSupport(0x200)
+        { }
 
         auto Read(const std::string &file) -> void override;
         auto Write(const std::string &file) -> void override;

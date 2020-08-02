@@ -75,5 +75,6 @@ namespace radio_tool::fw
 
         auto MakeChecksum() const -> const uint16_t;
         auto MakeFiledata() const -> std::vector<uint8_t>;
+        auto UpdateHeader() -> void;
     };
 } // namespace radio_tool::fw

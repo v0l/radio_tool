@@ -264,7 +264,7 @@ int main(int argc, char **argv)
                 }
             }
 
-            radio_tool::PrintHex(key);
+            radio_tool::PrintHex(key.begin(), key.end());
             exit(0);
         }
 #endif

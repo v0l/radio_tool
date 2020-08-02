@@ -56,6 +56,10 @@ auto CSFW::Read(const std::string &fw) -> void
         in_file.read((char*)&checksum, sizeof(uint16_t));
         in_file.close();
 
+        //xor checksum
+        ((uint8_t*)&checksum)[0] = ((uint8_t*)&checksum)[0] ^ cipher::cs800_0[header.imagesize % cipher::cs800_length];
+        ((uint8_t*)&checksum)[1] = ((uint8_t*)&checksum)[1] ^ cipher::cs800_0[(header.imagesize + 1) % cipher::cs800_length];
+
         memory_ranges.push_back({header.baseaddr_offset, header.imagesize});
 
         //test checksum
@@ -63,7 +67,7 @@ auto CSFW::Read(const std::string &fw) -> void
         if(cs_check != checksum)
         {
             //checksum not working right now
-            //throw std::runtime_error("Invalid checksum");
+            throw std::runtime_error("Invalid checksum");
         }
     }
     else 
@@ -72,16 +76,38 @@ auto CSFW::Read(const std::string &fw) -> void
     }
 }
 
+auto CSFW::UpdateHeader() -> void
+{
+    if(memory_ranges.size() != 1)
+    {
+        throw std::runtime_error("CS Firmware can only contain one segment!");
+    }
+    header.imagesize = data.size();
+    header.imageHeaderSize = sizeof(CS800D_header);
+    header.version = 1;
+    if(memory_ranges.size())
+    {
+        header.baseaddr_offset = memory_ranges[0].first;
+    }
+}
+
 auto CSFW::Write(const std::string &fw) -> void
 {
     std::ofstream of(fw, std::ios_base::binary);
     if(of.is_open())
     {
+        UpdateHeader();
         auto data = MakeFiledata();
         of.write((char*)data.data(), data.size());
 
-        auto iter = data.begin();
-        auto cs = CSChecksum(iter, data.size());
+        //Apply XOR to make checksum
+        ApplyXOR(data.begin() + header.imageHeaderSize, data.end(), cipher::cs800_0, cipher::cs800_length);
+        auto cs = CSChecksum(data.begin(), data.end());
+
+        //XOR the checksum before writing
+        ((uint8_t*)&cs)[0] = ((uint8_t*)&cs)[0] ^ cipher::cs800_0[header.imagesize % cipher::cs800_length];
+        ((uint8_t*)&cs)[1] = ((uint8_t*)&cs)[1] ^ cipher::cs800_0[(header.imagesize + 1) % cipher::cs800_length];
+
         of.write((char*)&cs, sizeof(cs));
 
         of.close();
@@ -124,13 +150,13 @@ auto CSFW::SetRadioModel(const std::string&) -> void
 auto CSFW::Decrypt() -> void
 {
     //dont know how to detect dr5xx0 so just use cs800 cipher always
-    ApplyXOR(data, cipher::cs800, cipher::cs800_length);
+    ApplyXOR(data, cipher::cs800_0, cipher::cs800_length);
 }
 
 auto CSFW::Encrypt() -> void
 {
     //dont know how to detect dr5xx0 so just use cs800 cipher always
-    ApplyXOR(data, cipher::cs800, cipher::cs800_length);
+    ApplyXOR(data, cipher::cs800_0, cipher::cs800_length);
 }
 
 auto CSFW::SupportsFirmwareFile(const std::string &file) -> bool
@@ -173,23 +199,23 @@ auto CSFW::SupportsRadioModel(const std::string &model) -> bool
 
 auto CSFW::MakeChecksum() const -> const uint16_t
 {
+    //Make a copy of the firmware data because we will apply XOR
     auto to_check = MakeFiledata();
-    auto iter = to_check.begin();
-    auto cs = CSChecksum(iter, to_check.size());
-    return cs;
+    
+    //XOR firmware data
+    ApplyXOR(to_check.begin() + header.imageHeaderSize, to_check.end(), cipher::cs800_0, cipher::cs800_length);
+
+    return CSChecksum(to_check.begin(), to_check.end());
 }
 
 auto CSFW::MakeFiledata() const -> std::vector<uint8_t>
 {
-    std::vector<uint8_t> to_check;
-    to_check.reserve(header.imageHeaderSize + header.imagesize);
-    for(auto ih = 0; ih < sizeof(CS800D_header); ih++)
-    {
-        to_check.push_back(((uint8_t*)&header)[ih]);
-    }
-    for(const auto& d : data)
-    {
-        to_check.push_back(d);
-    }
-    return to_check;
+    auto h_ptr = (uint8_t*)&header;
+    std::vector<uint8_t> ret;
+    ret.reserve(header.imageHeaderSize + header.imagesize);
+
+    std::copy(h_ptr, h_ptr + sizeof(CS800D_header), std::back_inserter(ret));
+    std::copy(data.begin(), data.end(), std::back_inserter(ret));
+
+    return ret;
 }

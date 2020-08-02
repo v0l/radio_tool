@@ -27,7 +27,7 @@
 
 namespace radio_tool
 {
-    static auto PrintHex(const std::vector<uint8_t> &data) -> void
+    static auto PrintHex(std::vector<uint8_t>::const_iterator &&begin, std::vector<uint8_t>::const_iterator &&end) -> void
     {
         auto c = 1u;
 
@@ -40,8 +40,10 @@ namespace radio_tool
         char eol_ascii[wordSize * wordCount + 1] = {};
         char aV, bV;
         std::stringstream prnt;
-        for (const auto &v : data)
+        auto size = std::distance(begin, end);
+        while(begin != end)
         {
+            auto v = (*begin);
             auto a = v & 0x0f;
             auto b = v >> 4;
             aV = (a <= 9 ? asciiZero : asciiA) + a;
@@ -50,7 +52,7 @@ namespace radio_tool
 
             auto col = c % (wordSize * wordCount);
             eol_ascii[col] = v >= 32 && v <= 127 ? (char)v : '.';
-            if (col == 0 && c != data.size())
+            if (col == 0 && c != size)
             {
                 prnt << " " << eol_ascii << std::endl;
             }
@@ -58,7 +60,7 @@ namespace radio_tool
             {
                 prnt << "  ";
             }
-            if (c == data.size())
+            if (c == size)
             {
                 if (col > 0)
                 {
@@ -67,6 +69,7 @@ namespace radio_tool
                 prnt << (col != 0 ? " " : "") << eol_ascii;
             }
             c++;
+            std::advance(begin, 1);
         }
 
         std::cerr << prnt.str() << std::endl;
@@ -113,6 +116,16 @@ namespace radio_tool
         for (auto z = 0; z < data.size(); z++)
         {
             data[z] = data[z] ^ xor_key[z % key_len];
+        }
+    }
+
+    static inline auto ApplyXOR(std::vector<uint8_t>::iterator &&begin, std::vector<uint8_t>::iterator &&end, const uint8_t *xor_key, const uint16_t &key_len) -> void
+    {
+        auto z = 0;
+        while(begin != end)
+        {
+            (*begin) = (*begin) ^ xor_key[z++ % key_len];
+            std::advance(begin, 1);
         }
     }
 
@@ -188,18 +201,18 @@ namespace radio_tool
     /**
      * Connect Systems checksum
      */
-    static auto CSChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> uint16_t
+    static auto CSChecksum(std::vector<uint8_t>::const_iterator &&begin, const std::vector<uint8_t>::const_iterator &&end) -> uint16_t
     {
         uint16_t sum = 0;
 
-        for(auto i = 0; i < size; i++)
+        while(begin != end)
         {
-            sum += (*data);
-            std::advance(data, 1);
+            sum += (*begin);
+            std::advance(begin, 1);
         }
 
-        int8_t c0 = (int)((int)(unsigned int)sum / 5 & 0xffffU) >> 8;
-	    uint8_t c1 = ((int)(unsigned int)sum / 5 & 0xffU);
+        auto c0 = (int32_t)(sum / 5) >> 8;
+	    auto c1 = (sum / 5) & 0xff;
         return (c1 << 8 | c0);
     }
 } // namespace radio_tool
