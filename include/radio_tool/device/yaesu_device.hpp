@@ -27,18 +27,18 @@ namespace radio_tool::device
 	class YaesuDevice : public RadioDevice
 	{
 	public:
-		YaesuDevice(libusb_device_handle *h) : h8sx(h) {}
+		YaesuDevice(libusb_device_handle* h) : h8sx(h) {}
 
-		auto SetAddress(const uint32_t &) const -> void override;
-		auto Erase(const uint32_t &amount) const -> void override;
-		auto Write(const std::vector<uint8_t> &data) const -> void override;
-		auto Read(const uint16_t &size) const -> std::vector<uint8_t> override;
+		auto SetAddress(const uint32_t&) const -> void override;
+		auto Erase(const uint32_t& amount) const -> void override;
+		auto Write(const std::vector<uint8_t>& data) const -> void override;
+		auto Read(const uint16_t& size) const->std::vector<uint8_t> override;
 		auto Status() const -> const std::string override;
-		auto GetH8SX() const -> const h8sx::H8SX &
+		auto GetH8SX() const -> const h8sx::H8SX&
 		{
 			return h8sx;
 		}
-    private:
-        radio_tool::h8sx::H8SX h8sx;
+	private:
+		radio_tool::h8sx::H8SX h8sx;
 	};
 } // namespace radio_tool::device

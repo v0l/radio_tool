@@ -27,7 +27,7 @@
 namespace radio_tool::radio
 {
 	class RadioOperations;
-	typedef std::function<const RadioOperations *()> CreateRadioOps;
+	typedef std::function<RadioOperations *()> CreateRadioOps;
 
 	/**
 	 * Information related to a detected radio
@@ -36,7 +36,7 @@ namespace radio_tool::radio
 	{
 	public:
 		virtual auto ToString() const -> const std::wstring = 0;
-		virtual auto OpenDevice() const -> const RadioOperations* = 0;
+		virtual auto OpenDevice() const -> RadioOperations * = 0;
 	};
 
 	/**
@@ -50,7 +50,7 @@ namespace radio_tool::radio
 		/**
 		 * Write a firmware file to the device (Firmware Upgrade)
 		 */
-		virtual auto WriteFirmware(const std::string &file) const -> void = 0;
+		virtual auto WriteFirmware(const std::string &file) -> void = 0;
 
 		//virtual auto WriteCodeplug();
 		//virtual auto ReadCodeplug();

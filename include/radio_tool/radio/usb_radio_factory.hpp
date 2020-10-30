@@ -23,6 +23,7 @@
 #include <vector>
 #include <memory>
 #include <functional>
+#include <thread>
 
 #include <libusb-1.0/libusb.h>
 
@@ -36,26 +37,26 @@ namespace radio_tool::radio
 
 		USBRadioInfo(
 			const CreateRadioOps l,
-			const std::wstring &mfg,
-			const std::wstring &prd,
-			const uint16_t &vid,
-			const uint16_t &pid,
-			const uint16_t &idx)
+			const std::wstring& mfg,
+			const std::wstring& prd,
+			const uint16_t& vid,
+			const uint16_t& pid,
+			const uint16_t& idx)
 			: manufacturer(mfg), product(prd), vid(vid), pid(pid), index(idx), loader(l) {}
 
 		auto ToString() const -> const std::wstring override
 		{
 			std::wstringstream os;
 			os << L"["
-			   << std::setfill(L'0') << std::setw(4) << std::hex << vid
-			   << L":"
-			   << std::setfill(L'0') << std::setw(4) << std::hex << pid
-			   << L"]: idx=" << std::setfill(L'0') << std::setw(3) << std::to_wstring(index) << L", "
-			   << manufacturer << L" " << product;
+				<< std::setfill(L'0') << std::setw(4) << std::hex << vid
+				<< L":"
+				<< std::setfill(L'0') << std::setw(4) << std::hex << pid
+				<< L"]: idx=" << std::setfill(L'0') << std::setw(3) << std::to_wstring(index) << L", "
+				<< manufacturer << L" " << product;
 			return os.str();
 		}
 
-		auto OpenDevice() const -> const RadioOperations * override
+		auto OpenDevice() const -> RadioOperations* override
 		{
 			return loader();
 		}
@@ -65,7 +66,7 @@ namespace radio_tool::radio
 	};
 
 	/**
-	 * libusb devices are enumerated from here, 
+	 * libusb devices are enumerated from here,
 	 * implementors of direct usb drivers with libusb can hook this factory
 	 */
 	class USBRadioFactory : public RadioOperationsFactory
@@ -73,13 +74,14 @@ namespace radio_tool::radio
 	public:
 		USBRadioFactory();
 		~USBRadioFactory();
-		auto ListDevices(const uint16_t &idx_offset) const -> const std::vector<RadioInfo *> override;
-
+		auto ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*> override;
+		auto HandleEvents() -> void;
 	private:
-		auto GetDeviceString(const uint8_t &, libusb_device_handle *) const -> std::wstring;
-		static auto OpenDevice(const uint8_t &bus, const uint8_t &port) -> libusb_device_handle *;
-		static auto CreateContext() -> libusb_context*;
-		
-		libusb_context *usb_ctx;
+		auto GetDeviceString(const uint8_t&, libusb_device_handle*) const->std::wstring;
+		static auto OpenDevice(const uint8_t& bus, const uint8_t& port)->libusb_device_handle*;
+		static auto CreateContext()->libusb_context*;
+
+		libusb_context* usb_ctx;
+		std::thread events;
 	};
 }

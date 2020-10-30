@@ -1,33 +1,52 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2022 v0l <radio_tool@v0l.io>
- * 
+ * Copyright (c) 2021 v0l <radio_tool@v0l.io>
+ *
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * radio_tool is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
 #pragma once
 
 #include <radio_tool/radio/radio.hpp>
+#include <radio_tool/device/tyt_sgl_device.hpp>
+
+#include <functional>
 
 namespace radio_tool::radio
 {
-    /**
-     * Primary factory for accessing and listing supported devices
-     */
-    class RadioFactory
-    {
-    public:
-        auto OpenDevice(const uint16_t& index) const -> RadioOperations*;
-        auto ListDevices() const -> const std::vector<RadioInfo*>;
-    };
+	class TYTSGLRadio : public RadioOperations
+	{
+	public:
+		TYTSGLRadio(libusb_device_handle* h);
+
+		auto WriteFirmware(const std::string& file) -> void override;
+		auto ToString() const -> const std::string override;
+		auto GetDevice() const -> const device::RadioDevice* override;
+
+		static auto SupportsDevice(const libusb_device_descriptor& dev) -> bool
+		{
+			if (dev.idVendor == hid::TYTHID::VID && dev.idProduct == hid::TYTHID::PID)
+			{
+				return true;
+			}
+			return false;
+		}
+
+		static auto Create(libusb_device_handle* h) -> TYTSGLRadio*
+		{
+			return new TYTSGLRadio(h);
+		}
+	private:
+		device::TYTSGLDevice device;
+	};
 } // namespace radio_tool::radio

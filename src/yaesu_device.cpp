@@ -1,6 +1,7 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 v0l <radio_tool@v0l.io>
+ * Copyright (c) 2022 v0l <radio_tool@v0l.io>
+ *                    Niccol� Izzo <iu2kin@openrtx.org>
  *
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,15 +20,16 @@
 
 using namespace radio_tool::device;
 
-auto YaesuDevice::SetAddress(const uint32_t &) const -> void { }
-auto YaesuDevice::Erase(const uint32_t &) const -> void { }
-auto YaesuDevice::Read(const uint16_t &) const -> std::vector<uint8_t>
+auto YaesuDevice::SetAddress(const uint32_t&) const -> void { }
+auto YaesuDevice::Erase(const uint32_t&) const -> void { }
+auto YaesuDevice::Read(const uint16_t&) const -> std::vector<uint8_t>
 {
-    return { 0 };
+	return { 0 };
 }
+
 auto YaesuDevice::Status() const -> const std::string
 {
-    return "";
+	return "Unknown";
 }
 
 auto YaesuDevice::Write(const std::vector<uint8_t>& data) const -> void

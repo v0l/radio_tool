@@ -15,9 +15,12 @@ Radio Firmware tool
 | TYT | [MD-446](https://www.tyt888.com/?mod=product_show&id=75) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
 | TYT | [MD-280](https://www.tyt888.com/?mod=product_show&id=80) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
 | Baofeng | [DM-1701](https://www.baofengradio.com/products/dm-1701) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| Baofeng | [DM-1801](https://www.baofengradio.com/products/dm-1801) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| Baofeng | [RD-5R](https://www.baofengradio.com/products/rd-5r) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
 | Connect Systems | [CS800D](https://www.connectsystems.com/products/top/radios/CS800D.htm) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
 | Ailunce | [HD1](https://www.ailunce.com/Product/HD1/Overview) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
 | Yaesu | [FT-70DR](https://www.yaesu.com/indexVS.cfm?cmd=DisplayProducts&ProdCatID=249&encProdID=7CDB93B02164B1FB036530FBD7D37F1A&DivisionID=65&isArchived=0) | ✖️ | ✔️ | ✖️ | ✖️ | ✖️ |
+| Radioddity | [GD-77](https://www.radioddity.com/products/radioddity-gd-77-dmr-two-way-radio) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
 
 ```
 Fw = Firmware

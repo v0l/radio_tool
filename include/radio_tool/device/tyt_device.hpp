@@ -27,14 +27,14 @@ namespace radio_tool::device
 	class TYTDevice : public RadioDevice
 	{
 	public:
-		TYTDevice(libusb_device_handle *h) : dfu(h) {}
+		TYTDevice(libusb_device_handle* h) : dfu(h) {}
 
-		auto SetAddress(const uint32_t &) const -> void override;
-		auto Erase(const uint32_t &amount) const -> void override;
-		auto Write(const std::vector<uint8_t> &data) const -> void override;
-		auto Read(const uint16_t &size) const -> std::vector<uint8_t> override;
+		auto SetAddress(const uint32_t&) const -> void override;
+		auto Erase(const uint32_t& amount) const -> void override;
+		auto Write(const std::vector<uint8_t>& data) const -> void override;
+		auto Read(const uint16_t& size) const->std::vector<uint8_t> override;
 		auto Status() const -> const std::string override;
-		auto GetDFU() const -> const dfu::TYTDFU &
+		auto GetDFU() const -> const dfu::TYTDFU&
 		{
 			return dfu;
 		}

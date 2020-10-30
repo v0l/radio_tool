@@ -117,7 +117,7 @@ auto TYTFW::ToString() const -> std::string
 	std::stringstream out;
 	out << "== TYT Firmware == " << std::endl
 		<< "Radio: " << firmware_model << " (" << radio_model << ")" << std::endl
-		<< "Size:  " << std::fixed << std::setprecision(2) << (data.size() / 1024.0) << " KiB" << std::endl
+		<< "Size:  " << FormatBytes(data.size()) << std::endl
 		<< "Data Segments: " << std::endl;
 	auto n = 0;
 	for (const auto& m : memory_ranges)

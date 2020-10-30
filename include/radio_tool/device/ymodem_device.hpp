@@ -26,15 +26,15 @@ namespace radio_tool::device
 	class YModemDevice : public RadioDevice
 	{
 	public:
-		YModemDevice(const std::string &port, const std::string &filename);
+		YModemDevice(const std::string& port, const std::string& filename);
 
-		auto SetAddress(const uint32_t &) const -> void override;
-		auto Erase(const uint32_t &amount) const -> void override;
-		auto Write(const std::vector<uint8_t> &data) const -> void override;
-		auto Read(const uint16_t &size) const -> std::vector<uint8_t> override;
+		auto SetAddress(const uint32_t&) const -> void override;
+		auto Erase(const uint32_t& amount) const -> void override;
+		auto Write(const std::vector<uint8_t>& data) const -> void override;
+		auto Read(const uint16_t& size) const->std::vector<uint8_t> override;
 		auto Status() const -> const std::string override;
 
-		auto SetInterfaceAttribs(const uint32_t &speed, const int &parity) const -> int;
+		auto SetInterfaceAttribs(const uint32_t& speed, const int& parity) const -> int;
 		auto GetFD() const -> const int&
 		{
 			return fd;

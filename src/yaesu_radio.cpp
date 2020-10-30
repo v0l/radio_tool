@@ -40,14 +40,14 @@ auto YaesuRadio::ToString() const -> const std::string
 	return out.str();
 }
 
-auto YaesuRadio::WriteFirmware(const std::string& file) const -> void
+auto YaesuRadio::WriteFirmware(const std::string& file) -> void
 {
 	auto fw = fw::YaesuFW();
 	fw.Read(file);
 
 	auto h8sx = device.GetH8SX();
 	auto to_write = fw.GetData();
-    h8sx.Init();
-    h8sx.IdentifyDevice();
+	h8sx.Init();
+	h8sx.IdentifyDevice();
 	h8sx.Download(to_write);
 }

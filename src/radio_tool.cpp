@@ -60,6 +60,7 @@ int main(int argc, char **argv)
 
         cxxopts::Options options(argv[0], version);
 
+        // clang-format off
         options.add_options("General")
             ("h,help", "Show this message", cxxopts::value<std::string>()->implicit_value(""), "<command>")
             ("l,list", "List devices")
@@ -102,6 +103,7 @@ int main(int argc, char **argv)
             ("r,radio", "Radio to build firmware file for", cxxopts::value<std::string>(), "<DM1701>");
 
         auto cmd = options.parse(argc, argv);
+        // clang-format on
 
         if (cmd.count("help") || cmd.arguments().empty())
         {
@@ -299,7 +301,7 @@ int main(int argc, char **argv)
         if (cmd.count("info"))
         {
             std::cout << radio->ToString() << std::endl;
-            exit(1);
+            exit(0);
         }
 
         if (cmd.count("flash"))
@@ -307,6 +309,7 @@ int main(int argc, char **argv)
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
             radio->WriteFirmware(in_file);
             std::cout << "Done!" << std::endl;
+            exit(0);
         }
 
         if (cmd.count("program"))

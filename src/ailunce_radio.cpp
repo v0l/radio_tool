@@ -46,7 +46,7 @@ auto AilunceRadio::ToString() const -> const std::string
     return "== Ailunce USB Serial Cable ==";
 }
 
-auto AilunceRadio::WriteFirmware(const std::string &file) const -> void
+auto AilunceRadio::WriteFirmware(const std::string &file) -> void
 {
     auto fw = fw::AilunceFW();
     fw.Read(file);
