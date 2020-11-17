@@ -88,5 +88,5 @@ Usage:
 Output file in this case is a file prefix, the filename will be `unwrapped_0x0800C000` and others if you have
 firmware will more than one segment
 ```
-./radio_tool --unwrap -i wrapped.bin -o unwrapped
+./radio_tool --unwrap -i wrapped.bin -o unwrapped 
 ```
