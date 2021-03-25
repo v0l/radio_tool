@@ -18,7 +18,7 @@ Otherwise you can use the instructions below to build
 Dependencies Linux (Ubuntu/Debian):
 
 ```
-sudo apt install libusb-1.0-0-dev cmake gcc
+sudo apt install libusb-1.0-0-dev cmake gcc g++ pkg-config
 ```
 
 Dependencies Mac:

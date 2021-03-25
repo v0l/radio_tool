@@ -116,7 +116,7 @@ namespace radio_tool::flash
         /**
          * Executes a function, sector aligned over a range of bytes for a give map
          */
-        static constexpr auto AlignedContiguousMemoryOp(const FlashMap& map, const uint32_t& start, const uint32_t& end, 
+        static auto AlignedContiguousMemoryOp(const FlashMap& map, const uint32_t& start, const uint32_t& end,
             const std::function<void(const uint32_t&, const uint32_t&, const FlashSector&)>& fnOp) -> void 
         {
             for (auto addr = start; addr < end;)

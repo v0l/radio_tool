@@ -91,7 +91,7 @@ if(XOR_TOOL_INC)
   endif()
 endif()
 
-install(TARGETS radio_tool)
+install(TARGETS radio_tool RUNTIME DESTINATION bin)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
