@@ -60,8 +60,8 @@ auto TYTRadio::WriteFirmware(const std::string &file) const -> void
 
         auto b_offset = 0u;
         flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.address, r.address + r.size, [this, &fw, &r, &TransferSize, &b_offset](const uint32_t &addr, const uint32_t &size, const flash::FlashSector &sector) {
-            const auto blocks = (int)std::ceil(size / TransferSize);
             const auto& binary_data = r.data;
+            const auto blocks = (int)std::ceil(size / (double)TransferSize);
 
             std::cerr << "Writing: 0x" << std::setw(8) << std::setfill('0') << std::hex << addr
                       << " [Size=0x" << std::hex << size << "]" << std::endl;
@@ -73,8 +73,6 @@ auto TYTRadio::WriteFirmware(const std::string &file) const -> void
                     binary_data.begin() + block_offset, 
                     binary_data.begin() + block_offset + std::min(TransferSize, r.size - block_offset)
                 );
-
-                //add padding?
 
                 /*std::cerr
                     << "-- wValue=0x" << std::setw(2) << std::setfill('0') << std::hex << (2 + wValue)

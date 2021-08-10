@@ -252,7 +252,7 @@ auto TYTFW::ApplyXOR() -> void
 
     for (const auto &r : tyt::config::All)
     {
-        if (std::equal(r.counter_magic.begin(), r.counter_magic.end(), counterMagic.begin()))
+        if (std::equal(r.counter_magic.begin(), r.counter_magic.end(), counterMagic.begin(), counterMagic.end()))
         {
             xor_model = r.cipher;
             xor_len = r.cipher_len;

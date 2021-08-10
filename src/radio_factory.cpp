@@ -123,6 +123,15 @@ auto RadioFactory::ListDevices() const -> const std::vector<RadioInfo>
             ret.push_back(nInf);
             libusb_close(h);
         }
+        else 
+        {
+            std::cerr << "Failed to open device VID=0x"
+                << std::hex << std::setw(4) << std::setfill('0') << desc.idVendor
+                << ", PID=0x"
+                << std::hex << std::setw(4) << std::setfill('0') << desc.idProduct
+                << " (" << libusb_error_name(err) << ")"
+                << std::endl;
+        }
     });
 
     return ret;
