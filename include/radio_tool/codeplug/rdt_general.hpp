@@ -68,13 +68,13 @@ namespace radio_tool::codeplug
             intro_line2.shrink_to_fit();
         }
 
-        auto ToString() const -> const std::u16string
+        auto ToString() const -> const std::wstring
         {
-            std::basic_stringstream<char16_t> out;
+            std::basic_stringstream<wchar_t> out;
 
             out 
-                << "Intro 1: " << intro_line1 << std::endl
-                << "Intro 2: " << intro_line2; //<< std::endl;
+                << "Intro 1: " << std::wstring(intro_line1.begin(), intro_line1.end()) << std::endl
+                << "Intro 2: " << std::wstring(intro_line2.begin(), intro_line2.end()); //<< std::endl;
 
             return out.str();
         }
