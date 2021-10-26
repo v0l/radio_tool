@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.0)
+cmake_minimum_required(VERSION 3.2.0)
 project(radio_tool VERSION 0.1.1)
 
 option(BUILD_TESTING "Enable tests" OFF)

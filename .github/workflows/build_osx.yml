@@ -1,0 +1,27 @@
+name: OSXRelease
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  build:
+    runs-on: [self-hosted, osx]
+    steps:
+    - uses: actions/checkout@v2
+    - name: run-cmake
+      working-directory: ${{ github.workspace }}
+      run: |
+        mkdir build && cd build
+        cmake -DBUILD_TESTING=1 -DCMAKE_BUILD_TYPE=Release ..
+    - name: make
+      working-directory: ${{ github.workspace }}/build
+      run: make -j4
+    - name: test
+      working-directory: ${{ github.workspace }}/build
+      run: ctest -C Release --timeout 600 --output-on-failure
+    - name: pack
+      working-directory: ${{ github.workspace }}/build
+      run: cpack -C Release
+    - uses: actions/upload-artifact@v2
+      with:
+        name: release-tar
+        path: |
+          ${{github.workspace}}/build/*.tar.xz.sha256
+          ${{github.workspace}}/build/*.tar.xz
