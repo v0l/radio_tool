@@ -23,7 +23,7 @@ sudo apt install libusb-1.0-0-dev cmake gcc g++ pkg-config
 
 Dependencies Mac:
 ```
-brew install libusb cmake
+brew install libusb cmake pkg-config
 ```
 
 Build:
