@@ -79,7 +79,7 @@ auto AilunceRadio::SetInterfaceAttribs(int fd, int speed, int parity) const -> i
         return 0;
 }
 
-auto AilunceRadio::WriteFirmware(const std::string &file) const -> void
+auto AilunceRadio::WriteFirmware(const std::string &file, const std::string &port) const -> void
 {
     constexpr auto TransferSize = 1024u;
 
@@ -87,9 +87,7 @@ auto AilunceRadio::WriteFirmware(const std::string &file) const -> void
     fw.Read(file);
     fw.Encrypt();
 
-    // TODO: put portname as a parameter
-    char *portname = "/tmp/ttyV0";
-    int fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
+    int fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0)
     {
             perror("Error opening serial port");

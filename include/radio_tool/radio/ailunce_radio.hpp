@@ -32,7 +32,7 @@ namespace radio_tool::radio
         AilunceRadio(libusb_device_handle* h)
             : dfu(h) {}
 
-        auto WriteFirmware(const std::string &file) const -> void override;
+        auto WriteFirmware(const std::string &file, const std::string &port) const -> void override;
         auto ToString() const -> const std::string override;
 
         static auto SupportsDevice(const libusb_device_descriptor &dev) -> bool
