@@ -55,6 +55,9 @@ set(ALL_SRC
     src/tyt_dfu.cpp
     src/tyt_fw.cpp
     src/cs_fw.cpp
+    src/ailunce_radio.cpp
+    src/ailunce_fw.cpp
+    src/fymodem.c
     src/rdt.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp"
 )
