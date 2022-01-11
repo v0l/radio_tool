@@ -88,7 +88,7 @@ namespace radio_tool::codeplug
             return true;
         }
 
-        auto GetTimestampOffset() const -> const uint32_t
+        auto GetTimestampOffset() const -> uint32_t
         {
             for(const auto& rx : RadioConfigs)
             {
@@ -103,7 +103,7 @@ namespace radio_tool::codeplug
             return 0x2001u; //default
         }
         
-        auto GetGeneralOffset() const -> const uint32_t
+        auto GetGeneralOffset() const -> uint32_t
         {
             for(const auto& rx : RadioConfigs)
             {

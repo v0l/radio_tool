@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2022 Niccolò Izzo IU2KIN
+ * Copyright (c) 2022 Niccolï¿½ Izzo IU2KIN
  * Copyright (c) 2022 v0l <radio_tool@v0l.io>
  *
  * radio_tool is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 
 using namespace radio_tool::fw;
 
-auto AilunceFW::Read(const std::string& file) -> void
+auto AilunceFW::Read(const std::string &file) -> void
 {
 	auto i = std::ifstream(file, std::ios_base::binary);
 	if (i.is_open())
@@ -33,17 +33,17 @@ auto AilunceFW::Read(const std::string& file) -> void
 		memory_ranges.push_back(std::make_pair(0, binarySize));
 		i.seekg(std::ios_base::beg);
 		data.resize(binarySize);
-		i.read((char*)data.data(), data.size());
+		i.read((char *)data.data(), data.size());
 	}
 	i.close();
 }
 
-auto AilunceFW::Write(const std::string& file) -> void
+auto AilunceFW::Write(const std::string &file) -> void
 {
 	std::ofstream fout(file, std::ios_base::binary);
 	if (fout.is_open())
 	{
-		fout.write((char*)data.data(), data.size());
+		fout.write((char *)data.data(), data.size());
 		fout.close();
 	}
 }
@@ -53,7 +53,7 @@ auto AilunceFW::ToString() const -> std::string
 	std::stringstream out;
 	out << "== Ailunce Firmware == " << std::endl;
 	auto n = 0;
-	for (const auto& m : memory_ranges)
+	for (const auto &m : memory_ranges)
 	{
 		out << "  " << n++ << ": Start=0x" << std::setfill('0') << std::setw(8) << std::hex << m.first
 			<< ", Length=0x" << std::setfill('0') << std::setw(8) << std::hex << m.second
@@ -62,7 +62,7 @@ auto AilunceFW::ToString() const -> std::string
 	return out.str();
 }
 
-auto AilunceFW::SupportsFirmwareFile(const std::string& file) -> bool
+auto AilunceFW::SupportsFirmwareFile(const std::string &file) -> bool
 {
 	std::ifstream i;
 	i.open(file, i.binary);
@@ -78,7 +78,7 @@ auto AilunceFW::SupportsFirmwareFile(const std::string& file) -> bool
 }
 
 // Ailunce hts are flashed with a USB serial adapter, no way to identify
-auto AilunceFW::SupportsRadioModel(const std::string& model) -> bool
+auto AilunceFW::SupportsRadioModel(const std::string &model) -> bool
 {
 	return model == "HD1";
 }
@@ -88,10 +88,8 @@ auto AilunceFW::GetRadioModel() const -> const std::string
 	return "Ailunce HD1";
 }
 
-
-auto AilunceFW::SetRadioModel(const std::string& model) -> void
+auto AilunceFW::SetRadioModel(const std::string &model) -> void
 {
-	;
 }
 
 auto AilunceFW::Decrypt() -> void
@@ -106,9 +104,9 @@ auto AilunceFW::Encrypt() -> void
 
 auto AilunceFW::ApplyXOR() -> void
 {
-	for (auto i = 0; i < (data.size() / sizeof(uint32_t)); i++)
+	for (uint32_t i = 0; i < (data.size() / sizeof(uint32_t)); i++)
 	{
-		uint32_t* word = reinterpret_cast<uint32_t*>(data.data()) + i;
+		uint32_t *word = reinterpret_cast<uint32_t *>(data.data()) + i;
 		if (*word == 0x0 || *word == 0xffffffff)
 			*word ^= 0xffffffff;
 		else if (*word & (1 << 28))
@@ -118,7 +116,7 @@ auto AilunceFW::ApplyXOR() -> void
 	}
 	// Last bytes
 	for (auto z = data.size() - (data.size() % sizeof(uint32_t));
-		z < data.size(); z++)
+		 z < data.size(); z++)
 	{
 		if (data[z] == 0x00 || data[z] == 0xff)
 			data[z] ^= 0xff;

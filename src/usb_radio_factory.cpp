@@ -16,6 +16,7 @@
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <radio_tool/device/device.hpp>
 #include <radio_tool/radio/usb_radio_factory.hpp>
 #include <radio_tool/radio/tyt_radio.hpp>
 
@@ -29,10 +30,16 @@
 
 using namespace radio_tool::radio;
 
+struct DeviceMapper
+{
+    std::function<bool(const libusb_device_descriptor &)> SupportsDevice;
+    std::function<std::unique_ptr<RadioOperations>(libusb_device_handle *)> CreateOperations;
+};
+
 /**
  * A list of functions to test each radio handler
  */
-const std::vector<std::pair<std::function<bool(const libusb_device_descriptor&)>, std::function<std::unique_ptr<RadioOperations>(libusb_device_handle*)>>> RadioSupports = {
+const std::vector<DeviceMapper> RadioSupports = {
     {TYTRadio::SupportsDevice, TYTRadio::Create},
 };
 
@@ -45,9 +52,8 @@ USBRadioFactory::USBRadioFactory() : usb_ctx(nullptr)
     }
 #if defined(LIBUSB_API_VERSION) && (LIBUSB_API_VERSION >= 0x01000107)
     libusb_set_log_cb(
-        usb_ctx, [](libusb_context* ctx, enum libusb_log_level level, const char* str) {
-            std::wcout << str << std::endl;
-        },
+        usb_ctx, [](libusb_context *, enum libusb_log_level, const char *str)
+        { std::wcout << str << std::endl; },
         LIBUSB_LOG_CB_CONTEXT);
 #endif
 }
@@ -58,9 +64,9 @@ USBRadioFactory::~USBRadioFactory()
     usb_ctx = nullptr;
 }
 
-auto USBRadioFactory::GetRadioSupport(const uint16_t& dev_idx) const -> std::unique_ptr<RadioOperations>
+auto USBRadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> std::unique_ptr<RadioOperations>
 {
-    libusb_device** devs;
+    libusb_device **devs;
     auto ndev = libusb_get_device_list(usb_ctx, &devs);
     int err = LIBUSB_SUCCESS;
     auto n_idx = 0;
@@ -72,17 +78,17 @@ auto USBRadioFactory::GetRadioSupport(const uint16_t& dev_idx) const -> std::uni
             libusb_device_descriptor desc;
             if (LIBUSB_SUCCESS == (err = libusb_get_device_descriptor(devs[x], &desc)))
             {
-                for (const auto& fnSupport : RadioSupports)
+                for (const auto &fnSupport : RadioSupports)
                 {
-                    if (fnSupport.first(desc))
+                    if (fnSupport.SupportsDevice(desc))
                     {
                         if (n_idx == dev_idx)
                         {
-                            libusb_device_handle* h;
+                            libusb_device_handle *h;
                             if (LIBUSB_SUCCESS == (err = libusb_open(devs[x], &h)))
                             {
                                 libusb_free_device_list(devs, 1);
-                                return fnSupport.second(h);
+                                return fnSupport.CreateOperations(h);
                             }
                             else
                             {
@@ -106,9 +112,9 @@ auto USBRadioFactory::GetRadioSupport(const uint16_t& dev_idx) const -> std::uni
     throw std::runtime_error("Radio not supported");
 }
 
-auto USBRadioFactory::OpDeviceList(std::function<void(const libusb_device*, const libusb_device_descriptor&, const uint16_t&)> op) const -> void
+auto USBRadioFactory::OpDeviceList(std::function<void(const libusb_device *, const libusb_device_descriptor &, const uint16_t&)> op) const -> void
 {
-    libusb_device** devs;
+    libusb_device **devs;
     auto ndev = libusb_get_device_list(usb_ctx, &devs);
     int err = LIBUSB_SUCCESS;
     auto n_idx = 0;
@@ -120,9 +126,9 @@ auto USBRadioFactory::OpDeviceList(std::function<void(const libusb_device*, cons
             libusb_device_descriptor desc;
             if (LIBUSB_SUCCESS == (err = libusb_get_device_descriptor(devs[x], &desc)))
             {
-                for (const auto& fnSupport : RadioSupports)
+                for (const auto &fnSupport : RadioSupports)
                 {
-                    if (fnSupport.first(desc))
+                    if (fnSupport.SupportsDevice(desc))
                     {
                         op(devs[x], desc, n_idx);
                         n_idx++;
@@ -144,10 +150,11 @@ auto USBRadioFactory::ListDevices() const -> const std::vector<RadioInfo>
 {
     std::vector<RadioInfo> ret;
 
-    OpDeviceList([&ret, this](const libusb_device* dev, const libusb_device_descriptor& desc, const uint16_t& idx) {
+    OpDeviceList([&ret, this](const libusb_device *dev, const libusb_device_descriptor &desc, const uint16_t &idx)
+    {
         int err = LIBUSB_SUCCESS;
-        libusb_device_handle* h;
-        if (LIBUSB_SUCCESS == (err = libusb_open(const_cast<libusb_device*>(dev), &h)))
+        libusb_device_handle *h;
+        if (LIBUSB_SUCCESS == (err = libusb_open(const_cast<libusb_device *>(dev), &h)))
         {
             auto mfg = GetDeviceString(desc.iManufacturer, h),
                 prd = GetDeviceString(desc.iProduct, h);
@@ -165,12 +172,12 @@ auto USBRadioFactory::ListDevices() const -> const std::vector<RadioInfo>
                 << " (" << libusb_error_name(err) << ")"
                 << std::endl;
         }
-        });
+    });
 
     return ret;
 }
 
-auto USBRadioFactory::GetDeviceString(const uint8_t& desc, libusb_device_handle* h) const -> std::wstring
+auto USBRadioFactory::GetDeviceString(const uint8_t &desc, libusb_device_handle *h) const -> std::wstring
 {
     auto err = 0;
     size_t prd_len = 0;
@@ -185,6 +192,6 @@ auto USBRadioFactory::GetDeviceString(const uint8_t& desc, libusb_device_handle*
 
     //Encoded as UTF-16 (LE), Prefixed with length and some other byte.
     typedef std::codecvt_utf16<char16_t, 1114111UL, std::little_endian> cvt;
-    auto u16 = std::wstring_convert<cvt, char16_t>().from_bytes((const char*)prd + 2, (const char*)prd + prd_len);
+    auto u16 = std::wstring_convert<cvt, char16_t>().from_bytes((const char *)prd + 2, (const char *)prd + prd_len);
     return std::wstring(u16.begin(), u16.end());
 }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2.0)
-project(radio_tool VERSION 0.1.1)
+project(radio_tool VERSION 0.2.0)
 
 option(BUILD_TESTING "Enable tests" OFF)
 
@@ -54,6 +54,7 @@ set(ALL_SRC
     src/usb_radio_factory.cpp
     src/tyt_radio.cpp
     src/tyt_device.cpp
+    src/ymodem_device.cpp
     src/tyt_dfu.cpp
     src/tyt_fw.cpp
     src/cs_fw.cpp

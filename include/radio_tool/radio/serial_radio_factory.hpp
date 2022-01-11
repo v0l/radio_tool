@@ -17,29 +17,31 @@
  */
 #pragma once
 
-#include <radio_tool/device/device.hpp>
-#include <radio_tool/dfu/tyt_dfu.hpp>
+#include <radio_tool/radio/radio_factory.hpp>
+#include <radio_tool/radio/radio.hpp>
+
+#include <string>
+#include <vector>
+#include <memory>
 
 #include <libusb-1.0/libusb.h>
 
-namespace radio_tool::device
-{
-	class TYTDevice : public RadioDevice
+namespace radio_tool::radio {
+	class SerialRadioFactory : public RadioOperationsFactory
 	{
 	public:
-		TYTDevice(libusb_device_handle *h) : dfu(h) {}
+		/**
+		 * Return the radio support handler for a specified usb device
+		 */
+		auto GetRadioSupport(const uint16_t& idx) const->std::unique_ptr<RadioOperations> override;
 
-		auto SetAddress(const uint32_t &) const -> void override;
-		auto Erase(const uint32_t &amount) const -> void override;
-		auto Write(const std::vector<uint8_t> &data) const -> void override;
-		auto Read(const uint16_t &size) const -> std::vector<uint8_t> override;
-		auto Status() const -> const std::string override;
-		auto GetDFU() const -> const dfu::TYTDFU &
-		{
-			return dfu;
-		}
+		/**
+		 * Gets info about currently supported devices
+		 */
+		auto ListDevices() const -> const std::vector<RadioInfo> override;
 
 	private:
-		dfu::TYTDFU dfu;
+		auto GetDeviceString(const uint8_t&, libusb_device_handle*) const->std::wstring;
+		auto OpDeviceList(std::function<void(const libusb_device*, const libusb_device_descriptor&, const uint16_t&)>) const -> void;
 	};
-} // namespace radio_tool::device
+}

@@ -45,6 +45,8 @@ namespace radio_tool::codeplug
                     return try_this.second();
                 }
             }
+
+            return nullptr;
         }
     };
 } // namespace radio_tool::codeplug

@@ -113,7 +113,7 @@ namespace radio_tool
 
     static inline auto ApplyXOR(std::vector<uint8_t> &data, const uint8_t *xor_key, const uint16_t &key_len) -> void
     {
-        for (auto z = 0; z < data.size(); z++)
+        for (size_t z = 0; z < data.size(); z++)
         {
             data[z] = data[z] ^ xor_key[z % key_len];
         }
@@ -129,11 +129,11 @@ namespace radio_tool
         }
     }
 
-    static auto BSDChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> const uint16_t
+    static auto BSDChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> uint16_t
     {
         int32_t checksum = 0u;
 
-        for (auto i = 0; i < size; i++)
+        for (size_t i = 0; i < size; i++)
         {
             checksum = (checksum >> 1) + ((checksum & 1) << 15);
             checksum += *data;
@@ -154,7 +154,7 @@ namespace radio_tool
         // n > 0 and n * (n+1) / 2 * (2^8-1) < (2^32-1).
         for (c0 = c1 = 0; len > 0; len -= block_size)
         {
-            auto blocklen = std::min(block_size, len);
+            uint32_t blocklen = std::min(block_size, len);
             for (i = 0; i < blocklen; ++i)
             {
                 c0 = c0 + (*data);

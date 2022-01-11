@@ -51,7 +51,7 @@ namespace radio_tool::flash
         /**
          * End address of this flash sector
          */
-        constexpr auto End() const -> const uint32_t
+        constexpr auto End() const -> uint32_t
         {
             return start + size;
         }

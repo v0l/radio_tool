@@ -35,7 +35,7 @@ namespace radio_tool::fw
             std::function<bool(const std::string &)> &&fnFile,
             std::function<bool(const std::string &)> &&fnRadio,
             std::function<std::unique_ptr<FirmwareSupport>()> &&fnCreate
-        ) : SupportsRadioModel(fnRadio), SupportsFirmwareFile(fnFile), CreateHandler(fnCreate)
+        ) : SupportsFirmwareFile(fnFile), SupportsRadioModel(fnRadio), CreateHandler(fnCreate)
         {
 
         }

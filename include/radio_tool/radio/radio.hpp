@@ -30,16 +30,14 @@ namespace radio_tool::radio
 	public:
 		const std::wstring manufacturer, product;
 		const uint16_t vid, pid, index;
-		const RadioDeviceDriver driver;
 
 		RadioInfo(
 			const std::wstring& mfg, 
 			const std::wstring& prd, 
 			const uint16_t& vid, 
 			const uint16_t& pid, 
-			const uint16_t& idx, 
-			const RadioDeviceDriver& drv)
-			: manufacturer(mfg), product(prd), vid(vid), pid(pid), index(idx), driver(drv) {}
+			const uint16_t& idx)
+			: manufacturer(mfg), product(prd), vid(vid), pid(pid), index(idx) {}
 
 		auto ToString() const -> const std::wstring
 		{
@@ -49,20 +47,9 @@ namespace radio_tool::radio
 				<< L":"
 				<< std::setfill(L'0') << std::setw(4) << std::hex << pid
 				<< L"]: idx=" << std::setfill(L'0') << std::setw(3) << std::to_wstring(index) << L", "
-				<< manufacturer << L" " << product << L", "
-				<< L"driver=" << DriverNames.at((int)driver);
+				<< manufacturer << L" " << product;
 			return os.str();
 		}
-	};
-
-	const auto DriverNames = std::vector<std::wstring>{
-		L"TYT",
-		L"YModem"
-	};
-
-	enum class RadioDeviceDriver {
-		TYT, 
-		YModem
 	};
 
 	class RadioOperations
@@ -81,11 +68,24 @@ namespace radio_tool::radio
 		/**
 		 * Return the device communication handler
 		 */
-		virtual auto GetDevice() const -> const device::RadioDevice & = 0;
+		virtual auto GetDevice() const -> const device::RadioDevice* = 0;
 
 		/**
 		 * Get general info about the radio
 		 */
 		virtual auto ToString() const -> const std::string = 0;
 	};
+
+	class RadioOperationsFactory {
+    public:
+        /**
+         * Return the radio support handler for a specified radio device
+         */
+        virtual auto GetRadioSupport(const uint16_t& idx) const->std::unique_ptr<RadioOperations> = 0;
+
+        /**
+         * Gets info about currently supported devices
+         */
+        virtual auto ListDevices() const -> const std::vector<RadioInfo> = 0;
+    };
 } // namespace radio_tool::radio

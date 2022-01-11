@@ -16,6 +16,8 @@
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
 #include <radio_tool/radio/tyt_radio.hpp>
+#include <radio_tool/dfu/dfu.hpp>
+#include <radio_tool/dfu/tyt_dfu.hpp>
 #include <radio_tool/fw/tyt_fw.hpp>
 #include <radio_tool/util/flash.hpp>
 
@@ -30,6 +32,7 @@ auto TYTRadio::ToString() const -> const std::string
 {
     std::stringstream out;
 
+    auto dfu = device.GetDFU();
     auto model = dfu.IdentifyDevice();
     auto time = dfu.GetTime();
 
@@ -47,10 +50,11 @@ auto TYTRadio::WriteFirmware(const std::string &file) const -> void
     auto fw = fw::TYTFW();
     fw.Read(file);
 
+    auto dfu = device.GetDFU();
     dfu.SendTYTCommand(dfu::TYTCommand::FirmwareUpgrade);
     for (auto &r : fw.GetDataSegments())
     {
-        flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.address, r.address + r.size, [this](const uint32_t &addr, const uint32_t &size, const flash::FlashSector &sector) {
+        flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.address, r.address + r.size, [&dfu](const uint32_t &addr, const uint32_t &size, const flash::FlashSector &sector) {
             std::cerr << "Erasing: 0x" << std::setw(8) << std::setfill('0') << std::hex << addr
                       << " [Size=0x" << std::hex << size << "]" << std::endl
                       << "-- " << sector.ToString() << std::endl;
@@ -59,7 +63,7 @@ auto TYTRadio::WriteFirmware(const std::string &file) const -> void
         });
 
         auto b_offset = 0u;
-        flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.address, r.address + r.size, [this, &fw, &r, &TransferSize, &b_offset](const uint32_t &addr, const uint32_t &size, const flash::FlashSector &sector) {
+        flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.address, r.address + r.size, [&dfu, &r, &TransferSize, &b_offset](const uint32_t &addr, const uint32_t &size, const flash::FlashSector &sector) {
             const auto& binary_data = r.data;
             const auto blocks = (int)ceil(size / (double)TransferSize);
 

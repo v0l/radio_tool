@@ -197,7 +197,7 @@ auto CSFW::SupportsRadioModel(const std::string &model) -> bool
     return false;
 }
 
-auto CSFW::MakeChecksum() const -> const uint16_t
+auto CSFW::MakeChecksum() const -> uint16_t
 {
     //Make a copy of the firmware data because we will apply XOR
     auto to_check = MakeFiledata();

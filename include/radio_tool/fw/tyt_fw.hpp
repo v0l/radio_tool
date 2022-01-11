@@ -133,7 +133,7 @@ namespace radio_tool::fw
     public:
         TYTFW() {}
         TYTFW(const std::vector<uint8_t> &cMagic)
-            : counterMagic(cMagic), FirmwareSupport(0x200)
+            : FirmwareSupport(0x200), counterMagic(cMagic)
         { }
 
         auto Read(const std::string &file) -> void override;
@@ -203,10 +203,6 @@ namespace radio_tool::fw
 
     private:
         std::vector<uint8_t> counterMagic; //2-3 bytes
-
-        uint32_t n1,
-            n2, // appears to be some kind of bootloader version
-            n3, n4;
         std::string firmware_model, radio_model;
 
         static auto ReadHeader(std::ifstream &) -> TYTFirmwareHeader;

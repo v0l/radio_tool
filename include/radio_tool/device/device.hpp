@@ -43,6 +43,11 @@ namespace radio_tool::device
 		 * Read bytes from the device
 		 */
 		virtual auto Read(const uint16_t& size) const->std::vector<uint8_t> = 0;
+
+		/**
+		 * Get general staus of the device
+		 */
+		virtual auto Status() const -> const std::string = 0;
 	};
 
 } // namespace radio_tool::device

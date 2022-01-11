@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2022 Niccolò Izzo IU2KIN
+ * Copyright (c) 2022 Niccolï¿½ Izzo IU2KIN
  * Copyright (c) 2022 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
@@ -19,47 +19,54 @@
 #pragma once
 
 #include <radio_tool/radio/radio.hpp>
+#include <radio_tool/device/ymodem_device.hpp>
 
-#include <functional>
+#include <libusb-1.0/libusb.h>
+
+using namespace std::string_literals;
 
 namespace radio_tool::radio
 {
     class AilunceRadio : public RadioOperations
     {
     public:
+        // Prolific Technology, Inc. - USB-Serial Controller
         static const auto VID = 0x067b;
         static const auto PID = 0x2303;
 
-        AilunceRadio(libusb_device_handle* h)
-            : dfu(h) {}
+        AilunceRadio(const std::string &prt, const std::string &fname);
 
         auto WriteFirmware(const std::string &file) const -> void override;
         auto ToString() const -> const std::string override;
 
-        static auto SupportsDevice(const libusb_device_descriptor &dev) -> bool
+        auto GetDevice() const -> const device::RadioDevice* override
         {
-            if (dev.idVendor == VID && dev.idProduct == PID)
-            {
-                return true;
-            }
+            return &device;
+        }
+
+        static auto SupportsDevice(const std::string &) -> bool
+        {
+            // not possible to detect from serial port?
+            // ideally we could map serial ports to USB devices
+            //
+            // possible windows solution: https://aticleworld.com/get-com-port-of-usb-serial-device/
+            // possible linux solution: https://unix.stackexchange.com/a/81767
+            //
+            // for now listing device will be unsupported
             return false;
         }
 
-        /**
-         * Get the handler used to communicate with this device
-         */
-        auto GetDFU() const -> const dfu::DFU& override
+        static auto SupportsDevice(libusb_device_descriptor *h) -> bool
         {
-            return dfu;
+            return h->idVendor == VID && h->idProduct == PID;
         }
 
-        static auto Create(libusb_device_handle* h) -> std::unique_ptr<AilunceRadio> {
-            return std::unique_ptr<AilunceRadio>(new AilunceRadio(h));
+        static auto Create(const std::string &port) -> std::unique_ptr<AilunceRadio>
+        {
+            return std::unique_ptr<AilunceRadio>(new AilunceRadio(port, "firmware.bin"s));
         }
+
     private:
-        uint16_t dev_index;
-        const dfu::DFU dfu;
-
-        auto SetInterfaceAttribs(int fd, int speed, int parity) const -> int;
+        device::YModemDevice device;
     };
 } // namespace radio_tool::radio

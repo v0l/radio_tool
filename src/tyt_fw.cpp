@@ -35,7 +35,7 @@ auto TYTFW::Read(const std::string &file) -> void
         radio_model = GetRadioFromMagic(counterMagic);
 
         auto binarySize = 0;
-        for (auto nMem = 0; nMem < header.n_regions; nMem++)
+        for (uint32_t nMem = 0; nMem < header.n_regions; nMem++)
         {
             uint32_t rStart = 0, rLength = 0;
             i.read((char *)&rStart, 4);
@@ -91,7 +91,7 @@ auto TYTFW::Write(const std::string &file) -> void
         }
 
         //add padding
-        for(auto pad_x = 0; pad_x < 0x80 - (sizeof(uint32_t) * memory_ranges.size() * 2); pad_x++)
+        for(uint32_t pad_x = 0; pad_x < 0x80 - (sizeof(uint32_t) * memory_ranges.size() * 2); pad_x++)
         {
             fout.put(0xff);
         }
@@ -170,7 +170,6 @@ auto TYTFW::CheckHeader(const TYTFirmwareHeader &header) -> void
         throw std::runtime_error("Counter magic is invalid, or not supported");
     }
 
-    uint32_t binarySize = 0;
     if ((header.n_regions * 8) > 0x80)
     {
         throw std::runtime_error("Memory region count out of bounds");

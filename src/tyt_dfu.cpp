@@ -40,7 +40,7 @@ auto TYTDFU::ReadRegister(const TYTRegister &reg) const -> std::vector<uint8_t>
     return Upload(TYTDFU::RegisterSize);
 }
 
-auto TYTDFU::GetTime() const -> const time_t
+auto TYTDFU::GetTime() const -> time_t
 {
     InitUpload();
     auto time = ReadRegister(TYTRegister::RTC);

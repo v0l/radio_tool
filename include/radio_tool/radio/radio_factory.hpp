@@ -21,16 +21,12 @@
 
 namespace radio_tool::radio
 {
-    class RadioOperationsFactory {
+    class RadioFactory : public RadioOperationsFactory
+    {
     public:
-        /**
-         * Return the radio support handler for a specified radio device
-         */
-        virtual auto GetRadioSupport(const uint16_t& idx) const->std::unique_ptr<RadioOperations> = 0;
-
-        /**
-         * Gets info about currently supported devices
-         */
-        virtual auto ListDevices() const -> const std::vector<RadioInfo> = 0;
+        auto GetRadioSupport(const uint16_t &idx) const -> std::unique_ptr<RadioOperations> override;
+        auto ListDevices() const -> const std::vector<RadioInfo> override;
+    private:
+        auto OpAllFactories(std::function<void(RadioOperations*,const uint16_t&)> op) const -> void;
     };
 } // namespace radio_tool::radio

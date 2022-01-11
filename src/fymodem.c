@@ -12,8 +12,11 @@
  */
 
 #include <fymodem.h>
+#include <stdio.h>
+
 #ifndef _WIN32
 #include <termios.h>
+#include <unistd.h>
 #endif
 
 /* filesize 999999999999999 should be enough... */
@@ -46,18 +49,18 @@
 /* error logging function */
 #define YM_ERR(fmt, ...) do { printf(fmt, __VA_ARGS__); } while(0)
 
-int global_fd = 0;
+FILE* global_fd = 0;
 
 char __ym_getchar(int timeout_ms)
 {
     char c = 0;
-    read(global_fd, &c, 1);
+    fread(&c, 1, 1, global_fd);
     return c;
 }
 
 void __ym_putchar(char c)
 {
-    write(global_fd, &c, 1);
+    fwrite(&c, 1, 1, global_fd);
 }
 
 void __ym_sleep_ms(int delay_ms)

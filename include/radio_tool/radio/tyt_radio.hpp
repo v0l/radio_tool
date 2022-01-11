@@ -36,26 +36,21 @@ namespace radio_tool::radio
 
         static auto SupportsDevice(const libusb_device_descriptor &dev) -> bool
         {
-            if (dev.idVendor == dfu::TYTDFU::VID && dev.idProduct == dfu::TYTDFU::PID)
-            {
-                return true;
-            }
-            return false;
+            return dev.idVendor == dfu::TYTDFU::VID && dev.idProduct == dfu::TYTDFU::PID;
         }
 
         /**
          * Get the handler used to communicate with this device
          */
-        auto GetDevice() const -> const device::TYTDevice& override
+        auto GetDevice() const -> const device::TYTDevice* override
         {
-            return device;
+            return &device;
         }
 
         static auto Create(libusb_device_handle* h) -> std::unique_ptr<TYTRadio> {
             return std::unique_ptr<TYTRadio>(new TYTRadio(h));
         }
     private:
-        uint16_t dev_index;
         const device::TYTDevice device;
     };
 } // namespace radio_tool::radio

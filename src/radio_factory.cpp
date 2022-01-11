@@ -15,3 +15,23 @@
  * You should have received a copy of the GNU General Public License
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
+#include <radio_tool/radio/radio_factory.hpp>
+#include <radio_tool/radio/usb_radio_factory.hpp>
+#include <radio_tool/radio/serial_radio_factory.hpp>
+
+#include <functional>
+
+using namespace radio_tool::radio;
+
+auto RadioFactory::GetRadioSupport(const uint16_t &idx) const -> std::unique_ptr<RadioOperations>
+{
+}
+
+auto RadioFactory::ListDevices() const -> const std::vector<RadioInfo>
+{
+    auto ret = std::vector<RadioInfo>();
+
+    auto usb = USBRadioFactory();
+    auto usbDevices = usb.ListDevices();
+    ret.insert(ret.end(), usbDevices.begin(), usbDevices.end());
+}

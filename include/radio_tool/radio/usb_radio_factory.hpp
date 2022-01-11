@@ -17,7 +17,6 @@
  */
 #pragma once
 
-#include <radio_tool/radio/radio_factory.hpp>
 #include <radio_tool/radio/radio.hpp>
 
 #include <string>

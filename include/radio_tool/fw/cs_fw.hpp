@@ -73,7 +73,7 @@ namespace radio_tool::fw
         CS800D_header header;
         uint16_t checksum;
 
-        auto MakeChecksum() const -> const uint16_t;
+        auto MakeChecksum() const -> uint16_t;
         auto MakeFiledata() const -> std::vector<uint8_t>;
         auto UpdateHeader() -> void;
     };

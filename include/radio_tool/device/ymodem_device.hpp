@@ -18,28 +18,30 @@
 #pragma once
 
 #include <radio_tool/device/device.hpp>
-#include <radio_tool/dfu/tyt_dfu.hpp>
 
-#include <libusb-1.0/libusb.h>
+#include <string>
 
 namespace radio_tool::device
 {
-	class TYTDevice : public RadioDevice
+	class YModemDevice : public RadioDevice
 	{
 	public:
-		TYTDevice(libusb_device_handle *h) : dfu(h) {}
+		YModemDevice(const std::string &, const std::string &);
 
 		auto SetAddress(const uint32_t &) const -> void override;
 		auto Erase(const uint32_t &amount) const -> void override;
 		auto Write(const std::vector<uint8_t> &data) const -> void override;
 		auto Read(const uint16_t &size) const -> std::vector<uint8_t> override;
 		auto Status() const -> const std::string override;
-		auto GetDFU() const -> const dfu::TYTDFU &
+
+		auto SetInterfaceAttribs(const uint32_t &speed, const int &parity) const -> int;
+		auto GetFD() const -> const int&
 		{
-			return dfu;
+			return fd;
 		}
 
 	private:
-		dfu::TYTDFU dfu;
+		const std::string port, filename;
+		int fd;
 	};
 } // namespace radio_tool::device
