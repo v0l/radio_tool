@@ -40,7 +40,7 @@ auto TYTRadio::ToString() const -> const std::string
     return out.str();
 }
 
-auto TYTRadio::WriteFirmware(const std::string &file) const -> void
+auto TYTRadio::WriteFirmware(const std::string &file, const std::string &port) const -> void
 {
     constexpr auto TransferSize = 1024u;
 

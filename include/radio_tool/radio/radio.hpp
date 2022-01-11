@@ -54,7 +54,7 @@ namespace radio_tool::radio
         /**
          * Write a firmware file to the device (Firmware Upgrade)
          */
-        virtual auto WriteFirmware(const std::string &file) const -> void = 0;
+        virtual auto WriteFirmware(const std::string &file, const std::string &port) const -> void = 0;
         
         //virtual auto WriteCodeplug();
         //virtual auto ReadCodeplug();

@@ -84,6 +84,9 @@ int main(int argc, char **argv)
             ("reboot", "Reboot the radio")
             ("dump-bootloader", "Dump bootloader (Mac only)");
 
+        options.add_options("Ailunce Radio")
+            ("P,port", "Serial port", cxxopts::value<std::string>(), "<port>");
+
         options.add_options("Firmware")
             ("fw-info", "Print info about a firmware file")
             ("wrap", "Wrap a firmware bin (use --help wrap, for more info)")
@@ -298,7 +301,8 @@ int main(int argc, char **argv)
         if(cmd.count("flash")) 
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-            radio->WriteFirmware(in_file);
+            auto port = GetOptionOrErr<std::string>(cmd, "port", "Port not specified");
+            radio->WriteFirmware(in_file, port);
             std::cout << "Done!" << std::endl;
         }
 
