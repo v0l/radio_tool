@@ -1,6 +1,7 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2022 Niccolò Izzo IU2KIN
+ * Copyright (c) 2022 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +24,7 @@
 
 namespace radio_tool::radio
 {
-    class AilunceRadio : public RadioSupport
+    class AilunceRadio : public RadioOperations
     {
     public:
         static const auto VID = 0x067b;
@@ -32,7 +33,7 @@ namespace radio_tool::radio
         AilunceRadio(libusb_device_handle* h)
             : dfu(h) {}
 
-        auto WriteFirmware(const std::string &file, const std::string &port) const -> void override;
+        auto WriteFirmware(const std::string &file) const -> void override;
         auto ToString() const -> const std::string override;
 
         static auto SupportsDevice(const libusb_device_descriptor &dev) -> bool

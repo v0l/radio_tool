@@ -1,6 +1,7 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2022 Niccolò Izzo IU2KIN
+ * Copyright (c) 2022 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,9 +26,13 @@
 #include <iostream>
 #include <math.h>
 #include <string.h>
+#include <vector>
+
+#ifdef _WIN32
+#else
 #include <termios.h>
 #include <unistd.h>
-#include <vector>
+#endif
 
 using namespace radio_tool::radio;
 
@@ -42,41 +47,46 @@ auto AilunceRadio::ToString() const -> const std::string
 
 auto AilunceRadio::SetInterfaceAttribs(int fd, int speed, int parity) const -> int
 {
-        struct termios tty;
-        if (tcgetattr (fd, &tty) != 0)
-        {
-                perror("Error accessing TTY attributes");
-                return -1;
-        }
+#ifdef _WIN32
 
-        cfsetospeed (&tty, speed);
-        cfsetispeed (&tty, speed);
+    return 0;
+#else
+    struct termios tty;
+    if (tcgetattr (fd, &tty) != 0)
+    {
+            perror("Error accessing TTY attributes");
+            return -1;
+    }
 
-        tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
-        // disable IGNBRK for mismatched speed tests; otherwise receive break
-        // as \000 chars
-        tty.c_iflag &= ~IGNBRK;         // disable break processing
-        tty.c_lflag = 0;                // no signaling chars, no echo,
-                                        // no canonical processing
-        tty.c_oflag = 0;                // no remapping, no delays
-        tty.c_cc[VMIN]  = 0;
-        tty.c_cc[VTIME] = 20;
+    cfsetospeed (&tty, speed);
+    cfsetispeed (&tty, speed);
 
-        tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
+    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
+    // disable IGNBRK for mismatched speed tests; otherwise receive break
+    // as \000 chars
+    tty.c_iflag &= ~IGNBRK;         // disable break processing
+    tty.c_lflag = 0;                // no signaling chars, no echo,
+                                    // no canonical processing
+    tty.c_oflag = 0;                // no remapping, no delays
+    tty.c_cc[VMIN]  = 0;
+    tty.c_cc[VTIME] = 20;
 
-        tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
-                                        // enable reading
-        tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
-        tty.c_cflag |= parity;
-        tty.c_cflag &= ~CSTOPB;
-        tty.c_cflag &= ~CRTSCTS;
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
 
-        if (tcsetattr (fd, TCSANOW, &tty) != 0)
-        {
-                perror("Error setting TTY attributes");
-                return -1;
-        }
-        return 0;
+    tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
+                                    // enable reading
+    tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
+    tty.c_cflag |= parity;
+    tty.c_cflag &= ~CSTOPB;
+    tty.c_cflag &= ~CRTSCTS;
+
+    if (tcsetattr (fd, TCSANOW, &tty) != 0)
+    {
+            perror("Error setting TTY attributes");
+            return -1;
+    }
+    return 0;
+#endif
 }
 
 auto AilunceRadio::WriteFirmware(const std::string &file, const std::string &port) const -> void
@@ -87,6 +97,10 @@ auto AilunceRadio::WriteFirmware(const std::string &file, const std::string &por
     fw.Read(file);
     fw.Encrypt();
 
+#ifdef _WIN32
+    auto fd = -1;
+
+#else
     int fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0)
     {
@@ -97,6 +111,7 @@ auto AilunceRadio::WriteFirmware(const std::string &file, const std::string &por
 
     write(fd, "1", 1);           // send 1 to start firmware upgrade
     usleep(1000000);      // sleep enough to transmit the 1
+#endif
 
     auto r = fw.GetDataSegments()[0];
     int32_t s = fymodem_send(fd, (uint8_t *)r.data.data(), r.data.size(), file.c_str());

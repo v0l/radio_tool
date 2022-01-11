@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2020 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,7 +15,8 @@
  * You should have received a copy of the GNU General Public License
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
-#include <radio_tool/radio/radio_factory.hpp>
+#include <radio_tool/radio/usb_radio_factory.hpp>
+#include <radio_tool/radio/tyt_radio.hpp>
 #include <radio_tool/fw/fw_factory.hpp>
 #include <radio_tool/codeplug/codeplug_factory.hpp>
 
@@ -131,10 +132,7 @@ int main(int argc, char **argv)
 
         if(cmd.count("list-radios"))
         {
-            for(const auto& radio : RadioFactory::ListRadioSupport())
-            {
-                std::cerr << radio << std::endl;
-            }
+            //TODO: list radio models supported
             exit(0);
         }
 
@@ -272,7 +270,7 @@ int main(int argc, char **argv)
         }
 #endif
         
-        auto rdFactory = RadioFactory();
+        auto rdFactory = USBRadioFactory();
         if (cmd.count("list"))
         {
             for (const auto &d : rdFactory.ListDevices())
@@ -290,7 +288,7 @@ int main(int argc, char **argv)
 
         auto index = cmd["device"].as<uint16_t>();
         auto radio = rdFactory.GetRadioSupport(index);
-        auto dfu = radio->GetDFU();
+        auto device = radio->GetDevice();
         
         if(cmd.count("info")) 
         {
@@ -301,8 +299,7 @@ int main(int argc, char **argv)
         if(cmd.count("flash")) 
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-            auto port = GetOptionOrErr<std::string>(cmd, "port", "Port not specified");
-            radio->WriteFirmware(in_file, port);
+            radio->WriteFirmware(in_file);
             std::cout << "Done!" << std::endl;
         }
 
@@ -326,7 +323,7 @@ int main(int argc, char **argv)
             outf.open(out_file, std::ios_base::out | std::ios_base::binary);
             if(outf.is_open()) 
             {
-                auto mem = dfu.Upload(size, 2);
+                auto mem = device.Upload(size, 2);
                 //radio_tool::PrintHex(mem);
                 outf.write((char*)mem.data(), mem.size());
                 outf.close();
@@ -342,29 +339,7 @@ int main(int argc, char **argv)
         if(cmd.count("write-custom")) 
         {
             auto data = cmd["write-custom"].as<std::vector<uint8_t>>();
-            dfu.Download(data);
-        }
-
-        if(cmd.count("get-status")) 
-        {
-            auto status = dfu.GetStatus();
-            std::cerr << status.ToString() << std::endl;
-        }
-
-        if(cmd.count("get-time")) 
-        {
-            //auto tm = dfu.GetTime();
-            //std::cerr << ctime(&tm);
-        }
-
-        if(cmd.count("set-time")) 
-        {
-            //dfu.SetTime();
-        }
-
-        if(cmd.count("reboot"))
-        {
-            //dfu.Reboot();
+            device.Write(data);
         }
     }
     catch (const radio_tool::dfu::DFUException& dfuEx) 
@@ -381,5 +356,37 @@ int main(int argc, char **argv)
     {
         std::cerr << "Error: " << gex.what() << std::endl;
          exit(1);
+    }
+}
+
+auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> void {
+    if (typeid(radio) == typeid(radio_tool::radio::TYTRadio)) {
+        std::cerr << "Cant use TYT commands on non-tyt radio!" << std::endl;
+        exit(1);
+    }
+
+    auto tyt_radio = dynamic_cast<radio_tool::radio::TYTRadio*>(radio);
+    auto device = tyt_radio->GetDevice();
+
+    if (cmd.count("get-status"))
+    {
+        auto status = device.GetStatus();
+        std::cerr << status.ToString() << std::endl;
+    }
+
+    if (cmd.count("get-time"))
+    {
+        //auto tm = dfu.GetTime();
+        //std::cerr << ctime(&tm);
+    }
+
+    if (cmd.count("set-time"))
+    {
+        //dfu.SetTime();
+    }
+
+    if (cmd.count("reboot"))
+    {
+        //dfu.Reboot();
     }
 }

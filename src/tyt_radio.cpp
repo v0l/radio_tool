@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2022 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,7 +40,7 @@ auto TYTRadio::ToString() const -> const std::string
     return out.str();
 }
 
-auto TYTRadio::WriteFirmware(const std::string &file, const std::string &port) const -> void
+auto TYTRadio::WriteFirmware(const std::string &file) const -> void
 {
     constexpr auto TransferSize = 1024u;
 

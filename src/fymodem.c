@@ -12,8 +12,9 @@
  */
 
 #include <fymodem.h>
+#ifndef _WIN32
 #include <termios.h>
-#include <unistd.h>
+#endif
 
 /* filesize 999999999999999 should be enough... */
 #define YM_FILE_SIZE_LENGTH        (16)
@@ -66,7 +67,9 @@ void __ym_sleep_ms(int delay_ms)
 
 void __ym_flush()
 {
+#ifndef _WIN32
     tcflush(global_fd,TCIOFLUSH);
+#endif
 }
 
 /* ------------------------------------------------ */
