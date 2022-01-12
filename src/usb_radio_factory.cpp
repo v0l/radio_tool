@@ -16,8 +16,8 @@
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <radio_tool/device/device.hpp>
 #include <radio_tool/radio/usb_radio_factory.hpp>
+#include <radio_tool/device/device.hpp>
 #include <radio_tool/radio/tyt_radio.hpp>
 
 #include <libusb-1.0/libusb.h>
@@ -33,7 +33,7 @@ using namespace radio_tool::radio;
 struct DeviceMapper
 {
     std::function<bool(const libusb_device_descriptor &)> SupportsDevice;
-    std::function<std::unique_ptr<RadioOperations>(libusb_device_handle *)> CreateOperations;
+    std::function<const RadioOperations*(libusb_device_handle *)> CreateOperations;
 };
 
 /**
@@ -64,7 +64,7 @@ USBRadioFactory::~USBRadioFactory()
     usb_ctx = nullptr;
 }
 
-auto USBRadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> std::unique_ptr<RadioOperations>
+auto USBRadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> const RadioOperations*
 {
     libusb_device **devs;
     auto ndev = libusb_get_device_list(usb_ctx, &devs);
@@ -146,11 +146,11 @@ auto USBRadioFactory::OpDeviceList(std::function<void(const libusb_device *, con
     }
 }
 
-auto USBRadioFactory::ListDevices() const -> const std::vector<RadioInfo>
+auto USBRadioFactory::ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*>
 {
-    std::vector<RadioInfo> ret;
+    std::vector<RadioInfo*> ret;
 
-    OpDeviceList([&ret, this](const libusb_device *dev, const libusb_device_descriptor &desc, const uint16_t &idx)
+    OpDeviceList([&ret, &idx_offset, this](const libusb_device *dev, const libusb_device_descriptor &desc, const uint16_t &idx)
     {
         int err = LIBUSB_SUCCESS;
         libusb_device_handle *h;
@@ -159,7 +159,7 @@ auto USBRadioFactory::ListDevices() const -> const std::vector<RadioInfo>
             auto mfg = GetDeviceString(desc.iManufacturer, h),
                 prd = GetDeviceString(desc.iProduct, h);
 
-            auto nInf = RadioInfo(mfg, prd, desc.idVendor, desc.idProduct, idx);
+            auto nInf = new USBRadioInfo(mfg, prd, desc.idVendor, desc.idProduct, idx_offset + idx);
             ret.push_back(nInf);
             libusb_close(h);
         }

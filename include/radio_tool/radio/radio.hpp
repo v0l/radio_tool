@@ -28,28 +28,7 @@ namespace radio_tool::radio
 	class RadioInfo
 	{
 	public:
-		const std::wstring manufacturer, product;
-		const uint16_t vid, pid, index;
-
-		RadioInfo(
-			const std::wstring& mfg, 
-			const std::wstring& prd, 
-			const uint16_t& vid, 
-			const uint16_t& pid, 
-			const uint16_t& idx)
-			: manufacturer(mfg), product(prd), vid(vid), pid(pid), index(idx) {}
-
-		auto ToString() const -> const std::wstring
-		{
-			std::wstringstream os;
-			os << L"["
-				<< std::setfill(L'0') << std::setw(4) << std::hex << vid
-				<< L":"
-				<< std::setfill(L'0') << std::setw(4) << std::hex << pid
-				<< L"]: idx=" << std::setfill(L'0') << std::setw(3) << std::to_wstring(index) << L", "
-				<< manufacturer << L" " << product;
-			return os.str();
-		}
+		virtual auto ToString() const -> const std::wstring = 0;
 	};
 
 	class RadioOperations
@@ -77,15 +56,15 @@ namespace radio_tool::radio
 	};
 
 	class RadioOperationsFactory {
-    public:
-        /**
-         * Return the radio support handler for a specified radio device
-         */
-        virtual auto GetRadioSupport(const uint16_t& idx) const->std::unique_ptr<RadioOperations> = 0;
+	public:
+		/**
+		 * Return the radio support handler for a specified radio device
+		 */
+		virtual auto GetRadioSupport(const uint16_t& idx) const -> const RadioOperations* = 0;
 
-        /**
-         * Gets info about currently supported devices
-         */
-        virtual auto ListDevices() const -> const std::vector<RadioInfo> = 0;
-    };
+		/**
+		 * Gets info about currently supported devices
+		 */
+		virtual auto ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*> = 0;
+	};
 } // namespace radio_tool::radio

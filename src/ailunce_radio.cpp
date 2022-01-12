@@ -19,8 +19,13 @@
 #include <radio_tool/radio/ailunce_radio.hpp>
 #include <radio_tool/fw/ailunce_fw.hpp>
 
-#include <stdio.h>
+#include <thread>
+
+#ifdef _WIN32
+#include <io.h>
+#else
 #include <unistd.h>
+#endif
 
 using namespace radio_tool::radio;
 
@@ -38,8 +43,9 @@ auto AilunceRadio::WriteFirmware(const std::string &file) const -> void
     fw.Encrypt();
 
     auto fd = device.GetFD();
-    write(fd, "1", 1); // send 1 to start firmware upgrade
-    usleep(1000000);   // sleep enough to transmit the 1
+    // send 1 to start firmware upgrade
+    write(fd, "1", 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     auto r = fw.GetDataSegments()[0];
     device.SetInterfaceAttribs(57600, 0);

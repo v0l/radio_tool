@@ -17,11 +17,13 @@
  */
 #include <radio_tool/device/ymodem_device.hpp>
 
+#include <stdexcept>
 #include <fymodem.h>
 #include <stdio.h>
 #include <fcntl.h>
 
 #ifdef _WIN32
+#include <io.h>
 #else
 #include <termios.h>
 #endif
@@ -30,11 +32,15 @@ using namespace radio_tool::device;
 
 YModemDevice::YModemDevice(const std::string &port, const std::string &filename) : port(port), filename(filename), fd(-1)
 {
+#ifdef _WIN32
+    int fdOpen = -1;
+#else
     int fdOpen = open(port.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
     if (fdOpen < 0)
     {
         throw std::runtime_error("Failed to open port");
     }
+#endif
 
     fd = fdOpen;
 }

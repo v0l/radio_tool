@@ -15,11 +15,11 @@
  * You should have received a copy of the GNU General Public License
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
-#include <radio_tool/radio/usb_radio_factory.hpp>
-#include <radio_tool/radio/tyt_radio.hpp>
+#include <radio_tool/radio/radio_factory.hpp>
 #include <radio_tool/fw/fw_factory.hpp>
 #include <radio_tool/codeplug/codeplug_factory.hpp>
 
+#include <radio_tool/radio/tyt_radio.hpp>
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
 #include <radio_tool/version.hpp>
@@ -60,25 +60,46 @@ int main(int argc, char **argv)
 
         cxxopts::Options options(argv[0], version);
 
-        options.add_options("General")("h,help", "Show this message", cxxopts::value<std::string>(), "<command>")("l,list", "List devices")("d,device", "Device to use", cxxopts::value<uint16_t>(), "<index>")("i,in", "Input file", cxxopts::value<std::string>(), "<file>")("o,out", "Output file", cxxopts::value<std::string>(), "<file>")("L,list-radios", "List supported radios");
+        options.add_options("General")
+            ("h,help", "Show this message", cxxopts::value<std::string>(), "<command>")
+            ("l,list", "List devices")
+            ("d,device", "Device to use", cxxopts::value<uint16_t>(), "<index>")
+            ("i,in", "Input file", cxxopts::value<std::string>(), "<file>")
+            ("o,out", "Output file", cxxopts::value<std::string>(), "<file>")
+            ("L,list-radios", "List supported radios");
 
-        options.add_options("Programming")("f,flash", "Flash firmware")("p,program", "Upload codeplug");
+        options.add_options("Programming")
+            ("f,flash", "Flash firmware")
+            ("p,program", "Upload codeplug");
 
-        options.add_options("All radio")("info", "Print some info about the radio")("write-custom", "Send custom command to radio", cxxopts::value<std::vector<uint8_t>>(), "<data>")("get-status", "Print the current DFU Status");
+        options.add_options("All radio")
+            ("info", "Print some info about the radio")
+            ("write-custom", "Send custom command to radio", cxxopts::value<std::vector<uint8_t>>(), "<data>")
+            ("get-status", "Print the current DFU Status");
 
-        options.add_options("TYT Radio")("get-time", "Gets the radio time")("set-time", "Sets the radio time")("dump-reg", "Dump a register from the radio", cxxopts::value<uint16_t>(), "<register>")("reboot", "Reboot the radio")("dump-bootloader", "Dump bootloader (Mac only)");
+        options.add_options("TYT Radio")
+            ("get-time", "Gets the radio time")
+            ("set-time", "Sets the radio time")
+            ("dump-reg", "Dump a register from the radio", cxxopts::value<uint16_t>(), "<register>")
+            ("reboot", "Reboot the radio")
+            ("dump-bootloader", "Dump bootloader (Mac only)");
 
-        options.add_options("Ailunce Radio")("P,port", "Serial port", cxxopts::value<std::string>(), "<port>");
-
-        options.add_options("Firmware")("fw-info", "Print info about a firmware file")("wrap", "Wrap a firmware bin (use --help wrap, for more info)")
+        options.add_options("Firmware")
+            ("fw-info", "Print info about a firmware file")
+            ("wrap", "Wrap a firmware bin (use --help wrap, for more info)")
+            ("unwrap", "Unwrap a fimrware file")
 #ifdef XOR_TOOL
-            ("make-xor", "Try to make an XOR key for the input firmware")
+            ("make-xor", "Try to make an XOR key for the input firmware");
+#else
+            ;
 #endif
-                ("unwrap", "Unwrap a fimrware file");
 
-        options.add_options("Codeplug")("codeplug-info", "Print info about a codeplug file");
+        options.add_options("Codeplug")
+            ("codeplug-info", "Print info about a codeplug file");
 
-        options.add_options("Wrap")("s,segment", "Add a segment for wrapping", cxxopts::value<std::vector<std::string>>(), "<0x08000000:region_0.bin>")("r,radio", "Radio to build firmware file for", cxxopts::value<std::string>(), "<DM1701>");
+        options.add_options("Wrap")
+            ("s,segment", "Add a segment for wrapping", cxxopts::value<std::vector<std::string>>(), "<0x08000000:region_0.bin>")
+            ("r,radio", "Radio to build firmware file for", cxxopts::value<std::string>(), "<DM1701>");
 
         auto cmd = options.parse(argc, argv);
 
@@ -248,12 +269,12 @@ int main(int argc, char **argv)
         }
 #endif
 
-        auto rdFactory = USBRadioFactory();
+        auto rdFactory = RadioFactory();
         if (cmd.count("list"))
         {
-            for (const auto &d : rdFactory.ListDevices())
+            for (const auto &d : rdFactory.ListDevices(0))
             {
-                std::wcout << d.ToString() << std::endl;
+                std::wcout << d->ToString() << std::endl;
             }
             exit(0);
         }

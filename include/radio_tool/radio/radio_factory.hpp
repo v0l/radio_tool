@@ -24,9 +24,7 @@ namespace radio_tool::radio
     class RadioFactory : public RadioOperationsFactory
     {
     public:
-        auto GetRadioSupport(const uint16_t &idx) const -> std::unique_ptr<RadioOperations> override;
-        auto ListDevices() const -> const std::vector<RadioInfo> override;
-    private:
-        auto OpAllFactories(std::function<void(RadioOperations*,const uint16_t&)> op) const -> void;
+        auto GetRadioSupport(const uint16_t &) const -> const RadioOperations* override;
+        auto ListDevices(const uint16_t &) const -> const std::vector<RadioInfo*> override;
     };
 } // namespace radio_tool::radio

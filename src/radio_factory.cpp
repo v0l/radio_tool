@@ -23,15 +23,24 @@
 
 using namespace radio_tool::radio;
 
-auto RadioFactory::GetRadioSupport(const uint16_t &idx) const -> std::unique_ptr<RadioOperations>
+auto RadioFactory::GetRadioSupport(const uint16_t &idx) const -> const RadioOperations*
 {
+    return nullptr;
 }
 
-auto RadioFactory::ListDevices() const -> const std::vector<RadioInfo>
+auto RadioFactory::ListDevices(const uint16_t &) const -> const std::vector<RadioInfo*>
 {
-    auto ret = std::vector<RadioInfo>();
+    uint16_t idx_offset = 0;
+    auto ret = std::vector<RadioInfo*>();
 
     auto usb = USBRadioFactory();
-    auto usbDevices = usb.ListDevices();
+    auto usbDevices = usb.ListDevices(idx_offset);
     ret.insert(ret.end(), usbDevices.begin(), usbDevices.end());
+    idx_offset += (uint16_t)usbDevices.size();
+
+    auto serial = SerialRadioFactory();
+    auto serialDevices = serial.ListDevices(idx_offset);
+    ret.insert(ret.end(), serialDevices.begin(), serialDevices.end());
+    
+    return ret;
 }

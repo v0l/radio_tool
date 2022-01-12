@@ -47,8 +47,8 @@ namespace radio_tool::radio
             return &device;
         }
 
-        static auto Create(libusb_device_handle* h) -> std::unique_ptr<TYTRadio> {
-            return std::unique_ptr<TYTRadio>(new TYTRadio(h));
+        static auto Create(libusb_device_handle* h) -> const TYTRadio* {
+            return new TYTRadio(h);
         }
     private:
         const device::TYTDevice device;

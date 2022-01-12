@@ -22,10 +22,37 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <functional>
 
 #include <libusb-1.0/libusb.h>
 
 namespace radio_tool::radio {
+	class USBRadioInfo : public RadioInfo {
+	public:
+		const std::wstring manufacturer, product;
+		const uint16_t vid, pid, index;
+
+		USBRadioInfo(
+			const std::wstring& mfg,
+			const std::wstring& prd,
+			const uint16_t& vid,
+			const uint16_t& pid,
+			const uint16_t& idx)
+			: manufacturer(mfg), product(prd), vid(vid), pid(pid), index(idx) {}
+
+		auto ToString() const -> const std::wstring override
+		{
+			std::wstringstream os;
+			os << L"["
+				<< std::setfill(L'0') << std::setw(4) << std::hex << vid
+				<< L":"
+				<< std::setfill(L'0') << std::setw(4) << std::hex << pid
+				<< L"]: idx=" << std::setfill(L'0') << std::setw(3) << std::to_wstring(index) << L", "
+				<< manufacturer << L" " << product;
+			return os.str();
+		}
+	};
+
 	class USBRadioFactory : public RadioOperationsFactory
 	{
 	public:
@@ -35,12 +62,12 @@ namespace radio_tool::radio {
 		/**
 		 * Return the radio support handler for a specified usb device
 		 */
-		auto GetRadioSupport(const uint16_t& idx) const->std::unique_ptr<RadioOperations> override;
+		auto GetRadioSupport(const uint16_t& idx) const -> const RadioOperations* override;
 
 		/**
 		 * Gets info about currently supported devices
 		 */
-		auto ListDevices() const -> const std::vector<RadioInfo> override;
+		auto ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*> override;
 
 	private:
 		auto GetDeviceString(const uint8_t&, libusb_device_handle*) const->std::wstring;

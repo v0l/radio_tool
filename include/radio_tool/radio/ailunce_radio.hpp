@@ -23,8 +23,6 @@
 
 #include <libusb-1.0/libusb.h>
 
-using namespace std::string_literals;
-
 namespace radio_tool::radio
 {
     class AilunceRadio : public RadioOperations
@@ -61,9 +59,9 @@ namespace radio_tool::radio
             return h->idVendor == VID && h->idProduct == PID;
         }
 
-        static auto Create(const std::string &port) -> std::unique_ptr<AilunceRadio>
+        static auto Create(const std::string &port) -> const AilunceRadio*
         {
-            return std::unique_ptr<AilunceRadio>(new AilunceRadio(port, "firmware.bin"s));
+            return new AilunceRadio(port, "firmware.bin");
         }
 
     private:

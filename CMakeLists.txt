@@ -52,6 +52,7 @@ set(ALL_SRC
     src/dfu.cpp
     src/radio_factory.cpp
     src/usb_radio_factory.cpp
+    src/serial_radio_factory.cpp
     src/tyt_radio.cpp
     src/tyt_device.cpp
     src/ymodem_device.cpp

@@ -22,26 +22,43 @@
 
 #include <string>
 #include <vector>
-#include <memory>
+#include <functional>
 
-#include <libusb-1.0/libusb.h>
+namespace radio_tool::radio
+{
+	class SerialRadioInfo : public RadioInfo
+	{
+	public:
+		SerialRadioInfo(const std::wstring &p, const uint16_t &idx) : index(idx), port(p) {}
 
-namespace radio_tool::radio {
+		auto ToString() const -> const std::wstring override
+		{
+			std::wstringstream os;
+			os << L"[" << port << "]: idx=" << std::to_wstring(index) << L", "
+			   << L"Generic serial radio";
+
+			return os.str();
+		}
+
+	private:
+		const uint16_t index;
+		const std::wstring port;
+	};
+
 	class SerialRadioFactory : public RadioOperationsFactory
 	{
 	public:
 		/**
 		 * Return the radio support handler for a specified usb device
 		 */
-		auto GetRadioSupport(const uint16_t& idx) const->std::unique_ptr<RadioOperations> override;
+		auto GetRadioSupport(const uint16_t &idx) const -> const RadioOperations * override;
 
 		/**
 		 * Gets info about currently supported devices
 		 */
-		auto ListDevices() const -> const std::vector<RadioInfo> override;
+		auto ListDevices(const uint16_t &idx_offset) const -> const std::vector<RadioInfo *> override;
 
 	private:
-		auto GetDeviceString(const uint8_t&, libusb_device_handle*) const->std::wstring;
-		auto OpDeviceList(std::function<void(const libusb_device*, const libusb_device_descriptor&, const uint16_t&)>) const -> void;
+		auto OpDeviceList(std::function<void(const std::wstring &, const uint16_t &)>) const -> void;
 	};
 }
