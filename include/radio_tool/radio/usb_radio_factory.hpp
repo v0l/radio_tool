@@ -26,53 +26,60 @@
 
 #include <libusb-1.0/libusb.h>
 
-namespace radio_tool::radio {
-	class USBRadioInfo : public RadioInfo {
+namespace radio_tool::radio
+{
+	class USBRadioInfo : public RadioInfo
+	{
 	public:
 		const std::wstring manufacturer, product;
 		const uint16_t vid, pid, index;
 
 		USBRadioInfo(
-			const std::wstring& mfg,
-			const std::wstring& prd,
-			const uint16_t& vid,
-			const uint16_t& pid,
-			const uint16_t& idx)
-			: manufacturer(mfg), product(prd), vid(vid), pid(pid), index(idx) {}
+			const CreateRadioOps l,
+			const std::wstring &mfg,
+			const std::wstring &prd,
+			const uint16_t &vid,
+			const uint16_t &pid,
+			const uint16_t &idx)
+			: manufacturer(mfg), product(prd), vid(vid), pid(pid), index(idx), loader(l) {}
 
 		auto ToString() const -> const std::wstring override
 		{
 			std::wstringstream os;
 			os << L"["
-				<< std::setfill(L'0') << std::setw(4) << std::hex << vid
-				<< L":"
-				<< std::setfill(L'0') << std::setw(4) << std::hex << pid
-				<< L"]: idx=" << std::setfill(L'0') << std::setw(3) << std::to_wstring(index) << L", "
-				<< manufacturer << L" " << product;
+			   << std::setfill(L'0') << std::setw(4) << std::hex << vid
+			   << L":"
+			   << std::setfill(L'0') << std::setw(4) << std::hex << pid
+			   << L"]: idx=" << std::setfill(L'0') << std::setw(3) << std::to_wstring(index) << L", "
+			   << manufacturer << L" " << product;
 			return os.str();
 		}
+
+		auto OpenDevice() const -> const RadioOperations * override
+		{
+			return loader();
+		}
+
+	private:
+		const CreateRadioOps loader;
 	};
 
+	/**
+	 * libusb devices are enumerated from here, 
+	 * implementors of direct usb drivers with libusb can hook this factory
+	 */
 	class USBRadioFactory : public RadioOperationsFactory
 	{
 	public:
 		USBRadioFactory();
 		~USBRadioFactory();
-
-		/**
-		 * Return the radio support handler for a specified usb device
-		 */
-		auto GetRadioSupport(const uint16_t& idx) const -> const RadioOperations* override;
-
-		/**
-		 * Gets info about currently supported devices
-		 */
-		auto ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*> override;
+		auto ListDevices(const uint16_t &idx_offset) const -> const std::vector<RadioInfo *> override;
 
 	private:
-		auto GetDeviceString(const uint8_t&, libusb_device_handle*) const->std::wstring;
-		auto OpDeviceList(std::function<void(const libusb_device*, const libusb_device_descriptor&, const uint16_t&)>) const -> void;
-
-		libusb_context* usb_ctx;
+		auto GetDeviceString(const uint8_t &, libusb_device_handle *) const -> std::wstring;
+		static auto OpenDevice(const uint8_t &bus, const uint8_t &port) -> libusb_device_handle *;
+		static auto CreateContext() -> libusb_context*;
+		
+		libusb_context *usb_ctx;
 	};
 }

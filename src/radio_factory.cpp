@@ -23,15 +23,23 @@
 
 using namespace radio_tool::radio;
 
-auto RadioFactory::GetRadioSupport(const uint16_t &idx) const -> const RadioOperations*
+auto RadioFactory::OpenDevice(const uint16_t &index) const -> const RadioOperations *
 {
-    return nullptr;
+    auto devices = ListDevices();
+
+    auto info = devices.at(index);
+    if (info == nullptr)
+    {
+        throw std::runtime_error("Invalid device index");
+    }
+
+    return info->OpenDevice();
 }
 
-auto RadioFactory::ListDevices(const uint16_t &) const -> const std::vector<RadioInfo*>
+auto RadioFactory::ListDevices() const -> const std::vector<RadioInfo *>
 {
     uint16_t idx_offset = 0;
-    auto ret = std::vector<RadioInfo*>();
+    auto ret = std::vector<RadioInfo *>();
 
     auto usb = USBRadioFactory();
     auto usbDevices = usb.ListDevices(idx_offset);
@@ -41,6 +49,6 @@ auto RadioFactory::ListDevices(const uint16_t &) const -> const std::vector<Radi
     auto serial = SerialRadioFactory();
     auto serialDevices = serial.ListDevices(idx_offset);
     ret.insert(ret.end(), serialDevices.begin(), serialDevices.end());
-    
+
     return ret;
 }

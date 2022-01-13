@@ -21,10 +21,13 @@
 
 namespace radio_tool::radio
 {
-    class RadioFactory : public RadioOperationsFactory
+    /**
+     * Primary factory for accessing and listing supported devices
+     */
+    class RadioFactory
     {
     public:
-        auto GetRadioSupport(const uint16_t &) const -> const RadioOperations* override;
-        auto ListDevices(const uint16_t &) const -> const std::vector<RadioInfo*> override;
+        auto OpenDevice(const uint16_t& index) const -> const RadioOperations*;
+        auto ListDevices() const -> const std::vector<RadioInfo*>;
     };
 } // namespace radio_tool::radio

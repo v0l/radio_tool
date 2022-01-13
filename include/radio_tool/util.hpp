@@ -24,6 +24,7 @@
 #include <chrono>
 #include <algorithm>
 #include <iterator>
+#include <codecvt>
 
 namespace radio_tool
 {
@@ -41,7 +42,7 @@ namespace radio_tool
         char aV, bV;
         std::stringstream prnt;
         auto size = std::distance(begin, end);
-        while(begin != end)
+        while (begin != end)
         {
             auto v = (*begin);
             auto a = v & 0x0f;
@@ -122,7 +123,7 @@ namespace radio_tool
     static inline auto ApplyXOR(std::vector<uint8_t>::iterator &&begin, std::vector<uint8_t>::iterator &&end, const uint8_t *xor_key, const uint16_t &key_len) -> void
     {
         auto z = 0;
-        while(begin != end)
+        while (begin != end)
         {
             (*begin) = (*begin) ^ xor_key[z++ % key_len];
             std::advance(begin, 1);
@@ -172,8 +173,8 @@ namespace radio_tool
 
     static auto InternetChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> uint16_t
     {
-        int32_t sum = 0, 
-            count = size;
+        int32_t sum = 0,
+                count = size;
 
         // Main summing loop
         while (count > 1)
@@ -205,14 +206,30 @@ namespace radio_tool
     {
         uint16_t sum = 0;
 
-        while(begin != end)
+        while (begin != end)
         {
             sum += (*begin);
             std::advance(begin, 1);
         }
 
         auto c0 = (int32_t)(sum / 5) >> 8;
-	    auto c1 = (sum / 5) & 0xff;
+        auto c1 = (sum / 5) & 0xff;
         return (c1 << 8 | c0);
+    }
+
+    static auto s2ws(const std::string &str) -> std::wstring
+    {
+        using convert_typeX = std::codecvt_utf8<wchar_t>;
+        std::wstring_convert<convert_typeX, wchar_t> converterX;
+
+        return converterX.from_bytes(str);
+    }
+
+    static auto ws2s(const std::wstring &wstr) -> std::string
+    {
+        using convert_typeX = std::codecvt_utf8<wchar_t>;
+        std::wstring_convert<convert_typeX, wchar_t> converterX;
+
+        return converterX.to_bytes(wstr);
     }
 } // namespace radio_tool

@@ -17,6 +17,8 @@
  */
 #include <radio_tool/radio/serial_radio_factory.hpp>
 #include <radio_tool/radio/radio.hpp>
+#include <radio_tool/radio/ailunce_radio.hpp>
+#include <radio_tool/util.hpp>
 
 #include <functional>
 #include <string>
@@ -26,22 +28,38 @@
 #define WIN32_LEAN_AND_MEAN 1
 #include <Windows.h>
 #else
-
+#include <filesystem>
+namespace fs = std::filesystem;
 #endif
 
 using namespace radio_tool::radio;
 
-auto SerialRadioFactory::GetRadioSupport(const uint16_t &idx) const -> const RadioOperations *
+struct DeviceMapper
 {
-    return nullptr;
-}
+    std::function<bool(const std::string &)> SupportsDevice;
+    std::function<const RadioOperations *(const std::string &)> CreateOperations;
+};
+
+const std::vector<DeviceMapper> Drivers = {
+    {AilunceRadio::SupportsDevice, AilunceRadio::Create}};
 
 auto SerialRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const std::vector<RadioInfo *>
 {
     auto ret = std::vector<RadioInfo *>();
 
-    OpDeviceList([&ret](const std::wstring &port, const uint16_t &idx)
-                 { ret.push_back(new SerialRadioInfo(port, idx)); });
+    OpDeviceList(
+        [&ret, idx_offset](const std::string &port, const uint16_t &idx)
+        {
+            for (auto &driver : Drivers)
+            {
+                auto fnOpen = [&driver, port]()
+                {
+                    return driver.CreateOperations(port);
+                };
+
+                ret.push_back(new SerialRadioInfo(fnOpen, port, idx_offset + idx));
+            }
+        });
     return ret;
 }
 
@@ -85,7 +103,24 @@ auto SerialRadioFactory::OpDeviceList(std::function<void(const std::wstring &, c
 }
 
 #else
-auto SerialRadioFactory::OpDeviceList(std::function<void(const std::string &, const uint16_t &)>) const -> void
+auto SerialRadioFactory::OpDeviceList(std::function<void(const std::string &, const uint16_t &)> op) const -> void
 {
+    //https://stackoverflow.com/a/65764414
+    auto p = fs::path("/dev/serial/by-id");
+    if (!fs::exists(p))
+    {
+        return;
+    }
+
+    auto idx = 0;
+    for (auto &de : fs::directory_iterator(p))
+    {
+        if (fs::is_symlink(de.symlink_status()))
+        {
+            auto symlink_points_at = fs::read_symlink(de);
+            auto canonical_path = fs::canonical(symlink_points_at);
+            op(canonical_path.string(), idx++);
+        }
+    }
 }
 #endif

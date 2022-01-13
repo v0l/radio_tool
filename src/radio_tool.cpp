@@ -272,7 +272,7 @@ int main(int argc, char **argv)
         auto rdFactory = RadioFactory();
         if (cmd.count("list"))
         {
-            for (const auto &d : rdFactory.ListDevices(0))
+            for (const auto &d : rdFactory.ListDevices())
             {
                 std::wcout << d->ToString() << std::endl;
             }
@@ -286,7 +286,7 @@ int main(int argc, char **argv)
         }
 
         auto index = cmd["device"].as<uint16_t>();
-        auto radio = rdFactory.GetRadioSupport(index);
+        auto radio = rdFactory.OpenDevice(index);
         auto device = radio->GetDevice();
 
         if (cmd.count("info"))

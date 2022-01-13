@@ -33,7 +33,7 @@ using namespace radio_tool::radio;
 struct DeviceMapper
 {
     std::function<bool(const libusb_device_descriptor &)> SupportsDevice;
-    std::function<const RadioOperations*(libusb_device_handle *)> CreateOperations;
+    std::function<const RadioOperations *(libusb_device_handle *)> CreateOperations;
 };
 
 /**
@@ -45,17 +45,7 @@ const std::vector<DeviceMapper> RadioSupports = {
 
 USBRadioFactory::USBRadioFactory() : usb_ctx(nullptr)
 {
-    auto err = libusb_init(&usb_ctx);
-    if (err != LIBUSB_SUCCESS)
-    {
-        throw std::runtime_error(libusb_error_name(err));
-    }
-#if defined(LIBUSB_API_VERSION) && (LIBUSB_API_VERSION >= 0x01000107)
-    libusb_set_log_cb(
-        usb_ctx, [](libusb_context *, enum libusb_log_level, const char *str)
-        { std::wcout << str << std::endl; },
-        LIBUSB_LOG_CB_CONTEXT);
-#endif
+    usb_ctx = CreateContext();
 }
 
 USBRadioFactory::~USBRadioFactory()
@@ -64,8 +54,10 @@ USBRadioFactory::~USBRadioFactory()
     usb_ctx = nullptr;
 }
 
-auto USBRadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> const RadioOperations*
+auto USBRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const std::vector<RadioInfo *>
 {
+    std::vector<RadioInfo *> ret;
+
     libusb_device **devs;
     auto ndev = libusb_get_device_list(usb_ctx, &devs);
     int err = LIBUSB_SUCCESS;
@@ -82,22 +74,37 @@ auto USBRadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> const Ra
                 {
                     if (fnSupport.SupportsDevice(desc))
                     {
-                        if (n_idx == dev_idx)
+                        int err = LIBUSB_SUCCESS;
+                        libusb_device_handle *h;
+                        auto cdev = const_cast<libusb_device *>(devs[x]);
+                        if (LIBUSB_SUCCESS == (err = libusb_open(cdev, &h)))
                         {
-                            libusb_device_handle *h;
-                            if (LIBUSB_SUCCESS == (err = libusb_open(devs[x], &h)))
+                            auto mfg = GetDeviceString(desc.iManufacturer, h),
+                                 prd = GetDeviceString(desc.iProduct, h);
+
+                            auto bus = libusb_get_bus_number(cdev);
+                            auto port = libusb_get_port_number(cdev);
+
+                            auto fnOpen = [bus, port, &fnSupport]()
                             {
-                                libusb_free_device_list(devs, 1);
-                                return fnSupport.CreateOperations(h);
-                            }
-                            else
-                            {
-                                libusb_free_device_list(devs, 1);
-                                throw std::runtime_error("Failed to open device");
-                            }
+                                auto openDev = OpenDevice(bus, port);
+                                return fnSupport.CreateOperations(openDev);
+                            };
+
+                            auto nInf = new USBRadioInfo(fnOpen, mfg, prd, desc.idVendor, desc.idProduct, idx_offset + n_idx);
+                            ret.push_back(nInf);
+                            n_idx++;
+                            libusb_close(h);
                         }
-                        n_idx++;
-                        break;
+                        else
+                        {
+                            std::cerr << "Failed to open device VID=0x"
+                                      << std::hex << std::setw(4) << std::setfill('0') << desc.idVendor
+                                      << ", PID=0x"
+                                      << std::hex << std::setw(4) << std::setfill('0') << desc.idProduct
+                                      << " (" << libusb_error_name(err) << ")"
+                                      << std::endl;
+                        }
                     }
                 }
             }
@@ -109,71 +116,6 @@ auto USBRadioFactory::GetRadioSupport(const uint16_t &dev_idx) const -> const Ra
     {
         throw std::runtime_error(libusb_error_name(ndev));
     }
-    throw std::runtime_error("Radio not supported");
-}
-
-auto USBRadioFactory::OpDeviceList(std::function<void(const libusb_device *, const libusb_device_descriptor &, const uint16_t&)> op) const -> void
-{
-    libusb_device **devs;
-    auto ndev = libusb_get_device_list(usb_ctx, &devs);
-    int err = LIBUSB_SUCCESS;
-    auto n_idx = 0;
-
-    if (ndev >= 0)
-    {
-        for (auto x = 0; x < ndev; x++)
-        {
-            libusb_device_descriptor desc;
-            if (LIBUSB_SUCCESS == (err = libusb_get_device_descriptor(devs[x], &desc)))
-            {
-                for (const auto &fnSupport : RadioSupports)
-                {
-                    if (fnSupport.SupportsDevice(desc))
-                    {
-                        op(devs[x], desc, n_idx);
-                        n_idx++;
-                        break;
-                    }
-                }
-            }
-        }
-
-        libusb_free_device_list(devs, 1);
-    }
-    else
-    {
-        throw std::runtime_error(libusb_error_name(ndev));
-    }
-}
-
-auto USBRadioFactory::ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*>
-{
-    std::vector<RadioInfo*> ret;
-
-    OpDeviceList([&ret, &idx_offset, this](const libusb_device *dev, const libusb_device_descriptor &desc, const uint16_t &idx)
-    {
-        int err = LIBUSB_SUCCESS;
-        libusb_device_handle *h;
-        if (LIBUSB_SUCCESS == (err = libusb_open(const_cast<libusb_device *>(dev), &h)))
-        {
-            auto mfg = GetDeviceString(desc.iManufacturer, h),
-                prd = GetDeviceString(desc.iProduct, h);
-
-            auto nInf = new USBRadioInfo(mfg, prd, desc.idVendor, desc.idProduct, idx_offset + idx);
-            ret.push_back(nInf);
-            libusb_close(h);
-        }
-        else
-        {
-            std::cerr << "Failed to open device VID=0x"
-                << std::hex << std::setw(4) << std::setfill('0') << desc.idVendor
-                << ", PID=0x"
-                << std::hex << std::setw(4) << std::setfill('0') << desc.idProduct
-                << " (" << libusb_error_name(err) << ")"
-                << std::endl;
-        }
-    });
-
     return ret;
 }
 
@@ -194,4 +136,60 @@ auto USBRadioFactory::GetDeviceString(const uint8_t &desc, libusb_device_handle 
     typedef std::codecvt_utf16<char16_t, 1114111UL, std::little_endian> cvt;
     auto u16 = std::wstring_convert<cvt, char16_t>().from_bytes((const char *)prd + 2, (const char *)prd + prd_len);
     return std::wstring(u16.begin(), u16.end());
+}
+
+auto USBRadioFactory::OpenDevice(const uint8_t &bus, const uint8_t &port) -> libusb_device_handle *
+{
+    auto usb_ctx = CreateContext();
+
+    libusb_device **devs;
+    auto ndev = libusb_get_device_list(usb_ctx, &devs);
+    int err = LIBUSB_SUCCESS;
+    auto n_idx = 0;
+
+    if (ndev >= 0)
+    {
+        for (auto x = 0; x < ndev; x++)
+        {
+            auto b = libusb_get_bus_number(devs[x]);
+            auto p = libusb_get_port_number(devs[x]);
+            if (b == bus && p == port)
+            {
+                libusb_device_handle *handle;
+
+                if (libusb_open(devs[x], &handle) == LIBUSB_SUCCESS)
+                {
+                    return handle;
+                }
+                break;
+            }
+        }
+
+        libusb_free_device_list(devs, 1);
+    }
+    else
+    {
+        throw std::runtime_error(libusb_error_name(ndev));
+    }
+
+    return nullptr;
+}
+
+auto USBRadioFactory::CreateContext() -> libusb_context *
+{
+    libusb_context *usb_ctx;
+
+    auto err = libusb_init(&usb_ctx);
+    if (err != LIBUSB_SUCCESS)
+    {
+        throw std::runtime_error(libusb_error_name(err));
+    }
+#if defined(LIBUSB_API_VERSION) && (LIBUSB_API_VERSION >= 0x01000107)
+    libusb_set_log_cb(
+        usb_ctx, [](libusb_context *, enum libusb_log_level, const char *str)
+        { std::wcout << str << std::endl; },
+        LIBUSB_LOG_CB_CONTEXT);
+#endif
+
+    return usb_ctx;
 }

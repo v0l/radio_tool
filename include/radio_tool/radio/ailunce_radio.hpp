@@ -32,7 +32,8 @@ namespace radio_tool::radio
         static const auto VID = 0x067b;
         static const auto PID = 0x2303;
 
-        AilunceRadio(const std::string &prt, const std::string &fname);
+        AilunceRadio(const std::string &prt, const std::string &fname)
+            : device(prt, fname) {}
 
         auto WriteFirmware(const std::string &file) const -> void override;
         auto ToString() const -> const std::string override;
@@ -45,18 +46,11 @@ namespace radio_tool::radio
         static auto SupportsDevice(const std::string &) -> bool
         {
             // not possible to detect from serial port?
-            // ideally we could map serial ports to USB devices
+            // ideally we could map serial ports to USB devices to validate VID:PID
             //
             // possible windows solution: https://aticleworld.com/get-com-port-of-usb-serial-device/
             // possible linux solution: https://unix.stackexchange.com/a/81767
-            //
-            // for now listing device will be unsupported
-            return false;
-        }
-
-        static auto SupportsDevice(libusb_device_descriptor *h) -> bool
-        {
-            return h->idVendor == VID && h->idProduct == PID;
+            return true;
         }
 
         static auto Create(const std::string &port) -> const AilunceRadio*

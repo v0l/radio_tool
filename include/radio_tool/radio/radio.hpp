@@ -25,12 +25,22 @@
 
 namespace radio_tool::radio
 {
+	class RadioOperations;
+	typedef std::function<const RadioOperations *()> CreateRadioOps;
+
+	/**
+	 * Information related to a detected radio
+	 */
 	class RadioInfo
 	{
 	public:
 		virtual auto ToString() const -> const std::wstring = 0;
+		virtual auto OpenDevice() const -> const RadioOperations* = 0;
 	};
 
+	/**
+	 * Generic interface for operations which we want to perform on radios
+	 */
 	class RadioOperations
 	{
 	public:
@@ -39,7 +49,7 @@ namespace radio_tool::radio
 		/**
 		 * Write a firmware file to the device (Firmware Upgrade)
 		 */
-		virtual auto WriteFirmware(const std::string& file) const -> void = 0;
+		virtual auto WriteFirmware(const std::string &file) const -> void = 0;
 
 		//virtual auto WriteCodeplug();
 		//virtual auto ReadCodeplug();
@@ -47,7 +57,7 @@ namespace radio_tool::radio
 		/**
 		 * Return the device communication handler
 		 */
-		virtual auto GetDevice() const -> const device::RadioDevice* = 0;
+		virtual auto GetDevice() const -> const device::RadioDevice * = 0;
 
 		/**
 		 * Get general info about the radio
@@ -55,16 +65,12 @@ namespace radio_tool::radio
 		virtual auto ToString() const -> const std::string = 0;
 	};
 
-	class RadioOperationsFactory {
+	/**
+	 * Interface for listing devices
+	 */
+	class RadioOperationsFactory
+	{
 	public:
-		/**
-		 * Return the radio support handler for a specified radio device
-		 */
-		virtual auto GetRadioSupport(const uint16_t& idx) const -> const RadioOperations* = 0;
-
-		/**
-		 * Gets info about currently supported devices
-		 */
-		virtual auto ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*> = 0;
+		virtual auto ListDevices(const uint16_t &idx_offset) const -> const std::vector<RadioInfo *> = 0;
 	};
 } // namespace radio_tool::radio

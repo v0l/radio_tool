@@ -19,6 +19,7 @@
 
 #include <radio_tool/radio/radio_factory.hpp>
 #include <radio_tool/radio/radio.hpp>
+#include <radio_tool/util.hpp>
 
 #include <string>
 #include <vector>
@@ -29,36 +30,38 @@ namespace radio_tool::radio
 	class SerialRadioInfo : public RadioInfo
 	{
 	public:
-		SerialRadioInfo(const std::wstring &p, const uint16_t &idx) : index(idx), port(p) {}
+		SerialRadioInfo(
+			const CreateRadioOps l,
+			const std::string &p,
+			const uint16_t &idx)
+			: loader(l), index(idx), port(p) {}
 
 		auto ToString() const -> const std::wstring override
 		{
 			std::wstringstream os;
-			os << L"[" << port << "]: idx=" << std::to_wstring(index) << L", "
+			os << L"[" << radio_tool::s2ws(port) << "]: idx=" << std::to_wstring(index) << L", "
 			   << L"Generic serial radio";
 
 			return os.str();
 		}
 
+		auto OpenDevice() const -> const RadioOperations * override
+		{
+			return loader();
+		}
+
 	private:
+		const CreateRadioOps loader;
 		const uint16_t index;
-		const std::wstring port;
+		const std::string port;
 	};
 
 	class SerialRadioFactory : public RadioOperationsFactory
 	{
 	public:
-		/**
-		 * Return the radio support handler for a specified usb device
-		 */
-		auto GetRadioSupport(const uint16_t &idx) const -> const RadioOperations * override;
-
-		/**
-		 * Gets info about currently supported devices
-		 */
 		auto ListDevices(const uint16_t &idx_offset) const -> const std::vector<RadioInfo *> override;
 
 	private:
-		auto OpDeviceList(std::function<void(const std::wstring &, const uint16_t &)>) const -> void;
+		auto OpDeviceList(std::function<void(const std::string &, const uint16_t &)>) const -> void;
 	};
 }

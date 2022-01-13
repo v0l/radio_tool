@@ -26,7 +26,7 @@ namespace radio_tool::device
 	class YModemDevice : public RadioDevice
 	{
 	public:
-		YModemDevice(const std::string &, const std::string &);
+		YModemDevice(const std::string &port, const std::string &filename);
 
 		auto SetAddress(const uint32_t &) const -> void override;
 		auto Erase(const uint32_t &amount) const -> void override;
