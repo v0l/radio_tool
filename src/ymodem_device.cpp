@@ -23,7 +23,9 @@
 #include <fcntl.h>
 
 #ifdef _WIN32
+#include <Windows.h>
 #include <io.h>
+#include <sstream>
 #else
 #include <termios.h>
 #endif
@@ -32,16 +34,20 @@ using namespace radio_tool::device;
 
 YModemDevice::YModemDevice(const std::string &port, const std::string &filename) : port(port), filename(filename), fd(-1)
 {
-#ifdef _WIN32
     int fdOpen = -1;
+#ifdef _WIN32
+    std::stringstream portPath;
+    portPath << "\\\\.\\" << port;
+
+    fdOpen = (int)CreateFileA(portPath.str().c_str(), GENERIC_READ | GENERIC_WRITE, NULL, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 #else
-    int fdOpen = open(port.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
+    fdOpen = open(portPath.str().c_str(), O_RDWR | O_NOCTTY | O_SYNC);
+#endif
+    
     if (fdOpen < 0)
     {
-        throw std::runtime_error("Failed to open port");
+        throw std::runtime_error("Failed to open port: " + port);
     }
-#endif
-
     fd = fdOpen;
 }
 
@@ -87,8 +93,28 @@ auto YModemDevice::Status() const -> const std::string
 auto YModemDevice::SetInterfaceAttribs(const uint32_t &speed, const int &parity) const -> int
 {
 #ifdef _WIN32
+    // Do some basic settings
+    DCB serialParams = { 0 };
+    serialParams.DCBlength = sizeof(serialParams);
 
-    return -1;
+    auto handle = (HANDLE)fd;
+    GetCommState(handle, &serialParams);
+    serialParams.BaudRate = speed;
+    serialParams.ByteSize = 8;
+    serialParams.StopBits = TWOSTOPBITS;
+    serialParams.Parity = parity;
+    SetCommState(handle, &serialParams);
+
+    // Set timeouts
+    COMMTIMEOUTS timeout = { 0 };
+    timeout.ReadIntervalTimeout = 50;
+    timeout.ReadTotalTimeoutConstant = 50;
+    timeout.ReadTotalTimeoutMultiplier = 50;
+    timeout.WriteTotalTimeoutConstant = 50;
+    timeout.WriteTotalTimeoutMultiplier = 10;
+
+    SetCommTimeouts(handle, &timeout);
+    return 0;
 #else
     struct termios tty;
     if (tcgetattr(fd, &tty) != 0)

@@ -43,15 +43,7 @@ namespace radio_tool::radio
             return &device;
         }
 
-        static auto SupportsDevice(const std::string &) -> bool
-        {
-            // not possible to detect from serial port?
-            // ideally we could map serial ports to USB devices to validate VID:PID
-            //
-            // possible windows solution: https://aticleworld.com/get-com-port-of-usb-serial-device/
-            // possible linux solution: https://unix.stackexchange.com/a/81767
-            return true;
-        }
+        static auto SupportsDevice(const std::string &) -> bool;
 
         static auto Create(const std::string &port) -> const AilunceRadio*
         {
@@ -60,5 +52,6 @@ namespace radio_tool::radio
 
     private:
         device::YModemDevice device;
+        static auto GetComPortUSBIds(const std::string& port) -> std::pair<uint16_t, uint16_t>;
     };
 } // namespace radio_tool::radio

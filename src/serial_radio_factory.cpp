@@ -57,7 +57,10 @@ auto SerialRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const 
                     return driver.CreateOperations(port);
                 };
 
-                ret.push_back(new SerialRadioInfo(fnOpen, port, idx_offset + idx));
+                if (driver.SupportsDevice(port))
+                {
+                    ret.push_back(new SerialRadioInfo(fnOpen, port, idx_offset + idx));
+                }
             }
         });
     return ret;
@@ -67,7 +70,7 @@ auto SerialRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const 
 auto SerialRadioFactory::OpDeviceList(std::function<void(const std::string &, const uint16_t &)> fn) const -> void
 {
     HKEY comKey = nullptr;
-    auto openResult = RegOpenKeyExA(HKEY_LOCAL_MACHINE, (LPSTR)"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ | KEY_WOW64_64KEY, &comKey);
+    auto openResult = RegOpenKeyExA(HKEY_LOCAL_MACHINE, (LPSTR) "HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ | KEY_WOW64_64KEY, &comKey);
     if (openResult != ERROR_SUCCESS)
     {
         throw std::runtime_error("Failed to enumerate serial ports");

@@ -18,7 +18,6 @@
 #include <termios.h>
 #include <unistd.h>
 #else
-#define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #endif
 
@@ -57,13 +56,21 @@ FILE* global_fd = 0;
 char __ym_getchar(int timeout_ms)
 {
     char c = 0;
+#ifdef _WIN32
+    ReadFile((HANDLE)global_fd, &c, (DWORD)1, NULL, NULL);
+#else
     fread(&c, 1, 1, global_fd);
+#endif
     return c;
 }
 
 void __ym_putchar(char c)
 {
+#ifdef _WIN32
+    WriteFile((HANDLE)global_fd, &c, (DWORD)1, NULL, NULL);
+#else
     fwrite(&c, 1, 1, global_fd);
+#endif
 }
 
 void __ym_sleep_ms(int delay_ms)
