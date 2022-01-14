@@ -41,7 +41,7 @@ YModemDevice::YModemDevice(const std::string &port, const std::string &filename)
 
     fdOpen = (int)CreateFileA(portPath.str().c_str(), GENERIC_READ | GENERIC_WRITE, NULL, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 #else
-    fdOpen = open(portPath.str().c_str(), O_RDWR | O_NOCTTY | O_SYNC);
+    fdOpen = open(port.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
 #endif
     
     if (fdOpen < 0)
