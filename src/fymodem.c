@@ -17,6 +17,9 @@
 #ifndef _WIN32
 #include <termios.h>
 #include <unistd.h>
+#else
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 #endif
 
 /* filesize 999999999999999 should be enough... */
@@ -65,7 +68,11 @@ void __ym_putchar(char c)
 
 void __ym_sleep_ms(int delay_ms)
 {
+#ifdef _WIN32
+    Sleep(delay_ms);
+#else
     usleep(delay_ms * 1000);
+#endif
 }
 
 void __ym_flush()

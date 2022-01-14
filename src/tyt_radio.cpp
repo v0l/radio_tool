@@ -38,7 +38,7 @@ auto TYTRadio::ToString() const -> const std::string
 
 	out << "== TYT Radio Info ==" << std::endl
 		<< "Radio: " << model << std::endl
-		<< "RTC: " << ctime(&time);
+		<< "RTC: " << (time == -1 ? "N/A" : ctime(&time));
 
 	return out.str();
 }

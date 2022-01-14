@@ -22,6 +22,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <functional>
 
 namespace radio_tool::radio
 {

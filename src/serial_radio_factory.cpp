@@ -64,10 +64,10 @@ auto SerialRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const 
 }
 
 #ifdef _WIN32
-auto SerialRadioFactory::OpDeviceList(std::function<void(const std::wstring &, const uint16_t &)> fn) const -> void
+auto SerialRadioFactory::OpDeviceList(std::function<void(const std::string &, const uint16_t &)> fn) const -> void
 {
     HKEY comKey = nullptr;
-    auto openResult = RegOpenKeyExW(HKEY_LOCAL_MACHINE, (LPWSTR)L"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ | KEY_WOW64_64KEY, &comKey);
+    auto openResult = RegOpenKeyExA(HKEY_LOCAL_MACHINE, (LPSTR)"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ | KEY_WOW64_64KEY, &comKey);
     if (openResult != ERROR_SUCCESS)
     {
         throw std::runtime_error("Failed to enumerate serial ports");
@@ -75,7 +75,7 @@ auto SerialRadioFactory::OpDeviceList(std::function<void(const std::wstring &, c
 
     constexpr auto BufferSize = 1024L;
     auto idx = 0UL;
-    wchar_t name[BufferSize] = {}, value[BufferSize] = {};
+    char name[BufferSize] = {}, value[BufferSize] = {};
     while (1)
     {
         auto nameSize = BufferSize;
@@ -83,10 +83,10 @@ auto SerialRadioFactory::OpDeviceList(std::function<void(const std::wstring &, c
         memset(name, 0, BufferSize);
         memset(value, 0, BufferSize);
 
-        auto readResult = RegEnumValueW(comKey, idx, name, (LPDWORD)&nameSize, NULL, NULL, (LPBYTE)value, (LPDWORD)&valueSize);
+        auto readResult = RegEnumValueA(comKey, idx, name, (LPDWORD)&nameSize, NULL, NULL, (LPBYTE)value, (LPDWORD)&valueSize);
         if (readResult == ERROR_SUCCESS)
         {
-            fn(std::wstring(value), (uint16_t)idx);
+            fn(std::string(value), (uint16_t)idx);
         }
         else if (readResult == ERROR_NO_MORE_ITEMS)
         {
