@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2022 Niccolò Izzo IU2KIN
+ * Copyright (c) 2022 Niccolï¿½ Izzo IU2KIN
  *
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include <radio_tool/fw/fw.hpp>
 
 #include <fstream>
+#include <memory>
 
 namespace radio_tool::fw
 {

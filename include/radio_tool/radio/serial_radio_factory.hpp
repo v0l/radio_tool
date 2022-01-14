@@ -39,7 +39,7 @@ namespace radio_tool::radio
 		auto ToString() const -> const std::wstring override
 		{
 			std::wstringstream os;
-			os << L"[" << radio_tool::s2ws(port) << "]: idx=" << std::to_wstring(index) << L", "
+			os << L"[" << std::wstring(port.begin(), port.end()) << "]: idx=" << std::to_wstring(index) << L", "
 			   << L"Generic serial radio";
 
 			return os.str();

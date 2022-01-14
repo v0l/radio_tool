@@ -24,7 +24,6 @@
 #include <chrono>
 #include <algorithm>
 #include <iterator>
-#include <codecvt>
 
 namespace radio_tool
 {
@@ -215,21 +214,5 @@ namespace radio_tool
         auto c0 = (int32_t)(sum / 5) >> 8;
         auto c1 = (sum / 5) & 0xff;
         return (c1 << 8 | c0);
-    }
-
-    static auto s2ws(const std::string &str) -> std::wstring
-    {
-        using convert_typeX = std::codecvt_utf8<wchar_t>;
-        std::wstring_convert<convert_typeX, wchar_t> converterX;
-
-        return converterX.from_bytes(str);
-    }
-
-    static auto ws2s(const std::wstring &wstr) -> std::string
-    {
-        using convert_typeX = std::codecvt_utf8<wchar_t>;
-        std::wstring_convert<convert_typeX, wchar_t> converterX;
-
-        return converterX.to_bytes(wstr);
     }
 } // namespace radio_tool
