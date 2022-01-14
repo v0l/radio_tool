@@ -120,8 +120,7 @@ auto SerialRadioFactory::OpDeviceList(std::function<void(const std::string &, co
     {
         if (fs::is_symlink(de.symlink_status()))
         {
-            auto symlink_points_at = fs::read_symlink(de);
-            auto canonical_path = fs::canonical(symlink_points_at);
+            auto canonical_path = fs::canonical(de);
             op(canonical_path.string(), idx++);
         }
     }
