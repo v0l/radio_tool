@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2020 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,6 +45,8 @@ namespace radio_tool::codeplug
                     return try_this.second();
                 }
             }
+
+            return nullptr;
         }
     };
 } // namespace radio_tool::codeplug

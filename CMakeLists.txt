@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2.0)
-project(radio_tool VERSION 0.1.1)
+project(radio_tool VERSION 0.2.0)
 
 option(BUILD_TESTING "Enable tests" OFF)
 
@@ -51,7 +51,11 @@ set(ALL_SRC
     src/radio_tool.cpp
     src/dfu.cpp
     src/radio_factory.cpp
+    src/usb_radio_factory.cpp
+    src/serial_radio_factory.cpp
     src/tyt_radio.cpp
+    src/tyt_device.cpp
+    src/ymodem_device.cpp
     src/tyt_dfu.cpp
     src/tyt_fw.cpp
     src/cs_fw.cpp
@@ -62,7 +66,9 @@ set(ALL_SRC
     "${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp"
 )
 
-add_library(radiotool ${ALL_SRC})
+file(GLOB_RECURSE ALL_HEADERS include false "*.h*")
+
+add_library(radiotool ${ALL_SRC} ${ALL_HEADERS})
 target_include_directories(radiotool PUBLIC include)
 
 add_executable(radio_tool src/radio_tool.cpp)
@@ -100,7 +106,7 @@ set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_DESCRIPTION "Universal radio firmware tool")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://github.com/v0l/radio_tool")
-set(CPACK_PACKAGE_CONTACT "Kieran Harkin <kieran+git@harkin.me>")
+set(CPACK_PACKAGE_CONTACT "v0l <radio_tool@v0l.io>")
 set(CPACK_RESOURCE_FILE_LICENSE "${PROJECT_SOURCE_DIR}/LICENSE")
 if(${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
   set(CPACK_GENERATOR "DragNDrop")

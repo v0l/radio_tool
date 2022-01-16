@@ -1,5 +1,8 @@
 name: OSXRelease
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    branches: ["main"]
+  pull_request:
 jobs:
   build:
     runs-on: [self-hosted, osx]

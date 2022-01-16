@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2020 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -197,7 +197,7 @@ auto CSFW::SupportsRadioModel(const std::string &model) -> bool
     return false;
 }
 
-auto CSFW::MakeChecksum() const -> const uint16_t
+auto CSFW::MakeChecksum() const -> uint16_t
 {
     //Make a copy of the firmware data because we will apply XOR
     auto to_check = MakeFiledata();

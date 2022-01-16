@@ -1,6 +1,7 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2022 Niccol� Izzo IU2KIN
+ * Copyright (c) 2022 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,87 +18,137 @@
  */
 #include <radio_tool/radio/ailunce_radio.hpp>
 #include <radio_tool/fw/ailunce_fw.hpp>
-#include <fymodem.h>
 
-#include <errno.h>
-#include <fcntl.h>
-#include <iomanip>
+#include <thread>
+
+#ifdef _WIN32
+#include <Windows.h>
+#include <io.h>
 #include <iostream>
-#include <math.h>
-#include <string.h>
-#include <termios.h>
+#include <regex>
+
+#ifdef COMPORT_DI_LOOKUP
+#pragma comment(lib, "Setupapi.lib")
+#include <SetupAPI.h>
+#else
+#endif
+
+#else
 #include <unistd.h>
-#include <vector>
+#endif
 
 using namespace radio_tool::radio;
 
 auto AilunceRadio::ToString() const -> const std::string
 {
-    std::stringstream out;
-
-    out << "== Ailunce USB Serial Cable ==" << std::endl;
-
-    return out.str();
+    return "== Ailunce USB Serial Cable ==";
 }
 
-auto AilunceRadio::SetInterfaceAttribs(int fd, int speed, int parity) const -> int
+auto AilunceRadio::WriteFirmware(const std::string &file) const -> void
 {
-        struct termios tty;
-        if (tcgetattr (fd, &tty) != 0)
-        {
-                perror("Error accessing TTY attributes");
-                return -1;
-        }
-
-        cfsetospeed (&tty, speed);
-        cfsetispeed (&tty, speed);
-
-        tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
-        // disable IGNBRK for mismatched speed tests; otherwise receive break
-        // as \000 chars
-        tty.c_iflag &= ~IGNBRK;         // disable break processing
-        tty.c_lflag = 0;                // no signaling chars, no echo,
-                                        // no canonical processing
-        tty.c_oflag = 0;                // no remapping, no delays
-        tty.c_cc[VMIN]  = 0;
-        tty.c_cc[VTIME] = 20;
-
-        tty.c_iflag &= ~(IXON | IXOFF | IXANY); // shut off xon/xoff ctrl
-
-        tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
-                                        // enable reading
-        tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
-        tty.c_cflag |= parity;
-        tty.c_cflag &= ~CSTOPB;
-        tty.c_cflag &= ~CRTSCTS;
-
-        if (tcsetattr (fd, TCSANOW, &tty) != 0)
-        {
-                perror("Error setting TTY attributes");
-                return -1;
-        }
-        return 0;
-}
-
-auto AilunceRadio::WriteFirmware(const std::string &file, const std::string &port) const -> void
-{
-    constexpr auto TransferSize = 1024u;
-
     auto fw = fw::AilunceFW();
     fw.Read(file);
+
+    //XOR raw binary data before sending
     fw.Encrypt();
 
-    int fd = open(port.c_str(), O_RDWR | O_NOCTTY | O_SYNC);
-    if (fd < 0)
-    {
-            perror("Error opening serial port");
-            return;
-    }
-    SetInterfaceAttribs(fd, B57600, 0);
-
-    write(fd, "1", 1);           // send 1 to start firmware upgrade
-    usleep(1000000);      // sleep enough to transmit the 1
+    auto fd = device.GetFD();
+    // send 1 to start firmware upgrade
+#ifdef _WIN32
+    WriteFile((HANDLE)fd, "1", (DWORD)1, NULL, NULL);
+#else
+    write(fd, "1", 1);
+#endif
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     auto r = fw.GetDataSegments()[0];
-    int32_t s = fymodem_send(fd, (uint8_t *)r.data.data(), r.data.size(), file.c_str());
+    device.SetInterfaceAttribs(57600, 0);
+    device.Write(r.data);
+}
+
+auto AilunceRadio::SupportsDevice(const std::string &port) -> bool
+{
+    // not possible to detect from serial port?
+    // ideally we could map serial ports to USB devices to validate VID:PID
+    //
+    // ✅ possible windows solution: https://aticleworld.com/get-com-port-of-usb-serial-device/
+    // possible linux solution: https://unix.stackexchange.com/a/81767
+    auto ids = GetComPortUSBIds(port);
+    return (ids.first == VID && ids.second == PID) || true;
+}
+
+auto AilunceRadio::GetComPortUSBIds(const std::string &port) -> std::pair<uint16_t, uint16_t>
+{
+#if defined(_WIN32) && defined(COMPORT_DI_LOOKUP)
+    auto handle = SetupDiGetClassDevs(NULL, "USB", NULL, DIGCF_ALLCLASSES | DIGCF_PRESENT);
+    if (handle == nullptr)
+    {
+        throw std::runtime_error("Failed to open device info");
+    }
+
+    BYTE hwIds[1024];
+    DEVPROPTYPE propType;
+    SP_DEVINFO_DATA deviceInfo = {};
+    deviceInfo.cbSize = sizeof(SP_DEVINFO_DATA);
+
+    DWORD idx = 0, outSize = 0;
+    while (SetupDiEnumDeviceInfo(handle, idx++, &deviceInfo))
+    {
+        if (SetupDiGetDeviceRegistryPropertyA(handle, &deviceInfo, SPDRP_HARDWAREID, &propType, (PBYTE)&hwIds, sizeof(hwIds), &outSize))
+        {
+            std::cerr << hwIds << std::endl;
+
+            HKEY regKey;
+            if ((regKey = SetupDiOpenDevRegKey(handle, &deviceInfo, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ)) == INVALID_HANDLE_VALUE)
+            {
+                std::cerr << "Failed to find reg key for device: " << (char *)hwIds << std::endl;
+            }
+
+            // read com port name
+            constexpr auto BufferLen = 256;
+            DWORD dwType = 0;
+            DWORD portNameSize = BufferLen;
+            BYTE portName[BufferLen];
+            if (RegQueryValueExA(regKey, "PortName", NULL, &dwType, (LPBYTE)&portName, &portNameSize) == ERROR_SUCCESS)
+            {
+                // not working for some reason
+                std::cerr << portName << std::endl;
+            }
+        }
+    }
+
+    SetupDiDestroyDeviceInfoList(handle);
+#elif defined(_WIN32)
+    HKEY comKey = nullptr;
+    auto openResult = RegOpenKeyExA(HKEY_LOCAL_MACHINE, (LPSTR) "SYSTEM\\CurrentControlSet\\Control\\COM Name Arbiter\\Devices", 0, KEY_READ | KEY_WOW64_64KEY, &comKey);
+    if (openResult != ERROR_SUCCESS)
+    {
+        throw std::runtime_error("Failed to get serial port info from registry");
+    }
+
+    constexpr auto BufferSize = 256L;
+    BYTE value[BufferSize];
+    DWORD valueSize = BufferSize;
+
+    auto readResult = RegQueryValueExA(comKey, port.c_str(), NULL, NULL, (LPBYTE)&value, &valueSize);
+    if (readResult == ERROR_SUCCESS)
+    {
+        std::cmatch match;
+        if (std::regex_match((char *)value, match, std::regex("^.*#vid_([\\w+]{4})\\+pid_([\\w+]{4}).*$")))
+        {
+            auto vid = std::stoi(match[1], nullptr, 16);
+            auto pid = std::stoi(match[2], nullptr, 16);
+            return std::make_pair(vid, pid);
+        }
+    }
+    else
+    {
+        throw std::runtime_error("Error reading registory key values");
+    }
+
+    RegCloseKey(comKey);
+#else
+
+#endif
+    return std::make_pair(0, 0);
 }

@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2020 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ namespace radio_tool::fw
         CS800D_header header;
         uint16_t checksum;
 
-        auto MakeChecksum() const -> const uint16_t;
+        auto MakeChecksum() const -> uint16_t;
         auto MakeFiledata() const -> std::vector<uint8_t>;
         auto UpdateHeader() -> void;
     };

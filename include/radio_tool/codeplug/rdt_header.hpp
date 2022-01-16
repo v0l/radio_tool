@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2020 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -88,7 +88,7 @@ namespace radio_tool::codeplug
             return true;
         }
 
-        auto GetTimestampOffset() const -> const uint32_t
+        auto GetTimestampOffset() const -> uint32_t
         {
             for(const auto& rx : RadioConfigs)
             {
@@ -103,7 +103,7 @@ namespace radio_tool::codeplug
             return 0x2001u; //default
         }
         
-        auto GetGeneralOffset() const -> const uint32_t
+        auto GetGeneralOffset() const -> uint32_t
         {
             for(const auto& rx : RadioConfigs)
             {

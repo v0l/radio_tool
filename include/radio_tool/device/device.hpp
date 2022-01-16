@@ -1,17 +1,17 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 v0l <radio_tool@v0l.io>
- * 
+ * Copyright (c) 2022 v0l <radio_tool@v0l.io>
+ *
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * radio_tool is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
@@ -20,31 +20,35 @@
 #include <vector>
 #include <string>
 
-#include <stdint.h>
-
-namespace radio_tool::codeplug
+namespace radio_tool::device
 {
-    class CodeplugSupport
-    {
-    public:
-        /**
-         * Read a codeplug from disk
-         */
-        virtual auto Read(const std::string&) -> void = 0;
+	class RadioDevice
+	{
+	public:
+		/**
+		 * Set the device read/write address
+		 */
+		virtual auto SetAddress(const uint32_t&) const -> void = 0;
 
-        /**
-         * Write a codeplug to disk
-         */
-        virtual auto Write(const std::string&) const -> void = 0;
+		/**
+		 * Erase bytes from the specified address
+		 */
+		virtual auto Erase(const uint32_t& addr) const -> void = 0;
 
-        /**
-         * Get the codeplug data to write to a device
-         */
-        virtual auto GetData() const -> const std::vector<uint8_t> = 0;
+		/**
+		 * Write bytes to the device
+		 */
+		virtual auto Write(const std::vector<uint8_t>& data) const -> void = 0;
 
-        /**
-         * Get some general info about the loaded codeplug
-         */
-        virtual auto ToString() const -> const std::string = 0;
-    };
-}
+		/**
+		 * Read bytes from the device
+		 */
+		virtual auto Read(const uint16_t& size) const->std::vector<uint8_t> = 0;
+
+		/**
+		 * Get general staus of the device
+		 */
+		virtual auto Status() const -> const std::string = 0;
+	};
+
+} // namespace radio_tool::device

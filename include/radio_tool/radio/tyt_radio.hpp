@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2022 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,43 +18,39 @@
 #pragma once
 
 #include <radio_tool/radio/radio.hpp>
-#include <radio_tool/dfu/tyt_dfu.hpp>
+#include <radio_tool/device/tyt_device.hpp>
 
 #include <functional>
+#include <libusb-1.0/libusb.h>
 
 namespace radio_tool::radio
 {
-    class TYTRadio : public RadioSupport
+    class TYTRadio : public RadioOperations
     {
     public:
         TYTRadio(libusb_device_handle* h)
-            : dfu(h) {}
+            : device(h) {}
 
-        auto WriteFirmware(const std::string &file, const std::string &port) const -> void override;
+        auto WriteFirmware(const std::string &file) const -> void override;
         auto ToString() const -> const std::string override;
 
         static auto SupportsDevice(const libusb_device_descriptor &dev) -> bool
         {
-            if (dev.idVendor == dfu::TYTDFU::VID && dev.idProduct == dfu::TYTDFU::PID)
-            {
-                return true;
-            }
-            return false;
+            return dev.idVendor == dfu::TYTDFU::VID && dev.idProduct == dfu::TYTDFU::PID;
         }
 
         /**
          * Get the handler used to communicate with this device
          */
-        auto GetDFU() const -> const dfu::TYTDFU& override
+        auto GetDevice() const -> const device::TYTDevice* override
         {
-            return dfu;
+            return &device;
         }
 
-        static auto Create(libusb_device_handle* h) -> std::unique_ptr<TYTRadio> {
-            return std::unique_ptr<TYTRadio>(new TYTRadio(h));
+        static auto Create(libusb_device_handle* h) -> const TYTRadio* {
+            return new TYTRadio(h);
         }
     private:
-        uint16_t dev_index;
-        const dfu::TYTDFU dfu;
+        const device::TYTDevice device;
     };
 } // namespace radio_tool::radio

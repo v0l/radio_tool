@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2020 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ namespace radio_tool
         char aV, bV;
         std::stringstream prnt;
         auto size = std::distance(begin, end);
-        while(begin != end)
+        while (begin != end)
         {
             auto v = (*begin);
             auto a = v & 0x0f;
@@ -113,7 +113,7 @@ namespace radio_tool
 
     static inline auto ApplyXOR(std::vector<uint8_t> &data, const uint8_t *xor_key, const uint16_t &key_len) -> void
     {
-        for (auto z = 0; z < data.size(); z++)
+        for (size_t z = 0; z < data.size(); z++)
         {
             data[z] = data[z] ^ xor_key[z % key_len];
         }
@@ -122,18 +122,18 @@ namespace radio_tool
     static inline auto ApplyXOR(std::vector<uint8_t>::iterator &&begin, std::vector<uint8_t>::iterator &&end, const uint8_t *xor_key, const uint16_t &key_len) -> void
     {
         auto z = 0;
-        while(begin != end)
+        while (begin != end)
         {
             (*begin) = (*begin) ^ xor_key[z++ % key_len];
             std::advance(begin, 1);
         }
     }
 
-    static auto BSDChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> const uint16_t
+    static auto BSDChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> uint16_t
     {
         int32_t checksum = 0u;
 
-        for (auto i = 0; i < size; i++)
+        for (size_t i = 0; i < size; i++)
         {
             checksum = (checksum >> 1) + ((checksum & 1) << 15);
             checksum += *data;
@@ -154,7 +154,7 @@ namespace radio_tool
         // n > 0 and n * (n+1) / 2 * (2^8-1) < (2^32-1).
         for (c0 = c1 = 0; len > 0; len -= block_size)
         {
-            auto blocklen = std::min(block_size, len);
+            uint32_t blocklen = std::min(block_size, len);
             for (i = 0; i < blocklen; ++i)
             {
                 c0 = c0 + (*data);
@@ -172,8 +172,8 @@ namespace radio_tool
 
     static auto InternetChecksum(std::vector<uint8_t>::iterator &data, const uint32_t &size) -> uint16_t
     {
-        int32_t sum = 0, 
-            count = size;
+        int32_t sum = 0,
+                count = size;
 
         // Main summing loop
         while (count > 1)
@@ -205,14 +205,14 @@ namespace radio_tool
     {
         uint16_t sum = 0;
 
-        while(begin != end)
+        while (begin != end)
         {
             sum += (*begin);
             std::advance(begin, 1);
         }
 
         auto c0 = (int32_t)(sum / 5) >> 8;
-	    auto c1 = (sum / 5) & 0xff;
+        auto c1 = (sum / 5) & 0xff;
         return (c1 << 8 | c0);
     }
 } // namespace radio_tool

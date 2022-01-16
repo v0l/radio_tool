@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2020 Kieran Harkin <kieran+git@harkin.me>
+ * Copyright (c) 2020 v0l <radio_tool@v0l.io>
  * 
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include <radio_tool/fw/fw_factory.hpp>
 #include <radio_tool/codeplug/codeplug_factory.hpp>
 
+#include <radio_tool/radio/tyt_radio.hpp>
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
 #include <radio_tool/version.hpp>
@@ -36,11 +37,10 @@ using namespace radio_tool::fw;
 using namespace radio_tool::radio;
 using namespace radio_tool::codeplug;
 
-
-template<class T>
-auto GetOptionOrErr(const cxxopts::ParseResult &cmd, const std::string &v, const std::string &err) -> const T&
+template <class T>
+auto GetOptionOrErr(const cxxopts::ParseResult &cmd, const std::string &v, const std::string &err) -> const T &
 {
-    if(cmd.count(v))
+    if (cmd.count(v))
     {
         return cmd[v].as<T>();
     }
@@ -71,7 +71,7 @@ int main(int argc, char **argv)
         options.add_options("Programming")
             ("f,flash", "Flash firmware")
             ("p,program", "Upload codeplug");
-        
+
         options.add_options("All radio")
             ("info", "Print some info about the radio")
             ("write-custom", "Send custom command to radio", cxxopts::value<std::vector<uint8_t>>(), "<data>")
@@ -84,16 +84,15 @@ int main(int argc, char **argv)
             ("reboot", "Reboot the radio")
             ("dump-bootloader", "Dump bootloader (Mac only)");
 
-        options.add_options("Ailunce Radio")
-            ("P,port", "Serial port", cxxopts::value<std::string>(), "<port>");
-
         options.add_options("Firmware")
             ("fw-info", "Print info about a firmware file")
             ("wrap", "Wrap a firmware bin (use --help wrap, for more info)")
+            ("unwrap", "Unwrap a fimrware file")
 #ifdef XOR_TOOL
-            ("make-xor", "Try to make an XOR key for the input firmware")        
+            ("make-xor", "Try to make an XOR key for the input firmware");
+#else
+            ;
 #endif
-            ("unwrap", "Unwrap a fimrware file");
 
         options.add_options("Codeplug")
             ("codeplug-info", "Print info about a codeplug file");
@@ -109,19 +108,20 @@ int main(int argc, char **argv)
             std::vector<std::string> help_groups;
 
             auto section = cmd.count("help") ? cmd["help"].as<std::string>() : std::string();
-            if(!section.empty()) 
+            if (!section.empty())
             {
-                for(const auto& g : options.groups()) 
+                for (const auto &g : options.groups())
                 {
-                    if(g.size() != section.size()) continue;
-                    if(std::equal(g.begin(), g.end(), section.begin(), [](char a, char b) {
-                        return std::toupper(a) == std::toupper(b);
-                    })) {
+                    if (g.size() != section.size())
+                        continue;
+                    if (std::equal(g.begin(), g.end(), section.begin(), [](char a, char b)
+                                   { return std::toupper(a) == std::toupper(b); }))
+                    {
                         help_groups.push_back(g);
                     }
                 }
-            } 
-            else 
+            }
+            else
             {
                 help_groups = {"General", "Programming", "Firmware", "All radio", "TYT Radio", "Codeplug"};
             }
@@ -129,12 +129,9 @@ int main(int argc, char **argv)
             exit(0);
         }
 
-        if(cmd.count("list-radios"))
+        if (cmd.count("list-radios"))
         {
-            for(const auto& radio : RadioFactory::ListRadioSupport())
-            {
-                std::cerr << radio << std::endl;
-            }
+            //TODO: list radio models supported
             exit(0);
         }
 
@@ -142,24 +139,24 @@ int main(int argc, char **argv)
         if (cmd.count("fw-info"))
         {
             auto file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-            
+
             auto fw = FirmwareFactory::GetFirmwareFileHandler(file);
             fw->Read(file);
             std::cerr << fw->ToString();
             exit(0);
         }
 
-        if(cmd.count("codeplug-info"))
+        if (cmd.count("codeplug-info"))
         {
             auto file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-            
+
             auto h = CodeplugFactory::GetCodeplugHandler(file);
             h->Read(file);
             std::cerr << h->ToString();
             exit(0);
         }
 
-        if(cmd.count("wrap"))
+        if (cmd.count("wrap"))
         {
             auto out = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
             auto radio = GetOptionOrErr<std::string>(cmd, "radio", "Radio not specified");
@@ -167,14 +164,14 @@ int main(int argc, char **argv)
 
             auto fw = FirmwareFactory::GetFirmwareModelHandler(radio);
             fw->SetRadioModel(radio);
-            for(const auto &sx : segments)
+            for (const auto &sx : segments)
             {
                 auto schar = sx.find(':');
-                if(schar != sx.npos)
+                if (schar != sx.npos)
                 {
                     uint32_t addr = 0;
                     auto addr_str = sx.substr(0, schar);
-                    if(addr_str.find("0x") != addr_str.npos)
+                    if (addr_str.find("0x") != addr_str.npos)
                     {
                         addr = std::stoi(addr_str, 0, 16);
                     }
@@ -182,14 +179,14 @@ int main(int argc, char **argv)
                     {
                         addr = std::stoi(addr_str, 0, 10);
                     }
-                    
+
                     auto filename = sx.substr(schar + 1);
-                    std::cerr << "Adding segment 0x" 
-                        << std::hex << std::setw(8) << std::setfill('0') << addr
-                        << " from file " << filename << std::endl;
+                    std::cerr << "Adding segment 0x"
+                              << std::hex << std::setw(8) << std::setfill('0') << addr
+                              << " from file " << filename << std::endl;
 
                     std::ifstream f_seg(filename, std::ios_base::binary);
-                    if(f_seg.is_open())
+                    if (f_seg.is_open())
                     {
                         f_seg.seekg(0, f_seg.end);
                         auto len = f_seg.tellg();
@@ -197,17 +194,17 @@ int main(int argc, char **argv)
 
                         std::vector<uint8_t> seg_data;
                         seg_data.resize(len);
-                        f_seg.read((char*)seg_data.data(), len);
+                        f_seg.read((char *)seg_data.data(), len);
                         f_seg.close();
 
                         fw->AppendSegment(addr, seg_data);
                     }
-                    else 
+                    else
                     {
                         throw std::runtime_error("Cant open file for segment");
                     }
                 }
-                else 
+                else
                 {
                     throw std::invalid_argument("Segments must be in the format '0x0000:filename.bin'");
                 }
@@ -219,28 +216,28 @@ int main(int argc, char **argv)
             exit(0);
         }
 
-        if(cmd.count("unwrap")) 
+        if (cmd.count("unwrap"))
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
             auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
-            
+
             auto fw_handler = FirmwareFactory::GetFirmwareFileHandler(in_file);
             fw_handler->Read(in_file);
             fw_handler->Decrypt();
 
-            for(const auto& rn : fw_handler->GetDataSegments()) 
+            for (const auto &rn : fw_handler->GetDataSegments())
             {
                 std::stringstream ss_name;
                 ss_name << out_file << "_0x" << std::setw(8) << std::setfill('0') << std::hex << rn.address;
 
                 std::ofstream fw_out;
                 fw_out.open(ss_name.str(), std::ios_base::out | std::ios_base::binary);
-                if(fw_out.is_open()) 
+                if (fw_out.is_open())
                 {
-                    fw_out.write((const char*)rn.data.data(), rn.data.size());
+                    fw_out.write((const char *)rn.data.data(), rn.data.size());
                     fw_out.close();
-                } 
-                else 
+                }
+                else
                 {
                     std::cerr << "Failed to open output file: " << out_file << std::endl;
                     exit(1);
@@ -250,18 +247,18 @@ int main(int argc, char **argv)
         }
 
 #ifdef XOR_TOOL
-        if(cmd.count("make-xor")) 
+        if (cmd.count("make-xor"))
         {
-            auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");          
+            auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
             auto fw_handler = FirmwareFactory::GetFirmwareFileHandler(in_file);
             fw_handler->Read(in_file);
-            
+
             auto key = radio_tool::fw::XORTool::MakeXOR(fw_handler->GetData());
-            for(const auto& region : fw_handler->GetDataSegments()) 
+            for (const auto &region : fw_handler->GetDataSegments())
             {
-                if(radio_tool::fw::XORTool::Verify(region.address, region.data, key))
+                if (radio_tool::fw::XORTool::Verify(region.address, region.data, key))
                 {
-                    std::cout 
+                    std::cout
                         << "Region @ 0x" << std::setfill('0') << std::setw(8) << std::hex << region.address
                         << " appears to be a valid vector_table" << std::endl;
                 }
@@ -271,13 +268,13 @@ int main(int argc, char **argv)
             exit(0);
         }
 #endif
-        
+
         auto rdFactory = RadioFactory();
         if (cmd.count("list"))
         {
             for (const auto &d : rdFactory.ListDevices())
             {
-                std::wcout << d.ToString() << std::endl;
+                std::wcout << d->ToString() << std::endl;
             }
             exit(0);
         }
@@ -289,97 +286,107 @@ int main(int argc, char **argv)
         }
 
         auto index = cmd["device"].as<uint16_t>();
-        auto radio = rdFactory.GetRadioSupport(index);
-        auto dfu = radio->GetDFU();
-        
-        if(cmd.count("info")) 
+        auto radio = rdFactory.OpenDevice(index);
+        auto device = radio->GetDevice();
+
+        if (cmd.count("info"))
         {
             std::cout << radio->ToString() << std::endl;
             exit(1);
         }
 
-        if(cmd.count("flash")) 
+        if (cmd.count("flash"))
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-            auto port = GetOptionOrErr<std::string>(cmd, "port", "Port not specified");
-            radio->WriteFirmware(in_file, port);
+            radio->WriteFirmware(in_file);
             std::cout << "Done!" << std::endl;
         }
 
-        if(cmd.count("program")) 
+        if (cmd.count("program"))
         {
-
         }
 
-        if(cmd.count("dump-reg")) 
-        {
-            auto x = cmd["dump-reg"].as<uint16_t>();
-            std::cerr << "Read register: 0x" << std::setfill('0') << std::setw(2) << std::hex << x << std::endl;
-            //radio_tool::PrintHex(dfu.ReadRegister(static_cast<const TYTRegister>(x)));
-        }
-
-        if(cmd.count("dump-bootloader")) 
-        {
-            auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Input file not specified");
-            auto size = 0xc000;
-            std::ofstream outf;
-            outf.open(out_file, std::ios_base::out | std::ios_base::binary);
-            if(outf.is_open()) 
-            {
-                auto mem = dfu.Upload(size, 2);
-                //radio_tool::PrintHex(mem);
-                outf.write((char*)mem.data(), mem.size());
-                outf.close();
-            }
-            else 
-            {
-                std::cerr << "Failed to open output file: " << out_file << std::endl;
-                exit(1);
-            }
-        }
-
-
-        if(cmd.count("write-custom")) 
+        if (cmd.count("write-custom"))
         {
             auto data = cmd["write-custom"].as<std::vector<uint8_t>>();
-            dfu.Download(data);
-        }
-
-        if(cmd.count("get-status")) 
-        {
-            auto status = dfu.GetStatus();
-            std::cerr << status.ToString() << std::endl;
-        }
-
-        if(cmd.count("get-time")) 
-        {
-            //auto tm = dfu.GetTime();
-            //std::cerr << ctime(&tm);
-        }
-
-        if(cmd.count("set-time")) 
-        {
-            //dfu.SetTime();
-        }
-
-        if(cmd.count("reboot"))
-        {
-            //dfu.Reboot();
+            device->Write(data);
         }
     }
-    catch (const radio_tool::dfu::DFUException& dfuEx) 
+    catch (const radio_tool::dfu::DFUException &dfuEx)
     {
         std::cerr << "DFU Error: " << dfuEx.what() << std::endl;
-         exit(1);
+        exit(1);
     }
     catch (const cxxopts::OptionException &e)
     {
         std::cerr << "error parsing options: " << e.what() << std::endl;
         exit(1);
     }
-    catch (const std::exception &gex) 
+    catch (const std::exception &gex)
     {
         std::cerr << "Error: " << gex.what() << std::endl;
-         exit(1);
+        exit(1);
+    }
+}
+
+auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> void
+{
+    if (typeid(radio) == typeid(radio_tool::radio::TYTRadio))
+    {
+        std::cerr << "Cant use TYT commands on non-tyt radio!" << std::endl;
+        exit(1);
+    }
+
+    auto tyt_radio = dynamic_cast<radio_tool::radio::TYTRadio *>(radio);
+    auto device = tyt_radio->GetDevice();
+    auto dfu = device->GetDFU();
+
+    if (cmd.count("get-status"))
+    {
+        auto status = device->Status();
+        std::cerr << status << std::endl;
+    }
+
+    if (cmd.count("dump-reg"))
+    {
+        auto x = cmd["dump-reg"].as<uint16_t>();
+        std::cerr << "Read register: 0x" << std::setfill('0') << std::setw(2) << std::hex << x << std::endl;
+        //radio_tool::PrintHex(dfu.ReadRegister(static_cast<const TYTRegister>(x)));
+    }
+
+    if (cmd.count("dump-bootloader"))
+    {
+        auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Input file not specified");
+        auto size = 0xc000;
+        std::ofstream outf;
+        outf.open(out_file, std::ios_base::out | std::ios_base::binary);
+        if (outf.is_open())
+        {
+            auto mem = dfu.Upload(size, 2);
+            //radio_tool::PrintHex(mem);
+            outf.write((char *)mem.data(), mem.size());
+            outf.close();
+        }
+        else
+        {
+            std::cerr << "Failed to open output file: " << out_file << std::endl;
+            exit(1);
+        }
+    }
+
+    if (cmd.count("get-time"))
+    {
+        //auto tm = dfu.GetTime();
+        //std::cerr << ctime(&tm);
+    }
+
+    if (cmd.count("set-time"))
+    {
+        //dfu.SetTime();
+    }
+
+    if (cmd.count("reboot"))
+    {
+        //dfu.Reboot();
     }
 }

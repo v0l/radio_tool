@@ -12,8 +12,14 @@
  */
 
 #include <fymodem.h>
+#include <stdio.h>
+
+#ifndef _WIN32
 #include <termios.h>
 #include <unistd.h>
+#else
+#include <Windows.h>
+#endif
 
 /* filesize 999999999999999 should be enough... */
 #define YM_FILE_SIZE_LENGTH        (16)
@@ -45,28 +51,42 @@
 /* error logging function */
 #define YM_ERR(fmt, ...) do { printf(fmt, __VA_ARGS__); } while(0)
 
-int global_fd = 0;
+FILE* global_fd = 0;
 
 char __ym_getchar(int timeout_ms)
 {
     char c = 0;
-    read(global_fd, &c, 1);
+#ifdef _WIN32
+    ReadFile((HANDLE)global_fd, &c, (DWORD)1, NULL, NULL);
+#else
+    fread(&c, 1, 1, global_fd);
+#endif
     return c;
 }
 
 void __ym_putchar(char c)
 {
-    write(global_fd, &c, 1);
+#ifdef _WIN32
+    WriteFile((HANDLE)global_fd, &c, (DWORD)1, NULL, NULL);
+#else
+    fwrite(&c, 1, 1, global_fd);
+#endif
 }
 
 void __ym_sleep_ms(int delay_ms)
 {
+#ifdef _WIN32
+    Sleep(delay_ms);
+#else
     usleep(delay_ms * 1000);
+#endif
 }
 
 void __ym_flush()
 {
+#ifndef _WIN32
     tcflush(global_fd,TCIOFLUSH);
+#endif
 }
 
 /* ------------------------------------------------ */
