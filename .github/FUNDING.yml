@@ -2,4 +2,4 @@
 
 liberapay: v0l
 patreon: v0l
-custom: ['https://btcpay.v0l.io/api/v1/invoices?storeId=CxjchLEkirhBWU17KeJrAe71g5TzrxsvsfLuFwrnyp5Q&price=1&currency=USD']
+custom: ['https://pay.v0l.io/api/v1/invoices?storeId=CxjchLEkirhBWU17KeJrAe71g5TzrxsvsfLuFwrnyp5Q&price=1&currency=USD']
