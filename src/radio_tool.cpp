@@ -61,7 +61,7 @@ int main(int argc, char **argv)
         cxxopts::Options options(argv[0], version);
 
         options.add_options("General")
-            ("h,help", "Show this message", cxxopts::value<std::string>(), "<command>")
+            ("h,help", "Show this message", cxxopts::value<std::string>()->implicit_value(""), "<command>")
             ("l,list", "List devices")
             ("d,device", "Device to use", cxxopts::value<uint16_t>(), "<index>")
             ("i,in", "Input file", cxxopts::value<std::string>(), "<file>")
