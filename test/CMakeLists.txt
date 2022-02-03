@@ -3,7 +3,7 @@ project(radio_tool_tests VERSION 0.1.0)
 
 include(ExternalData)
 set(ExternalData_URL_TEMPLATES
-    "https://v0l.io/radio_tool/firmware/%(algo)/%(hash)"
+    "https://data.v0l.io/radio_tool/firmware/%(algo)/%(hash)"
  )
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
