@@ -59,7 +59,7 @@ char __ym_getchar(int timeout_ms)
 #ifdef _WIN32
     ReadFile((HANDLE)global_fd, &c, (DWORD)1, NULL, NULL);
 #else
-    fread(&c, 1, 1, global_fd);
+    read(global_fd, &c, 1);
 #endif
     return c;
 }
@@ -69,7 +69,7 @@ void __ym_putchar(char c)
 #ifdef _WIN32
     WriteFile((HANDLE)global_fd, &c, (DWORD)1, NULL, NULL);
 #else
-    fwrite(&c, 1, 1, global_fd);
+    write(global_fd, &c, 1);
 #endif
 }
 
