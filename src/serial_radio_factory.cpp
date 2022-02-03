@@ -108,6 +108,18 @@ auto SerialRadioFactory::OpDeviceList(std::function<void(const std::string &, co
 #else
 auto SerialRadioFactory::OpDeviceList(std::function<void(const std::string &, const uint16_t &)> op) const -> void
 {
+#ifdef __APPLE__
+    auto p = fs::path("/dev");
+    auto idx = 0;
+    for (const auto &de : fs::directory_iterator(p))
+    {
+        auto stem = de.path().stem().string();
+        if (stem == "tty" || stem == "cu")
+        {
+            op(de.path().string(), idx++);
+        }
+    }
+#else
     //https://stackoverflow.com/a/65764414
     auto p = fs::path("/dev/serial/by-id");
     if (!fs::exists(p))
@@ -124,5 +136,6 @@ auto SerialRadioFactory::OpDeviceList(std::function<void(const std::string &, co
             op(canonical_path.string(), idx++);
         }
     }
+#endif
 }
 #endif
