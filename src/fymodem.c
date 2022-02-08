@@ -51,7 +51,7 @@
 /* error logging function */
 #define YM_ERR(fmt, ...) do { printf(fmt, __VA_ARGS__); } while(0)
 
-FILE* global_fd = 0;
+int global_fd = 0;
 
 char __ym_getchar(int timeout_ms)
 {

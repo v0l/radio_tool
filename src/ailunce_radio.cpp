@@ -22,6 +22,7 @@
 #include <thread>
 
 #ifdef _WIN32
+#define B57600 57600
 #include <Windows.h>
 #include <io.h>
 #include <iostream>
@@ -35,6 +36,7 @@
 
 #else
 #include <unistd.h>
+#include <termios.h>
 #endif
 
 using namespace radio_tool::radio;
@@ -51,7 +53,8 @@ auto AilunceRadio::WriteFirmware(const std::string &file) const -> void
 
     //XOR raw binary data before sending
     fw.Encrypt();
-
+    
+    device.SetInterfaceAttribs(B57600, 0);
     auto fd = device.GetFD();
     // send 1 to start firmware upgrade
 #ifdef _WIN32
@@ -62,7 +65,6 @@ auto AilunceRadio::WriteFirmware(const std::string &file) const -> void
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     auto r = fw.GetDataSegments()[0];
-    device.SetInterfaceAttribs(57600, 0);
     device.Write(r.data);
 }
 
