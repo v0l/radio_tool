@@ -5,7 +5,7 @@ on:
   pull_request:
 jobs:
   build:
-    runs-on: [self-hosted, osx]
+    runs-on: macos-12
     steps:
     - uses: actions/checkout@v2
     - name: run-cmake
