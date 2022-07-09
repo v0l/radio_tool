@@ -26,6 +26,7 @@
 #include <fstream>
 #include <cstring>
 #include <sstream>
+#include <memory>
 #include <iomanip>
 
 namespace radio_tool::fw
