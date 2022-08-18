@@ -381,13 +381,13 @@ auto tytCommands(const cxxopts::ParseResult &cmd, const RadioOperations *radio) 
     if (cmd.count("dump-firmware"))
     {
         auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
-        auto size = GetOptionOrErr<uint16_t>(cmd, "dump-firmware", "Please specify dump size");
         std::ofstream outf;
         outf.open(out_file, std::ios_base::out | std::ios_base::binary);
         if (outf.is_open())
         {
-            auto mem = dfu.Upload(size, 2);
-            radio_tool::PrintHex(mem.begin(), mem.end());
+            dfu.SendTYTCommand(radio_tool::dfu::TYTCommand::FirmwareUpgrade);
+            auto mem = dfu.Upload(0x4000, 2);
+            //radio_tool::PrintHex(mem.begin(), mem.end());
             outf.write((char *)mem.data(), mem.size());
             outf.close();
         }
