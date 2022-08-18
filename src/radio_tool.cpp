@@ -37,6 +37,8 @@ using namespace radio_tool::fw;
 using namespace radio_tool::radio;
 using namespace radio_tool::codeplug;
 
+auto tytCommands(const cxxopts::ParseResult &cmd, const RadioOperations *radio) -> void;
+
 template <class T>
 auto GetOptionOrErr(const cxxopts::ParseResult &cmd, const std::string &v, const std::string &err) -> const T &
 {
@@ -70,7 +72,8 @@ int main(int argc, char **argv)
 
         options.add_options("Programming")
             ("f,flash", "Flash firmware")
-            ("p,program", "Upload codeplug");
+            ("p,program", "Upload codeplug")
+            ("dump-firmware", "Download firmware backup", cxxopts::value<uint16_t>(), "<size>");
 
         options.add_options("All radio")
             ("info", "Print some info about the radio")
@@ -80,7 +83,6 @@ int main(int argc, char **argv)
         options.add_options("TYT Radio")
             ("get-time", "Gets the radio time")
             ("set-time", "Sets the radio time")
-            ("dump-reg", "Dump a register from the radio", cxxopts::value<uint16_t>(), "<register>")
             ("reboot", "Reboot the radio")
             ("dump-bootloader", "Dump bootloader (Mac only)");
 
@@ -318,6 +320,8 @@ int main(int argc, char **argv)
             auto data = cmd["write-custom"].as<std::vector<uint8_t>>();
             device->Write(data);
         }
+
+        tytCommands(cmd, radio);
     }
     catch (const radio_tool::dfu::DFUException &dfuEx)
     {
@@ -336,7 +340,7 @@ int main(int argc, char **argv)
     }
 }
 
-auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> void
+auto tytCommands(const cxxopts::ParseResult &cmd, const RadioOperations *radio) -> void
 {
     if (typeid(radio) == typeid(radio_tool::radio::TYTRadio))
     {
@@ -344,7 +348,7 @@ auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> voi
         exit(1);
     }
 
-    auto tyt_radio = dynamic_cast<radio_tool::radio::TYTRadio *>(radio);
+    auto tyt_radio = dynamic_cast<radio_tool::radio::TYTRadio *>(const_cast<RadioOperations*>(radio));
     auto device = tyt_radio->GetDevice();
     auto dfu = device->GetDFU();
 
@@ -354,16 +358,9 @@ auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> voi
         std::cerr << status << std::endl;
     }
 
-    if (cmd.count("dump-reg"))
-    {
-        auto x = cmd["dump-reg"].as<uint16_t>();
-        std::cerr << "Read register: 0x" << std::setfill('0') << std::setw(2) << std::hex << x << std::endl;
-        //radio_tool::PrintHex(dfu.ReadRegister(static_cast<const TYTRegister>(x)));
-    }
-
     if (cmd.count("dump-bootloader"))
     {
-        auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Input file not specified");
+        auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
         auto size = 0xc000;
         std::ofstream outf;
         outf.open(out_file, std::ios_base::out | std::ios_base::binary);
@@ -371,6 +368,26 @@ auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> voi
         {
             auto mem = dfu.Upload(size, 2);
             //radio_tool::PrintHex(mem);
+            outf.write((char *)mem.data(), mem.size());
+            outf.close();
+        }
+        else
+        {
+            std::cerr << "Failed to open output file: " << out_file << std::endl;
+            exit(1);
+        }
+    }
+
+    if (cmd.count("dump-firmware"))
+    {
+        auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
+        auto size = GetOptionOrErr<uint16_t>(cmd, "dump-firmware", "Please specify dump size");
+        std::ofstream outf;
+        outf.open(out_file, std::ios_base::out | std::ios_base::binary);
+        if (outf.is_open())
+        {
+            auto mem = dfu.Upload(size, 2);
+            radio_tool::PrintHex(mem.begin(), mem.end());
             outf.write((char *)mem.data(), mem.size());
             outf.close();
         }
