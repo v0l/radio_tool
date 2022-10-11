@@ -265,6 +265,13 @@ int main(int argc, char **argv)
             }
 
             radio_tool::PrintHex(key.begin(), key.end());
+
+            // dump in C format
+            std::cout << "const uint8_t[] key = {";
+            for(const auto &v : key) {
+                std::cout << "0x" << std::hex << std::setfill('0') << std::setw(2) << (int)v << ",";
+            }
+            std::cout << "};" << std::endl;
             exit(0);
         }
 #endif
