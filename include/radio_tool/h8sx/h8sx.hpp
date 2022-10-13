@@ -1,17 +1,17 @@
 /**
  * This file is part of radio_tool.
  * Copyright (c) 2020 v0l <radio_tool@v0l.io>
- * 
+ *
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * radio_tool is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
@@ -27,18 +27,25 @@
 #include <libusb-1.0/libusb.h>
 #include <radio_tool/h8sx/h8sx_exception.hpp>
 
-#define CHECK_ERR(errstr)                                               \
-    do {                                                                \
-        if (err < LIBUSB_SUCCESS) {                                     \
-            std::string e = std::string(errstr) +                       \
-                            std::string(libusb_error_name(err));        \
-            throw radio_tool::h8sx::H8SXException(e);                   \
-        }                                                               \
-    } while(0)
-#define PACK __attribute__((__packed__))
+#define CHECK_ERR(errstr)                                        \
+    do                                                           \
+    {                                                            \
+        if (err < LIBUSB_SUCCESS)                                \
+        {                                                        \
+            std::string e = std::string(errstr) +                \
+                            std::string(libusb_error_name(err)); \
+            throw radio_tool::h8sx::H8SXException(e);            \
+        }                                                        \
+    } while (0)
 
-#define BULK_EP_IN   0x82
-#define BULK_EP_OUT  0x01
+#if defined(__GNUC__)
+#define PACK(__Declaration__) __Declaration__ __attribute__((__packed__))
+#elif defined(_MSC_VER)
+#define PACK(__Declaration__) __pragma(pack(push, 1)) __Declaration__ __pragma(pack(pop))
+#endif
+
+#define BULK_EP_IN 0x82
+#define BULK_EP_OUT 0x01
 #define BUF_SIZE 64 * 1024 // Max transfer size 64KB
 
 namespace radio_tool::h8sx
@@ -105,40 +112,40 @@ namespace radio_tool::h8sx
     };
 
     // Supported device inquiry response
-    struct PACK dev_inq_hdr_t {
+    PACK(struct dev_inq_hdr_t {
         uint8_t cmd = 0;
         uint8_t size = 0;
         uint8_t ndev = 0;
         uint8_t nchar = 0;
-        char code[4] = { 0 };
-    };
+        char code[4] = {0};
+    });
 
-    struct PACK dev_sel_t {
+    PACK(struct dev_sel_t {
         uint8_t cmd = 0;
         uint8_t size = 0;
-        char code[4] = { 0 };
+        char code[4] = {0};
         uint8_t sum = 0;
-    };
+    });
 
-    struct PACK prog_chunk_t {
+    PACK(struct prog_chunk_t {
         uint8_t cmd = static_cast<uint8_t>(H8SXCmd::PROGRAM_128B);
         uint32_t addr = 0;
-        uint8_t data[1024] = { 0 };
+        uint8_t data[1024] = {0};
         uint8_t sum = 0;
-    };
+    });
 
-    struct PACK prog_end_t {
+    PACK(struct prog_end_t {
         uint8_t cmd = static_cast<uint8_t>(H8SXCmd::PROGRAM_128B);
         uint32_t addr = 0xffffffff;
         uint8_t sum = 0xb4;
-    };
+    });
 
-    struct PACK sum_chk_t {
+    PACK(struct sum_chk_t {
         uint8_t cmd;
         uint8_t size;
         uint32_t chk;
         uint8_t sum;
-    };
+    });
 
     class H8SX
     {
