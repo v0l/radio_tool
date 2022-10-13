@@ -19,6 +19,7 @@
 #include <radio_tool/radio/usb_radio_factory.hpp>
 #include <radio_tool/device/device.hpp>
 #include <radio_tool/radio/tyt_radio.hpp>
+#include <radio_tool/radio/yaesu_radio.hpp>
 
 #include <libusb-1.0/libusb.h>
 
@@ -41,6 +42,7 @@ struct DeviceMapper
  */
 const std::vector<DeviceMapper> RadioSupports = {
     {TYTRadio::SupportsDevice, TYTRadio::Create},
+    {YaesuRadio::SupportsDevice, YaesuRadio::Create},
 };
 
 USBRadioFactory::USBRadioFactory() : usb_ctx(nullptr)
@@ -79,8 +81,18 @@ auto USBRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const std
                         auto cdev = const_cast<libusb_device *>(devs[x]);
                         if (LIBUSB_SUCCESS == (err = libusb_open(cdev, &h)))
                         {
-                            auto mfg = GetDeviceString(desc.iManufacturer, h),
-                                 prd = GetDeviceString(desc.iProduct, h);
+                            std::wstring mfg, prd;
+                            //Yaesu FT-70D doesn't support string descriptors
+                            if (desc.idVendor == YaesuRadio::VID && desc.idProduct == YaesuRadio::PID)
+                            {
+                                mfg = L"Yaesu";
+                                prd = L"FT-70D";
+                            }
+                            else
+                            {
+                                mfg = GetDeviceString(desc.iManufacturer, h),
+                                prd = GetDeviceString(desc.iProduct, h);
+                            }
 
                             auto bus = libusb_get_bus_number(cdev);
                             auto port = libusb_get_port_number(cdev);
@@ -122,7 +134,7 @@ auto USBRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const std
 auto USBRadioFactory::GetDeviceString(const uint8_t &desc, libusb_device_handle *h) const -> std::wstring
 {
     auto err = 0;
-    size_t prd_len = 0;
+    int prd_len = 0;
     unsigned char lang[42], prd[255];
     memset(prd, 0, 255);
 

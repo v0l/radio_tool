@@ -50,6 +50,7 @@ endif()
 set(ALL_SRC 
     src/radio_tool.cpp
     src/dfu.cpp
+    src/h8sx.cpp
     src/radio_factory.cpp
     src/usb_radio_factory.cpp
     src/serial_radio_factory.cpp
@@ -61,6 +62,9 @@ set(ALL_SRC
     src/cs_fw.cpp
     src/ailunce_radio.cpp
     src/ailunce_fw.cpp
+    src/yaesu_radio.cpp
+    src/yaesu_device.cpp
+    src/yaesu_fw.cpp
     src/fymodem.c
     src/rdt.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp"
