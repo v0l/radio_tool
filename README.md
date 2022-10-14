@@ -2,6 +2,27 @@
 
 Radio Firmware tool
 
+## Radio Support
+
+| Manufacturer | Radio Model | Fw Read | Fw Write | Fw Wrap | Db Read | Db Write |
+| - | - | - | - | - | - | - |
+| TYT | [MD-2017](https://www.tyt888.com/?mod=product_show&id=110)| ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| TYT | [MD-9600](https://www.tyt888.com/?mod=product_show&id=108) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| TYT | [MD-UV380](https://www.tyt888.com/?mod=product_show&id=127) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| TYT | [MD-UV390](https://www.tyt888.com/?mod=product_show&id=129) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| TYT | [MD-390](https://www.tyt888.com/?mod=product_show&id=77) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| TYT | [MD-380](https://www.tyt888.com/?mod=product_show&id=78) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| TYT | [MD-446](https://www.tyt888.com/?mod=product_show&id=75) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| TYT | [MD-280](https://www.tyt888.com/?mod=product_show&id=80) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| Baofeng | [DM-1701](https://www.baofengradio.com/products/dm-1701) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| Connect Systems | [CS800D](https://www.connectsystems.com/products/top/radios/CS800D.htm) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| Ailunce | [HD1](https://www.ailunce.com/Product/HD1/Overview) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| Yaesu | [FT-70DR](https://www.yaesu.com/indexVS.cfm?cmd=DisplayProducts&ProdCatID=249&encProdID=7CDB93B02164B1FB036530FBD7D37F1A&DivisionID=65&isArchived=0) | ✖️ | ✔️ | ✖️ | ✖️ | ✖️ |
+
+```
+Fw = Firmware
+Db = Codeplug database
+```
 # Download
 
 Windows: [AppVeyor](https://ci.appveyor.com/project/v0l/radio-tool)
