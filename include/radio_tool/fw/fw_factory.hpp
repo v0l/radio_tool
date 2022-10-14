@@ -21,6 +21,7 @@
 #include <radio_tool/fw/tyt_fw.hpp>
 #include <radio_tool/fw/cs_fw.hpp>
 #include <radio_tool/fw/ailunce_fw.hpp>
+#include <radio_tool/fw/yaesu_fw.hpp>
 
 #include <string>
 #include <memory>
@@ -52,7 +53,8 @@ namespace radio_tool::fw
     const std::vector<FirmwareSupportTest> AllFirmwareHandlers = {
         FirmwareSupportTest(TYTFW::SupportsFirmwareFile, TYTFW::SupportsRadioModel, TYTFW::Create),
         FirmwareSupportTest(CSFW::SupportsFirmwareFile, CSFW::SupportsRadioModel, CSFW::Create),
-        FirmwareSupportTest(AilunceFW::SupportsFirmwareFile, AilunceFW::SupportsRadioModel, AilunceFW::Create)
+        FirmwareSupportTest(AilunceFW::SupportsFirmwareFile, AilunceFW::SupportsRadioModel, AilunceFW::Create),
+        FirmwareSupportTest(YaesuFW::SupportsFirmwareFile, YaesuFW::SupportsRadioModel, YaesuFW::Create)
     };
 
     class FirmwareFactory
