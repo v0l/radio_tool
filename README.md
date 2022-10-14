@@ -1,6 +1,6 @@
 # radio_tool
 
-TYT/BaoFeng/(Others?) Firmware tool
+Radio Firmware tool
 
 # Download
 
@@ -17,17 +17,17 @@ Otherwise you can use the instructions below to build
 # Building
 Dependencies Linux (Ubuntu/Debian):
 
-```
+```bash
 sudo apt install libusb-1.0-0-dev cmake gcc g++ pkg-config
 ```
 
 Dependencies Mac:
-```
+```bash
 brew install libusb cmake pkg-config
 ```
 
 Build:
-```
+```bash
 git clone https://github.com/v0l/radio_tool
 cd radio_tool
 mkdir build && cd build
@@ -35,6 +35,9 @@ cmake ..
 make -j4
 ./radio_tool --help
 ```
+
+# Docs
+Code documentation: https://data.v0l.io/radio_tool/docs
 
 # Usage
 ```
@@ -75,18 +78,18 @@ Usage:
 ```
 
 ## Flash Firmware
-```
+```bash
 ./radio_tool -d 0 -f -i new_firmware.bin
 ```
 
 ## Wrap Firmware
-```
+```bash
 ./radio_tool --wrap -o wrapped.bin -r DM1701 -s 0x0800C000:main.bin
 ```
 
 ## Unwrap Firmware
 Output file in this case is a file prefix, the filename will be `unwrapped_0x0800C000` and others if you have
 firmware will more than one segment
-```
+```bash
 ./radio_tool --unwrap -i wrapped.bin -o unwrapped 
 ```
