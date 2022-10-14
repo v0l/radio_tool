@@ -33,6 +33,9 @@ auto YaesuFW::Read(const std::string &file) -> void
 		// Read binary
 		data.resize(binarySize);
 		i.read((char *)data.data(), binarySize);
+
+        // Pad with 0xFF until multiple of 1KiB
+        data.resize(binarySize + ((1024 - binarySize % 1024) % 1024), 0xFF);
 	}
 	i.close();
 }
