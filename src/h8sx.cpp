@@ -23,10 +23,9 @@
 #include <exception>
 #include <thread>
 
-/* Define byte-swap functions, using fast processor-native built-ins where possible */
-#if defined(_MSC_VER) // needs to be first because msvc doesn't short-circuit after failing defined(__has_builtin)
+#if defined(_MSC_VER)
 #define bswap32(x) _byteswap_ulong((x))
-#elif (__GNUC__ > 4) || (__GNUC__ == 4 && __GNUC_MINOR__ >= 8)
+#else
 #define bswap32(x) __builtin_bswap32((x))
 #endif
 
