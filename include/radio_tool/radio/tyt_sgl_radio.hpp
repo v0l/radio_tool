@@ -48,5 +48,6 @@ namespace radio_tool::radio
 		}
 	private:
 		device::TYTSGLDevice device;
+		auto checksum(std::vector<uint8_t>::const_iterator&& begin, std::vector<uint8_t>::const_iterator&& end) const -> uint32_t;
 	};
 } // namespace radio_tool::radio

@@ -62,10 +62,10 @@ namespace radio_tool::fw
 		const uint16_t sgl_version;
 		const uint32_t length;
 		const uint8_t binary_offset;
-		const std::vector<uint8_t> radio_group; //0x10
-		const std::vector<uint8_t> radio_model; //0x08
-		const std::vector<uint8_t> protocol_version; //0x08
-		const std::vector<uint8_t> model_key; //0x08
+		const std::vector<uint8_t> radio_group; //BF-DMR = 0x10
+		const std::vector<uint8_t> radio_model; //1801 = 0x08
+		const std::vector<uint8_t> protocol_version; //V1.00.1 = 0x08
+		const std::vector<uint8_t> model_key; //DV01xxxx = 0x08
 	};
 
 	/**
@@ -141,6 +141,10 @@ namespace radio_tool::fw
 		auto Decrypt() -> void override;
 		auto Encrypt() -> void override;
 		auto SetRadioModel(const std::string&) -> void override;
+
+		auto GetConfig() const -> const TYTSGLRadioConfig* {
+			return config;
+		}
 
 		/**
 		 * @note This is not the "firmware_model" which exists in the firmware header
