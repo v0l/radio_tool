@@ -18,7 +18,7 @@
 #pragma once
 
 #include <radio_tool/radio/radio.hpp>
-#include <radio_tool/device/yaesu_device.hpp>
+#include <radio_tool/h8sx/h8sx.hpp>
 
 #include <functional>
 #include <libusb-1.0/libusb.h>
@@ -32,7 +32,7 @@ namespace radio_tool::radio
 		static const auto PID = 0x0025;
 
 		YaesuRadio(libusb_device_handle* h)
-			: device(h) {}
+			: h8sx(h) {}
 
 		auto WriteFirmware(const std::string& file) -> void override;
 		auto ToString() const -> const std::string override;
@@ -42,18 +42,10 @@ namespace radio_tool::radio
 			return dev.idVendor == VID && dev.idProduct == PID;
 		}
 
-		/**
-		 * Get the handler used to communicate with this device
-		 */
-		auto GetDevice() const -> const device::YaesuDevice* override
-		{
-			return &device;
-		}
-
 		static auto Create(libusb_device_handle* h) -> YaesuRadio* {
 			return new YaesuRadio(h);
 		}
 	private:
-		const device::YaesuDevice device;
+		h8sx::H8SX h8sx;
 	};
 } // namespace radio_tool::radio

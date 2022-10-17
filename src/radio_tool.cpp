@@ -66,8 +66,7 @@ int main(int argc, char **argv)
             ("l,list", "List devices")
             ("d,device", "Device to use", cxxopts::value<uint16_t>(), "<index>")
             ("i,in", "Input file", cxxopts::value<std::string>(), "<file>")
-            ("o,out", "Output file", cxxopts::value<std::string>(), "<file>")
-            ("L,list-radios", "List supported radios");
+            ("o,out", "Output file", cxxopts::value<std::string>(), "<file>");
 
         options.add_options("Programming")
             ("f,flash", "Flash firmware")
@@ -75,7 +74,6 @@ int main(int argc, char **argv)
 
         options.add_options("All radio")
             ("info", "Print some info about the radio")
-            ("write-custom", "Send custom command to radio", cxxopts::value<std::vector<uint8_t>>(), "<data>")
             ("get-status", "Print the current DFU Status");
 
         options.add_options("TYT Radio")
@@ -296,7 +294,6 @@ int main(int argc, char **argv)
 
         auto index = cmd["device"].as<uint16_t>();
         auto radio = rdFactory.OpenDevice(index);
-        auto device = radio->GetDevice();
 
         if (cmd.count("info"))
         {
@@ -314,12 +311,6 @@ int main(int argc, char **argv)
 
         if (cmd.count("program"))
         {
-        }
-
-        if (cmd.count("write-custom"))
-        {
-            auto data = cmd["write-custom"].as<std::vector<uint8_t>>();
-            device->Write(data);
         }
     }
     catch (const radio_tool::dfu::DFUException &dfuEx)
@@ -348,13 +339,12 @@ auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> voi
     }
 
     auto tyt_radio = dynamic_cast<radio_tool::radio::TYTRadio *>(radio);
-    auto device = tyt_radio->GetDevice();
-    auto dfu = device->GetDFU();
+    auto dfu = tyt_radio->GetDFU();
 
     if (cmd.count("get-status"))
     {
-        auto status = device->Status();
-        std::cerr << status << std::endl;
+        auto status = dfu->GetStatus();
+        std::cerr << status.ToString() << std::endl;
     }
 
     if (cmd.count("dump-reg"))
@@ -372,7 +362,7 @@ auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> voi
         outf.open(out_file, std::ios_base::out | std::ios_base::binary);
         if (outf.is_open())
         {
-            auto mem = dfu.Upload(size, 2);
+            auto mem = dfu->Upload(size, 2);
             //radio_tool::PrintHex(mem);
             outf.write((char *)mem.data(), mem.size());
             outf.close();

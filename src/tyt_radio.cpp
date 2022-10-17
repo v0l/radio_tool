@@ -32,7 +32,6 @@ auto TYTRadio::ToString() const -> const std::string
 {
 	std::stringstream out;
 
-	auto dfu = device.GetDFU();
 	auto model = dfu.IdentifyDevice();
 	auto time = dfu.GetTime();
 
@@ -50,7 +49,7 @@ auto TYTRadio::WriteFirmware(const std::string& file) -> void
 	auto fw = fw::TYTFW();
 	fw.Read(file);
 
-	auto dfu = device.GetDFU();
+	auto dfu = this->dfu;
 	dfu.SendTYTCommand(dfu::TYTCommand::FirmwareUpgrade);
 	for (auto& r : fw.GetDataSegments())
 	{

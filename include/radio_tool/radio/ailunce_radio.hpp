@@ -38,7 +38,7 @@ namespace radio_tool::radio
         auto WriteFirmware(const std::string &file) -> void override;
         auto ToString() const -> const std::string override;
 
-        auto GetDevice() const -> const device::RadioDevice* override
+        auto GetDevice() const -> const device::YModemDevice*
         {
             return &device;
         }

@@ -56,11 +56,6 @@ namespace radio_tool::radio
 		//virtual auto ReadCodeplug();
 
 		/**
-		 * Return the device communication handler
-		 */
-		virtual auto GetDevice() const -> const device::RadioDevice * = 0;
-
-		/**
 		 * Get general info about the radio
 		 */
 		virtual auto ToString() const -> const std::string = 0;

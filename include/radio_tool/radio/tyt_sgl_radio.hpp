@@ -18,7 +18,7 @@
 #pragma once
 
 #include <radio_tool/radio/radio.hpp>
-#include <radio_tool/device/tyt_sgl_device.hpp>
+#include <radio_tool/hid/tyt_hid.hpp>
 
 #include <functional>
 
@@ -31,7 +31,7 @@ namespace radio_tool::radio
 
 		auto WriteFirmware(const std::string& file) -> void override;
 		auto ToString() const -> const std::string override;
-		auto GetDevice() const -> const device::RadioDevice* override;
+		auto GetDevice() const -> const hid::TYTHID*;
 
 		static auto SupportsDevice(const libusb_device_descriptor& dev) -> bool
 		{
@@ -47,7 +47,7 @@ namespace radio_tool::radio
 			return new TYTSGLRadio(h);
 		}
 	private:
-		device::TYTSGLDevice device;
+		hid::TYTHID device;
 		auto checksum(std::vector<uint8_t>::const_iterator&& begin, std::vector<uint8_t>::const_iterator&& end) const -> uint32_t;
 	};
 } // namespace radio_tool::radio

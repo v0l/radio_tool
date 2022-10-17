@@ -31,7 +31,6 @@ auto YaesuRadio::ToString() const -> const std::string
 {
 	std::stringstream out;
 
-	auto h8sx = device.GetH8SX();
 	auto model = h8sx.IdentifyDevice();
 
 	out << "== Yaesu Radio Info ==" << std::endl
@@ -45,7 +44,6 @@ auto YaesuRadio::WriteFirmware(const std::string& file) -> void
 	auto fw = fw::YaesuFW();
 	fw.Read(file);
 
-	auto h8sx = device.GetH8SX();
 	auto to_write = fw.GetData();
 	h8sx.Init();
 	h8sx.IdentifyDevice();

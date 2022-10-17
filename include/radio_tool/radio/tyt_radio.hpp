@@ -18,7 +18,7 @@
 #pragma once
 
 #include <radio_tool/radio/radio.hpp>
-#include <radio_tool/device/tyt_device.hpp>
+#include <radio_tool/dfu/tyt_dfu.hpp>
 
 #include <functional>
 #include <libusb-1.0/libusb.h>
@@ -29,7 +29,7 @@ namespace radio_tool::radio
 	{
 	public:
 		TYTRadio(libusb_device_handle* h)
-			: device(h) {}
+			: dfu(h) {}
 
 		auto WriteFirmware(const std::string& file) -> void override;
 		auto ToString() const -> const std::string override;
@@ -42,15 +42,15 @@ namespace radio_tool::radio
 		/**
 		 * Get the handler used to communicate with this device
 		 */
-		auto GetDevice() const -> const device::TYTDevice* override
+		auto GetDFU() const -> const dfu::TYTDFU*
 		{
-			return &device;
+			return &dfu;
 		}
 
 		static auto Create(libusb_device_handle* h) -> TYTRadio* {
 			return new TYTRadio(h);
 		}
 	private:
-		const device::TYTDevice device;
+		const dfu::TYTDFU dfu;
 	};
 } // namespace radio_tool::radio

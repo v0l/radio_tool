@@ -33,6 +33,13 @@ auto TYTSGLFW::Read(const std::string& file) -> void
 		}
 	}
 
+	if (config == nullptr) {
+		std::stringstream msg;
+		msg << "Radio model '" << hdr.Model() << "' not supported!";
+
+		throw std::runtime_error(msg.str());
+	}
+
 	auto i = std::ifstream(file, std::ios_base::binary);
 	if (i.is_open())
 	{
@@ -159,7 +166,12 @@ auto TYTSGLFW::SupportsRadioModel(const std::string& model) -> bool
 
 auto TYTSGLFW::GetRadioModel() const -> const std::string
 {
-	return config->radio_model;
+	auto ret = std::string(config->radio_model);
+
+	auto end = std::find_if(ret.begin(), ret.end(), [](unsigned char ch) {
+		return ch == '\xff';
+		});
+	return ret.substr(0, end - ret.begin());
 }
 
 auto TYTSGLFW::SetRadioModel(const std::string& model) -> void
@@ -203,7 +215,7 @@ auto TYTSGLFW::Encrypt() -> void
 	}
 }
 
-auto SGLHeader::ToString() const -> std::string 
+auto SGLHeader::ToString() const -> std::string
 {
 	std::stringstream ss;
 
