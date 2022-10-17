@@ -234,7 +234,7 @@ auto SGLHeader::ToString() const -> std::string
 
 auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 {
-	auto header = std::vector<uint8_t>(HeaderLen);
+	auto header = std::vector<uint8_t>(HeaderLen + binary_offset);
 
 	// SGL!
 	std::copy(tyt::config::sgl::Magic.begin(), tyt::config::sgl::Magic.end(), header.begin());
@@ -249,7 +249,7 @@ auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 	*(header.data() + 11) = binary_offset;
 
 	// h2 offset
-	*(uint16_t*)(header.data() + 12) = Header1Len;
+	*(uint16_t*)(header.data() + 12) = header2_offset;
 
 	// h2 xor key
 	auto h2_key_offset = 14;

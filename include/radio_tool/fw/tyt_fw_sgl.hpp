@@ -52,11 +52,14 @@ namespace radio_tool::fw
 			binary_offset(binary_offset),
 			header2_offset(header2_offset)
 		{
-			if (binary_offset >= 0x81) {
-				throw std::runtime_error("Binary offset must be < 0x81");
+			if (sgl_version > 0x100) {
+				throw std::runtime_error("Version max is 0x100");
 			}
-			if (header2_offset < 0x1f || header2_offset > 0x101) {
-				throw std::runtime_error("Header 2 offset must be greater than 0x1f and less than 0x101");
+			if (binary_offset > 0x80) {
+				throw std::runtime_error("Binary offset max is 0x80");
+			}
+			if (header2_offset < 0x1e || header2_offset > 0x100) {
+				throw std::runtime_error("Header 2 offset must be between 0x1e <-> 0x100");
 			}
 		}
 
