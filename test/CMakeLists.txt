@@ -122,6 +122,6 @@ AddFirmwareTest(GD-77S_V1.2.0.sgl "GD77S")
 AddFirmwareTest(GD-77S_V1.3.0.sgl "GD77S")
 
 #BF-5R
-AddFirmwareTest(BF-5R_V2.1.0.sgl "RD5R")
-AddFirmwareTest(BF-5R_V2.1.6.sgl "RD5R")
-AddFirmwareTest(RD-5R_V2.0.9.sgl "RD5R")
+AddFirmwareTest(BF-5R_V2.1.0.sgl "BF5R")
+AddFirmwareTest(BF-5R_V2.1.6.sgl "BF5R")
+AddFirmwareTest(RD-5R_V2.0.9.sgl "BF5R")

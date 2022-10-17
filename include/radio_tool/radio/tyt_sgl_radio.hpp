@@ -31,7 +31,6 @@ namespace radio_tool::radio
 
 		auto WriteFirmware(const std::string& file) -> void override;
 		auto ToString() const -> const std::string override;
-		auto GetDevice() const -> const hid::TYTHID*;
 
 		static auto SupportsDevice(const libusb_device_descriptor& dev) -> bool
 		{

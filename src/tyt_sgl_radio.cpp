@@ -65,23 +65,22 @@ auto TYTSGLRadio::WriteFirmware(const std::string& file) -> void
 	}
 
 	// send key
-	device.SendCommand(config->header.model_key);
+	device.SendCommand(std::vector<uint8_t>(config->header.model_key.begin(), config->header.model_key.end()), 0x08, 0xff);
 	auto rsp_key = device.WaitForReply();
 	if (!std::equal(rsp_key.data.begin(), rsp_key.data.end(), config->header.model_key.begin()))
 	{
-		auto key = std::string(config->header.model_key.begin(), config->header.model_key.begin() + 5);
 		auto key_rsp = std::string(rsp_key.data.begin(), rsp_key.data.end());
 		std::stringstream msg("Invalid response, expected firmware key '");
-		msg << key << "'" << " got '" << key_rsp << "'";
+		msg << config->header.model_key << "'" << " got '" << key_rsp << "'";
 
 		throw new std::runtime_error(msg.str());
 	}
 
 	device.SendCommandAndOk(hid::tyt::commands::FlashProgram);
 
-	device.SendCommandAndOk(config->header.radio_group);
-	device.SendCommandAndOk(config->header.radio_model);
-	device.SendCommandAndOk(config->header.protocol_version);
+	device.SendCommandAndOk(std::vector<uint8_t>(config->header.radio_group.begin(), config->header.radio_group.end()), 0x10, 0xff);
+	device.SendCommandAndOk(std::vector<uint8_t>(config->header.radio_model.begin(), config->header.radio_model.end()), 0x08, 0xff);
+	device.SendCommandAndOk(std::vector<uint8_t>(config->header.protocol_version.begin(), config->header.protocol_version.end()));
 
 	device.SendCommandAndOk(hid::tyt::commands::FlashErase);
 	device.SendCommandAndOk(hid::tyt::OK);

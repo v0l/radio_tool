@@ -18,16 +18,27 @@
 #include <radio_tool/fw/tyt_fw_sgl.hpp>
 #include <radio_tool/util.hpp>
 
+#include <random>
 #include <iterator>
 
 using namespace radio_tool::fw;
+
+constexpr auto HeaderLen = 0x400u;
+constexpr auto Header1Len = 0x10u;
+constexpr auto Header2Len = 0x67u;
+
+constexpr auto BinaryLenOffset = 0x06;
+constexpr auto GroupOffset = 0x32;
+constexpr auto ModelOffset = GroupOffset + 0x10;
+constexpr auto VersionOffset = ModelOffset + 0x08;
+constexpr auto KeyOffset = 0x5f;
 
 auto TYTSGLFW::Read(const std::string& file) -> void
 {
 	auto hdr = ReadHeader(file);
 
 	for (const auto& cfg : tyt::config::sgl::All) {
-		if (cfg.header.Model() == hdr.Model()) {
+		if (cfg.header.radio_group == hdr.radio_group) {
 			config = new TYTSGLRadioConfig(cfg.radio_model, hdr, cfg.cipher, cfg.cipher_len, cfg.xor_offset);
 			break;
 		}
@@ -35,7 +46,7 @@ auto TYTSGLFW::Read(const std::string& file) -> void
 
 	if (config == nullptr) {
 		std::stringstream msg;
-		msg << "Radio model '" << hdr.Model() << "' not supported!";
+		msg << "Radio model '" << hdr.radio_group << "' not supported!";
 
 		throw std::runtime_error(msg.str());
 	}
@@ -88,9 +99,6 @@ auto TYTSGLFW::ReadHeader(const std::string& file) -> const SGLHeader
 	i.open(file, i.binary);
 	if (i.is_open())
 	{
-		constexpr auto Header1Len = 0x10;
-		constexpr auto Header2Len = 0x67;
-
 		uint8_t header1[Header1Len];
 		i.read((char*)header1, Header1Len);
 
@@ -121,20 +129,14 @@ auto TYTSGLFW::ReadHeader(const std::string& file) -> const SGLHeader
 			header2[x] ^= h2_xor[x % 2];
 		}
 
-		constexpr auto BinaryLenOffset = 0x06;
-		constexpr auto GroupOffset = 0x32;
-		constexpr auto ModelOffset = GroupOffset + 0x10;
-		constexpr auto VersionOffset = ModelOffset + 0x08;
-		constexpr auto KeyOffset = 0x5f;
-
 		auto binary_offset = header1[11];
 		auto len = *(uint32_t*)(header2 + BinaryLenOffset);
-		auto group = std::vector<uint8_t>(header2 + GroupOffset, header2 + GroupOffset + 0x10);
-		auto model = std::vector<uint8_t>(header2 + ModelOffset, header2 + ModelOffset + 0x08);
-		auto version = std::vector<uint8_t>(header2 + VersionOffset, header2 + VersionOffset + 0x08);
-		auto key = std::vector<uint8_t>(header2 + KeyOffset, header2 + KeyOffset + 0x08);
+		auto group = std::string(header2 + GroupOffset, header2 + GroupOffset + 0x10);
+		auto model = std::string(header2 + ModelOffset, header2 + ModelOffset + 0x08);
+		auto version = std::string(header2 + VersionOffset, header2 + VersionOffset + 0x08);
+		auto key = std::string(header2 + KeyOffset, header2 + KeyOffset + 0x08);
 
-		return SGLHeader(sgl_version, len, group, model, version, key, binary_offset);
+		return SGLHeader(sgl_version, len, group, model, version, key, binary_offset, header2_offset);
 	}
 	else
 	{
@@ -221,10 +223,10 @@ auto SGLHeader::ToString() const -> std::string
 
 	ss << "SGL version: " << sgl_version << std::endl
 		<< "Length: " << length << std::endl
-		<< "Radio Group: " << std::string(radio_group.begin(), radio_group.end()) << std::endl
-		<< "Model: " << std::string(radio_model.begin(), radio_model.end()) << std::endl
-		<< "Protocol Version: " << std::string(protocol_version.begin(), protocol_version.end()) << std::endl
-		<< "Key: " << std::string(model_key.begin(), model_key.end()) << std::endl
+		<< "Radio Group: " << radio_group << std::endl
+		<< "Model: " << radio_model << std::endl
+		<< "Protocol Version: " << protocol_version << std::endl
+		<< "Key: " << model_key << std::endl
 		<< "Binary Offset: 0x400 + 0x" << std::hex << std::setw(2) << std::setfill('0') << (int)binary_offset;
 
 	return ss.str();
@@ -232,53 +234,54 @@ auto SGLHeader::ToString() const -> std::string
 
 auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 {
-	// after header1 up to offset
-	auto junk1_size = 10;
+	auto header = std::vector<uint8_t>(HeaderLen);
 
-	std::vector<uint8_t> junk2 = {
-		0x02, 0x10, 0x00, 0x00, 0x00, 0x00,
-		(uint8_t)(length & 0xff),
-		(uint8_t)((length & 0xff00) >> 8),
-		(uint8_t)((length & 0xff0000) >> 16),
-		(uint8_t)((length & 0xff000000) >> 24) };
-	junk2.resize(junk2.size() + 0x28);
+	// SGL!
+	std::copy(tyt::config::sgl::Magic.begin(), tyt::config::sgl::Magic.end(), header.begin());
 
-	auto junk3_size = 10; // after strings before binary
+	// ENV001
+	std::stringstream ss_version;
+	ss_version << "ENCV" << std::setw(3) << std::setfill('0') << sgl_version;
+	auto version = ss_version.str();
+	std::copy(version.begin(), version.end(), header.begin() + 4);
 
-	std::vector<uint8_t> ret(0x10 + junk1_size + junk2.size() + 0x28 + junk3_size);
+	// binary_offset
+	*(header.data() + 11) = binary_offset;
 
-	auto next = std::copy(tyt::config::sgl::Magic.begin(), tyt::config::sgl::Magic.end(), ret.begin());
+	// h2 offset
+	*(uint16_t*)(header.data() + 12) = Header1Len;
 
-	std::stringstream ver;
-	ver << "ENCV" << std::setw(3) << std::setfill('0') << sgl_version;
-	auto ver_str = ver.str();
+	// h2 xor key
+	auto h2_key_offset = 14;
+	std::default_random_engine eng;
+	std::uniform_int_distribution<uint16_t> dist(0, 0xffff);
+	auto key = dist(eng);
+	*(uint16_t*)(header.data() + h2_key_offset) = key;
 
-	auto offset = 0x10 + junk1_size;
-	std::vector<uint8_t> dummy_xor = { 0xB0, 0x0B }; //s
+	auto h2 = header.data() + Header1Len;
+	*h2 = 0x02;
+	*(h2 + 1) = 0x10;
 
-	next = std::copy(ver_str.begin(), ver_str.end(), next);
-	*next++ = 0xff; //Model ?
-	*next++ = (int)offset % 255;
-	*next++ = (int)offset / 255;
-	*next++ = dummy_xor[0]; //xor[0]?
-	*next++ = dummy_xor[1]; //xor[1]?
+	// binary length
+	*(uint32_t*)(h2 + BinaryLenOffset) = length;
 
-	std::advance(next, junk1_size);
+	std::copy(radio_group.begin(), radio_group.end(), h2 + GroupOffset);
+	std::copy(radio_model.begin(), radio_model.end(), h2 + ModelOffset);
+	std::copy(protocol_version.begin(), protocol_version.end(), h2 + VersionOffset);
+	std::copy(model_key.begin(), model_key.end(), h2 + KeyOffset);
 
-	next = std::copy(junk2.begin(), junk2.end(), next);
+	if (encrypt) {
+		// encrypt header 2
+		auto h2_key = header.data() + h2_key_offset;
+		for (auto h2x = 0;h2x < Header2Len;h2x++) {
+			*(h2 + h2x) ^= *(h2_key + (h2x % 2));
+		}
 
-	next = std::copy(radio_group.begin(), radio_group.end(), next);
-	next = std::fill_n(next, 0x10 - radio_group.size(), 0xff);
+		// encrypt header 1
+		for (auto h1x = 4;h1x < Header1Len;h1x++) {
+			*(header.data() + h1x) ^= tyt::config::sgl::Magic[h1x % 4];
+		}
+	}
 
-	next = std::copy(radio_model.begin(), radio_model.end(), next);
-	next = std::fill_n(next, 0x08 - radio_model.size(), 0xff);
-
-	next = std::copy(protocol_version.begin(), protocol_version.end(), next);
-	next = std::fill_n(next, 0x08 - protocol_version.size(), 0xff);
-
-	next = std::copy(model_key.begin(), model_key.end(), next);
-	next = std::fill_n(next, 0x08 - model_key.size(), 0xff);
-
-	//binary appended here
-	return ret;
+	return header;
 }

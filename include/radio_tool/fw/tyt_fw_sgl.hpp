@@ -27,32 +27,37 @@
 
 namespace radio_tool::fw
 {
+	constexpr auto NotAscii = [](unsigned char ch) {
+		return !(ch >= ' ' && ch <= '~');
+	};
+
 	class SGLHeader
 	{
 	public:
-		SGLHeader()
-			: sgl_version(1), length(0), radio_group(), radio_model(), protocol_version(), model_key(), binary_offset(0)
+		SGLHeader(
+			const uint16_t& sgl_version,
+			const uint32_t& len,
+			const std::string& group,
+			const std::string& model,
+			const std::string& version,
+			const std::string& key,
+			const uint8_t& binary_offset,
+			const uint16_t& header2_offset)
+			: sgl_version(sgl_version),
+			length(len),
+			radio_group(group.begin(), std::find_if(group.begin(), group.end(), NotAscii)),
+			radio_model(model.begin(), std::find_if(model.begin(), model.end(), NotAscii)),
+			protocol_version(version),
+			model_key(key),
+			binary_offset(binary_offset),
+			header2_offset(header2_offset)
 		{
-		}
-
-		SGLHeader(const std::string& group, const std::string& model, const std::string& version = "V1.00.01", const std::string& key = "DV01xxxx")
-			: sgl_version(1), length(0), radio_group(group.begin(), group.end()), radio_model(model.begin(), model.end()), protocol_version(version.begin(), version.end()), model_key(), binary_offset(0)
-		{
-		}
-
-		SGLHeader(const std::vector<uint8_t>& group, const std::vector<uint8_t>& model)
-			: sgl_version(1), length(0), radio_group(group), radio_model(model), protocol_version(), model_key(), binary_offset(0)
-		{
-		}
-
-		SGLHeader(const uint16_t& sgl, const uint32_t& length, const std::vector<uint8_t>& group, const std::vector<uint8_t>& model, const std::vector<uint8_t>& version, const std::vector<uint8_t>& key, const uint8_t& binary_offset)
-			: sgl_version(sgl), length(length), radio_group(group), radio_model(model), protocol_version(version), model_key(key), binary_offset(binary_offset)
-		{
-		}
-
-		auto Model() const -> const std::string&
-		{
-			return std::string(radio_model.begin(), radio_model.begin() + 4);
+			if (binary_offset >= 0x81) {
+				throw std::runtime_error("Binary offset must be < 0x81");
+			}
+			if (header2_offset < 0x1f || header2_offset > 0x101) {
+				throw std::runtime_error("Header 2 offset must be greater than 0x1f and less than 0x101");
+			}
 		}
 
 		auto ToString() const->std::string;
@@ -62,10 +67,11 @@ namespace radio_tool::fw
 		const uint16_t sgl_version;
 		const uint32_t length;
 		const uint8_t binary_offset;
-		const std::vector<uint8_t> radio_group; //BF-DMR = 0x10
-		const std::vector<uint8_t> radio_model; //1801 = 0x08
-		const std::vector<uint8_t> protocol_version; //V1.00.1 = 0x08
-		const std::vector<uint8_t> model_key; //DV01xxxx = 0x08
+		const uint16_t header2_offset;
+		const std::string radio_group; //BF-DMR = 0x10
+		const std::string radio_model; //1801 = 0x08
+		const std::string protocol_version; //V1.00.1 = 0x08
+		const std::string model_key; //DV01xxxx = 0x08
 	};
 
 	/**
@@ -103,19 +109,6 @@ namespace radio_tool::fw
 		 * Offset into xor key
 		 */
 		const uint16_t xor_offset;
-
-		/**
-		 * And empty config instance for reference
-		 */
-		static auto Empty() -> const TYTSGLRadioConfig
-		{
-			return TYTSGLRadioConfig();
-		}
-	private:
-		TYTSGLRadioConfig()
-			: radio_model(), header(), cipher(nullptr), cipher_len(0), xor_offset(0)
-		{
-		}
 	};
 
 	namespace tyt::config::sgl
@@ -123,10 +116,10 @@ namespace radio_tool::fw
 		const std::vector<uint8_t> Magic = { 'S', 'G', 'L', '!' };
 
 		const std::vector<TYTSGLRadioConfig> All = {
-			TYTSGLRadioConfig("GD77", SGLHeader("SG-MD-760", "MD-760", "V1.00.01", "DV01xxx"), fw::cipher::sgl, fw::cipher::sgl_length, 0x807),
-			TYTSGLRadioConfig("GD77S", SGLHeader("SG-MD-730", "MD-730", "V1.00.01", "DV02xxx"), fw::cipher::sgl, fw::cipher::sgl_length, 0x2a8e),
-			TYTSGLRadioConfig("DM1801", SGLHeader("BF-DMR", "1801", "V1.00.01", "DV03xxx"), fw::cipher::sgl, fw::cipher::sgl_length, 0x2c7c),
-			TYTSGLRadioConfig("RD5R", SGLHeader("RD-5R", "RD-5R", "V1.00.01", "DV02xxx"), fw::cipher::sgl, fw::cipher::sgl_length, 0x306e)
+			TYTSGLRadioConfig("GD77", SGLHeader(1, 0, "SG-MD-760", "MD-760", "V1.00.01", "DV01xxx", 0x00, 0xff), fw::cipher::sgl, fw::cipher::sgl_length, 0x807),
+			TYTSGLRadioConfig("GD77S", SGLHeader(1, 0, "SG-MD-730", "MD-730", "V1.00.01", "DV02xxx", 0x00, 0xff), fw::cipher::sgl, fw::cipher::sgl_length, 0x2a8e),
+			TYTSGLRadioConfig("BF5R", SGLHeader(1, 0, "BF-5R", "BF-5R", "V1.00.01", "DV02xxx", 0x00, 0xff), fw::cipher::sgl, fw::cipher::sgl_length, 0x306e),
+			TYTSGLRadioConfig("DM1801", SGLHeader(1, 0, "BF-DMR", "1801", "V1.00.01", "DV03xxx", 0x00, 0xff), fw::cipher::sgl, fw::cipher::sgl_length, 0x2c7c),
 		};
 	}
 

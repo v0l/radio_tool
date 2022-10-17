@@ -93,9 +93,11 @@ namespace radio_tool::hid
 
 		auto SendCommand(const tyt::Command& cmd) -> void;
 		auto SendCommand(const std::vector<uint8_t>& cmd) -> void;
+		auto SendCommand(const std::vector<uint8_t>& cmd, const uint8_t& size, const uint8_t& fill) -> void;
 
 		auto SendCommandAndOk(const tyt::Command& cmd) -> void;
 		auto SendCommandAndOk(const std::vector<uint8_t>& cmd) -> void;
+		auto SendCommandAndOk(const std::vector<uint8_t>& cmd, const uint8_t& size, const uint8_t& fill) -> void;
 
 		auto WaitForReply()->tyt::Command;
 

@@ -97,6 +97,14 @@ auto TYTHID::SendCommand(const std::vector<uint8_t>& cmd) -> void
 	SendCommand(tyt::Command(tyt::CommandType::DeviceToHost, cmd.size(), cmd));
 }
 
+auto TYTHID::SendCommand(const std::vector<uint8_t>& cmd, const uint8_t& size, const uint8_t& fill) -> void
+{
+	auto ncmd = std::vector<uint8_t>(size, fill);
+	std::copy(cmd.begin(), cmd.end(), ncmd.begin());
+
+	SendCommand(ncmd);
+}
+
 auto TYTHID::WaitForReply() -> tyt::Command
 {
 	std::unique_lock<std::mutex> lk(signalCallback);
@@ -134,6 +142,17 @@ auto TYTHID::SendCommandAndOk(const tyt::Command& cmd) -> void
 auto TYTHID::SendCommandAndOk(const std::vector<uint8_t>& cmd) -> void
 {
 	SendCommand(cmd);
+	auto ok = WaitForReply();
+	if (!(ok == tyt::OKResponse))
+	{
+		radio_tool::PrintHex(ok.data.begin(), ok.data.end());
+		throw std::runtime_error("Invalid usb response from device");
+	}
+}
+
+auto TYTHID::SendCommandAndOk(const std::vector<uint8_t>& cmd, const uint8_t& size, const uint8_t& fill) -> void
+{
+	SendCommand(cmd, size, fill);
 	auto ok = WaitForReply();
 	if (!(ok == tyt::OKResponse))
 	{

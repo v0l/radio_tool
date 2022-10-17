@@ -38,11 +38,6 @@ namespace radio_tool::radio
         auto WriteFirmware(const std::string &file) -> void override;
         auto ToString() const -> const std::string override;
 
-        auto GetDevice() const -> const device::YModemDevice*
-        {
-            return &device;
-        }
-
         static auto SupportsDevice(const std::string &) -> bool;
 
         static auto Create(const std::string &port) -> AilunceRadio*
