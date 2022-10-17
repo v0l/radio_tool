@@ -55,8 +55,6 @@ set(ALL_SRC
     src/usb_radio_factory.cpp
     src/serial_radio_factory.cpp
     src/tyt_radio.cpp
-    src/tyt_device.cpp
-    src/tyt_sgl_device.cpp
     src/ymodem_device.cpp
     src/tyt_dfu.cpp
     src/tyt_fw.cpp
@@ -65,7 +63,6 @@ set(ALL_SRC
     src/ailunce_radio.cpp
     src/ailunce_fw.cpp
     src/yaesu_radio.cpp
-    src/yaesu_device.cpp
     src/yaesu_fw.cpp
     src/fymodem.c
     src/rdt.cpp

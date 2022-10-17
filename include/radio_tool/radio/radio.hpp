@@ -17,8 +17,6 @@
  */
 #pragma once
 
-#include <radio_tool/device/device.hpp>
-
 #include <string>
 #include <sstream>
 #include <iomanip>

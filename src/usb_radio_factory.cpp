@@ -17,7 +17,6 @@
  */
 
 #include <radio_tool/radio/usb_radio_factory.hpp>
-#include <radio_tool/device/device.hpp>
 #include <radio_tool/radio/tyt_radio.hpp>
 #include <radio_tool/radio/tyt_sgl_radio.hpp>
 #include <radio_tool/radio/yaesu_radio.hpp>
