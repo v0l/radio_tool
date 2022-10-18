@@ -34,7 +34,7 @@ namespace radio_tool::radio
 			const CreateRadioOps l,
 			const std::string &p,
 			const uint16_t &idx)
-			: loader(l), index(idx), port(p) {}
+			: RadioInfo(idx, L"Unknown", L"Unknown", p), loader(l) {}
 
 		auto ToString() const -> const std::wstring override
 		{
@@ -52,8 +52,6 @@ namespace radio_tool::radio
 
 	private:
 		const CreateRadioOps loader;
-		const uint16_t index;
-		const std::string port;
 	};
 
 	class SerialRadioFactory : public RadioOperationsFactory

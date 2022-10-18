@@ -33,8 +33,18 @@ namespace radio_tool::radio
 	class RadioInfo
 	{
 	public:
+		const uint16_t index;
+		const std::wstring manufacturer;
+		const std::wstring model;
+		const std::string port;
 		virtual auto ToString() const -> const std::wstring = 0;
 		virtual auto OpenDevice() const -> RadioOperations * = 0;
+
+	protected:
+		RadioInfo(const uint16_t &index, const std::wstring &manufacturer, const std::wstring &model, const std::string &port)
+			: index(index), manufacturer(manufacturer), model(model), port(port)
+		{
+		}
 	};
 
 	/**
@@ -50,8 +60,8 @@ namespace radio_tool::radio
 		 */
 		virtual auto WriteFirmware(const std::string &file) -> void = 0;
 
-		//virtual auto WriteCodeplug();
-		//virtual auto ReadCodeplug();
+		// virtual auto WriteCodeplug();
+		// virtual auto ReadCodeplug();
 
 		/**
 		 * Get general info about the radio
