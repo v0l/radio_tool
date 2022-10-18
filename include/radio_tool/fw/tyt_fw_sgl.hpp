@@ -27,8 +27,7 @@
 
 namespace radio_tool::fw
 {
-	constexpr auto NotAscii = [](unsigned char ch)
-	{
+	constexpr auto NotAscii = [](unsigned char ch) {
 		return !(ch >= ' ' && ch <= '~');
 	};
 
@@ -36,59 +35,56 @@ namespace radio_tool::fw
 	{
 	public:
 		SGLHeader(
-			const uint16_t &sgl_version,
-			const uint32_t &len,
-			const uint8_t &binary_offset,
-			const uint16_t &header2_offset,
-			const std::string &group,
-			const std::string &model,
-			const std::string &version,
-			const std::string &key)
+			const uint16_t& sgl_version,
+			const uint32_t& len,
+			const std::string& group,
+			const std::string& model,
+			const std::string& version,
+			const std::string& key,
+			const uint8_t& binary_offset,
+			const uint16_t& header2_offset)
 			: sgl_version(sgl_version),
-			  length(len),
-			  radio_group(group.begin(), std::find_if(group.begin(), group.end(), NotAscii)),
-			  radio_model(model.begin(), std::find_if(model.begin(), model.end(), NotAscii)),
-			  protocol_version(version),
-			  model_key(key),
-			  binary_offset(binary_offset),
-			  header2_offset(header2_offset)
+			length(len),
+			binary_offset(binary_offset),
+			header2_offset(header2_offset),
+			radio_group(group.begin(), std::find_if(group.begin(), group.end(), NotAscii)),
+			radio_model(model.begin(), std::find_if(model.begin(), model.end(), NotAscii)),
+			protocol_version(version),
+			model_key(key)
 		{
-			if (sgl_version > 0x100)
-			{
+			if (sgl_version > 0x100) {
 				throw std::runtime_error("Version max is 0x100");
 			}
-			if (binary_offset > 0x80)
-			{
+			if (binary_offset > 0x80) {
 				throw std::runtime_error("Binary offset max is 0x80");
 			}
-			if (header2_offset < 0x1e || header2_offset > 0x100)
-			{
+			if (header2_offset < 0x1e || header2_offset > 0x100) {
 				throw std::runtime_error("Header 2 offset must be between 0x1e <-> 0x100");
 			}
 		}
 
-		auto ToString() const -> std::string;
+		auto ToString() const->std::string;
 
-		auto Serialize(bool encrypt = true) const -> std::vector<uint8_t>;
+		auto Serialize(bool encrypt = true) const->std::vector<uint8_t>;
 
-		/**
-		 * Genrate a new instance of this header with new secret values
+		/** 
+		 * Genrate a new instance of this header with new secret values 
 		 */
-		auto AsNew(const uint32_t &binary_len) const -> const SGLHeader;
+		auto AsNew(const uint32_t& binary_len) const -> const SGLHeader;
 
 		/**
 		 * Check if this header is compatible with another (excluding secrets)
 		 */
-		auto IsCompatible(const SGLHeader &other) const -> bool;
+		auto IsCompatible(const SGLHeader& other) const -> bool;
 
 		const uint16_t sgl_version;
 		const uint32_t length;
 		const uint8_t binary_offset;
 		const uint16_t header2_offset;
-		const std::string radio_group;		// BF-DMR = 0x10
-		const std::string radio_model;		// 1801 = 0x08
-		const std::string protocol_version; // V1.00.1 = 0x08
-		const std::string model_key;		// DV01xxxx = 0x08
+		const std::string radio_group; //BF-DMR = 0x10
+		const std::string radio_model; //1801 = 0x08
+		const std::string protocol_version; //V1.00.1 = 0x08
+		const std::string model_key; //DV01xxxx = 0x08
 	};
 
 	/**
@@ -97,7 +93,7 @@ namespace radio_tool::fw
 	class TYTSGLRadioConfig
 	{
 	public:
-		TYTSGLRadioConfig(const std::string &model, const SGLHeader &header, const uint8_t *cipher, const uint32_t &cipher_l, const uint16_t &xor_offset)
+		TYTSGLRadioConfig(const std::string& model, const SGLHeader& header, const uint8_t* cipher, const uint32_t& cipher_l, const uint16_t& xor_offset)
 			: radio_model(model), header(header), cipher(cipher), cipher_len(cipher_l), xor_offset(xor_offset)
 		{
 		}
@@ -115,7 +111,7 @@ namespace radio_tool::fw
 		/**
 		 * The cipher key for encrypting/decrypting the firmware
 		 */
-		const uint8_t *cipher;
+		const uint8_t* cipher;
 
 		/**
 		 * The length of the cipher
@@ -130,7 +126,7 @@ namespace radio_tool::fw
 
 	namespace tyt::config::sgl
 	{
-		const std::vector<uint8_t> Magic = {'S', 'G', 'L', '!'};
+		const std::vector<uint8_t> Magic = { 'S', 'G', 'L', '!' };
 
 		const std::vector<TYTSGLRadioConfig> All = {
 			TYTSGLRadioConfig("GD77", SGLHeader(1, 0, "SG-MD-760", "MD-760", "V1.00.01", "DV01xxx", 0x00, 0xff), fw::cipher::sgl, fw::cipher::sgl_length, 0x807),
@@ -145,16 +141,15 @@ namespace radio_tool::fw
 	public:
 		TYTSGLFW() : FirmwareSupport(), config(nullptr) {}
 
-		auto Read(const std::string &file) -> void override;
-		auto Write(const std::string &file) -> void override;
-		auto ToString() const -> std::string override;
+		auto Read(const std::string& file) -> void override;
+		auto Write(const std::string& file) -> void override;
+		auto ToString() const->std::string override;
 		auto Decrypt() -> void override;
 		auto Encrypt() -> void override;
-		auto SetRadioModel(const std::string &) -> void override;
-		auto IsCompatible(const FirmwareSupport *Other) const -> bool override;
+		auto SetRadioModel(const std::string&) -> void override;
+		auto IsCompatible(const FirmwareSupport* Other) const -> bool override;
 
-		auto GetConfig() const -> const TYTSGLRadioConfig *
-		{
+		auto GetConfig() const -> const TYTSGLRadioConfig* {
 			return config;
 		}
 
@@ -166,17 +161,17 @@ namespace radio_tool::fw
 		/**
 		 * Tests a file if its a valid firmware file
 		 */
-		static auto SupportsFirmwareFile(const std::string &file) -> bool;
+		static auto SupportsFirmwareFile(const std::string& file) -> bool;
 
 		/**
 		 * Tests if a radio model is supported by this firmware handler
 		 */
-		static auto SupportsRadioModel(const std::string &model) -> bool;
+		static auto SupportsRadioModel(const std::string& model) -> bool;
 
 		/**
 		 * Test the file if it matches any known headers
 		 */
-		static auto ReadHeader(const std::string &file) -> const SGLHeader;
+		static auto ReadHeader(const std::string& file) -> const SGLHeader;
 
 		/**
 		 * Create an instance of this class for the firmware factory
@@ -187,7 +182,7 @@ namespace radio_tool::fw
 		}
 
 	private:
-		const TYTSGLRadioConfig *config;
+		const TYTSGLRadioConfig* config;
 	};
 
 } // namespace radio_tool::fw
