@@ -26,7 +26,7 @@
 
 using namespace radio_tool::radio;
 
-TYTSGLRadio::TYTSGLRadio(libusb_device_handle* h) : device(h)
+TYTSGLRadio::TYTSGLRadio(libusb_device_handle *h) : device(h)
 {
 	device.Setup();
 }
@@ -36,13 +36,15 @@ auto TYTSGLRadio::ToString() const -> const std::string
 	std::stringstream out;
 
 	out << "== TYT SGL Radio Info ==" << std::endl
-		<< "Radio: " << "ASD" << std::endl
-		<< "RTC: " << "000";
+		<< "Radio: "
+		<< "ASD" << std::endl
+		<< "RTC: "
+		<< "000";
 
 	return out.str();
 }
 
-auto TYTSGLRadio::WriteFirmware(const std::string& file) -> void
+auto TYTSGLRadio::WriteFirmware(const std::string &file) -> void
 {
 	fw::TYTSGLFW fw;
 	fw.Read(file);
@@ -59,7 +61,8 @@ auto TYTSGLRadio::WriteFirmware(const std::string& file) -> void
 		auto download_rsp = std::string(rsp.data.begin(), rsp.data.end());
 		auto update_rsp = std::string(hid::tyt::commands::Update.begin(), hid::tyt::commands::Update.end());
 		std::stringstream msg("Invalid response, expected '");
-		msg << update_rsp << "'" << " got '" << download_rsp << "'";
+		msg << update_rsp << "'"
+			<< " got '" << download_rsp << "'";
 
 		throw new std::runtime_error(msg.str());
 	}
@@ -71,7 +74,8 @@ auto TYTSGLRadio::WriteFirmware(const std::string& file) -> void
 	{
 		auto key_rsp = std::string(rsp_key.data.begin(), rsp_key.data.end());
 		std::stringstream msg("Invalid response, expected firmware key '");
-		msg << config->header.model_key << "'" << " got '" << key_rsp << "'";
+		msg << config->header.model_key << "'"
+			<< " got '" << key_rsp << "'";
 
 		throw new std::runtime_error(msg.str());
 	}
@@ -97,8 +101,8 @@ auto TYTSGLRadio::WriteFirmware(const std::string& file) -> void
 	while (address < binary.size)
 	{
 		auto transferSize = std::min(TransferSize, binary.size - address);
-		*(uint32_t*)buf.data() = address;
-		*(uint16_t*)(buf.data() + 4) = transferSize;
+		*(uint32_t *)buf.data() = address;
+		*(uint16_t *)(buf.data() + 4) = transferSize;
 
 		auto src = binary.data.begin() + address;
 		std::copy(src, src + transferSize, buf.begin() + HeaderSize);
@@ -106,13 +110,14 @@ auto TYTSGLRadio::WriteFirmware(const std::string& file) -> void
 		device.SendCommandAndOk(buf);
 
 		address += transferSize;
-		if (address % ChecksumBlockSize == 0 || address == binary.size) {
+		if (address % ChecksumBlockSize == 0 || address == binary.size)
+		{
 			auto start = ChecksumBlockSize * checksumBlock;
 			auto end = address;
 
 			auto checksumCommand = std::vector<uint8_t>(hid::tyt::commands::End.size() + 5, 0xff);
 			std::copy(hid::tyt::commands::End.begin(), hid::tyt::commands::End.end(), checksumCommand.begin());
-			*(uint32_t*)(checksumCommand.end()._Ptr - 4) = checksum(binary.data.begin() + start, binary.data.begin() + end);
+			*(uint32_t *)(checksumCommand.data() + hid::tyt::commands::End.size()) = checksum(binary.data.begin() + start, binary.data.begin() + end);
 			device.SendCommandAndOk(checksumCommand);
 
 			checksumBlock++;
@@ -120,9 +125,11 @@ auto TYTSGLRadio::WriteFirmware(const std::string& file) -> void
 	}
 }
 
-auto TYTSGLRadio::checksum(std::vector<uint8_t>::const_iterator&& begin, std::vector<uint8_t>::const_iterator&& end) const->uint32_t {
+auto TYTSGLRadio::checksum(std::vector<uint8_t>::const_iterator &&begin, std::vector<uint8_t>::const_iterator &&end) const -> uint32_t
+{
 	uint32_t counter = 0;
-	while (begin != end) {
+	while (begin != end)
+	{
 		counter += *begin;
 		std::advance(begin, 1);
 	}
