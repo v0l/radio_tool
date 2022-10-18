@@ -67,6 +67,11 @@ namespace radio_tool::fw
 
 		auto Serialize(bool encrypt = true) const->std::vector<uint8_t>;
 
+		/** 
+		 * Genrate a new instance of this header with new secret values 
+		 */
+		auto AsNew(const uint32_t& binary_len) const -> const SGLHeader;
+
 		const uint16_t sgl_version;
 		const uint32_t length;
 		const uint8_t binary_offset;

@@ -67,6 +67,13 @@ auto TYTSGLFW::Read(const std::string& file) -> void
 
 auto TYTSGLFW::Write(const std::string& file) -> void
 {
+	if (config == nullptr) {
+		throw std::runtime_error("No header set, cannot write firmware");
+	}
+	if (config->header.length != data.size()) {
+		throw std::runtime_error("Binary size mismatch, size in header does not match actual binary length");
+	}
+
 	std::ofstream fout(file, std::ios_base::binary);
 	if (fout.is_open())
 	{
@@ -142,14 +149,20 @@ auto TYTSGLFW::ReadHeader(const std::string& file) -> const SGLHeader
 	{
 		throw std::runtime_error("Can't open firmware file");
 	}
+	i.close();
 }
 
 auto TYTSGLFW::SupportsFirmwareFile(const std::string& file) -> bool
 {
-	auto header = ReadHeader(file);
-	if (header.length != 0)
-	{
-		return true;
+	try {
+		auto header = ReadHeader(file);
+		if (header.length != 0)
+		{
+			return true;
+		}
+	}
+	catch (std::exception e) {
+		std::cerr << e.what() << std::endl;
 	}
 	return false;
 }
@@ -168,12 +181,10 @@ auto TYTSGLFW::SupportsRadioModel(const std::string& model) -> bool
 
 auto TYTSGLFW::GetRadioModel() const -> const std::string
 {
-	auto ret = std::string(config->radio_model);
-
-	auto end = std::find_if(ret.begin(), ret.end(), [](unsigned char ch) {
-		return ch == '\xff';
-		});
-	return ret.substr(0, end - ret.begin());
+	if (config == nullptr) {
+		throw std::runtime_error("Radio model not selected");
+	}
+	return config->radio_model;
 }
 
 auto TYTSGLFW::SetRadioModel(const std::string& model) -> void
@@ -182,7 +193,7 @@ auto TYTSGLFW::SetRadioModel(const std::string& model) -> void
 	{
 		if (rg.radio_model == model)
 		{
-			config = &rg;
+			config = new TYTSGLRadioConfig(rg.radio_model, rg.header.AsNew(data.size()), rg.cipher, rg.cipher_len, rg.xor_offset);
 			break;
 		}
 	}
@@ -232,6 +243,34 @@ auto SGLHeader::ToString() const -> std::string
 	return ss.str();
 }
 
+auto SGLHeader::AsNew(const uint32_t& binary_len) const -> const SGLHeader
+{
+	std::default_random_engine eng;
+
+	// model key
+	std::uniform_int_distribution<uint16_t> model_key_dist('!', '}');
+	auto new_model_key = std::vector<uint8_t>{
+		(uint8_t)model_key[0], // D
+		(uint8_t)model_key[1], // V
+		(uint8_t)model_key[2], // X
+		(uint8_t)model_key[3], // X
+		(uint8_t)model_key_dist(eng),
+		(uint8_t)model_key_dist(eng),
+		(uint8_t)model_key_dist(eng),
+		(uint8_t)model_key_dist(eng)
+	};
+
+	// binary offset
+	std::uniform_int_distribution<uint16_t> binary_offset_dist(0, 0x80);
+	auto new_binary_offset = binary_offset_dist(eng);
+
+	// h2 offset
+	std::uniform_int_distribution<uint16_t> h2_offset_dist(0x1e, 0x100);
+	auto new_h2_offset = h2_offset_dist(eng);
+
+	return SGLHeader(sgl_version, binary_len, radio_group, radio_model, protocol_version, std::string(new_model_key.begin(), new_model_key.end()), new_binary_offset, new_h2_offset);
+}
+
 auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 {
 	auto header = std::vector<uint8_t>(HeaderLen + binary_offset);
@@ -258,7 +297,7 @@ auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 	auto key = dist(eng);
 	*(uint16_t*)(header.data() + h2_key_offset) = key;
 
-	auto h2 = header.data() + Header1Len;
+	auto h2 = header.data() + header2_offset;
 	*h2 = 0x02;
 	*(h2 + 1) = 0x10;
 
@@ -272,9 +311,9 @@ auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 
 	if (encrypt) {
 		// encrypt header 2
-		auto h2_key = header.data() + h2_key_offset;
+		auto h2_key = (uint8_t*)(header.data() + h2_key_offset);
 		for (auto h2x = 0;h2x < Header2Len;h2x++) {
-			*(h2 + h2x) ^= *(h2_key + (h2x % 2));
+			*(h2 + h2x) ^= h2_key[h2x % 2];
 		}
 
 		// encrypt header 1
