@@ -86,6 +86,10 @@ auto TYTSGLFW::Write(const std::string& file) -> void
 
 auto TYTSGLFW::ToString() const -> std::string
 {
+	if (config == nullptr) {
+		throw std::runtime_error("No header set, cannot print firmware info");
+	}
+
 	std::stringstream out;
 	out << "== TYT SGL Firmware == " << std::endl
 		<< "Radio: " << config->radio_model << std::endl
@@ -228,6 +232,21 @@ auto TYTSGLFW::Encrypt() -> void
 	}
 }
 
+auto TYTSGLFW::IsCompatible(const FirmwareSupport* other) const -> bool
+{
+	if (typeid(other) != typeid(TYTSGLFW)) {
+		return false;
+	}
+
+	if (config == nullptr) {
+		throw std::runtime_error("Header is not loaded, cannot compare firmware support");
+	}
+
+	auto fw = dynamic_cast<const TYTSGLFW*>(other);
+	return fw->config->header.IsCompatible(config->header)
+		&& fw->config->radio_model == config->radio_model;
+}
+
 auto SGLHeader::ToString() const -> std::string
 {
 	std::stringstream ss;
@@ -323,4 +342,14 @@ auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 	}
 
 	return header;
+}
+
+auto SGLHeader::IsCompatible(const SGLHeader& other) const -> bool
+{
+	return other.length == length
+		&& other.sgl_version == sgl_version
+		&& other.protocol_version == protocol_version
+		&& std::equal(other.model_key.begin(), other.model_key.begin() + 4, model_key.begin())
+		&& other.radio_group == radio_group
+		&& other.radio_model == radio_model;
 }

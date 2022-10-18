@@ -55,6 +55,7 @@ namespace radio_tool::fw
 		auto Decrypt() -> void override;
 		auto Encrypt() -> void override;
 		auto SetRadioModel(const std::string&) -> void override;
+		auto IsCompatible(const FirmwareSupport* Other) const -> bool override;
 
 		/**
 		 * @note This is not the "firmware_model" which exists in the firmware header

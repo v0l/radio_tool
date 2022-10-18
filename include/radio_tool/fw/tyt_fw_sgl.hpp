@@ -72,6 +72,11 @@ namespace radio_tool::fw
 		 */
 		auto AsNew(const uint32_t& binary_len) const -> const SGLHeader;
 
+		/**
+		 * Check if this header is compatible with another (excluding secrets)
+		 */
+		auto IsCompatible(const SGLHeader& other) const -> bool;
+
 		const uint16_t sgl_version;
 		const uint32_t length;
 		const uint8_t binary_offset;
@@ -142,6 +147,7 @@ namespace radio_tool::fw
 		auto Decrypt() -> void override;
 		auto Encrypt() -> void override;
 		auto SetRadioModel(const std::string&) -> void override;
+		auto IsCompatible(const FirmwareSupport* Other) const -> bool override;
 
 		auto GetConfig() const -> const TYTSGLRadioConfig* {
 			return config;

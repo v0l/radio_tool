@@ -266,3 +266,14 @@ auto TYTFW::ApplyXOR() -> void
 
 	radio_tool::ApplyXOR(data, xor_model, xor_len);
 }
+
+auto TYTFW::IsCompatible(const FirmwareSupport* Other) const -> bool
+{
+	if (typeid(Other) != typeid(this)) {
+		return false;
+	}
+
+	auto afw = dynamic_cast<const TYTFW*>(Other);
+	return afw->radio_model == radio_model
+		&& afw->firmware_model == firmware_model;
+}

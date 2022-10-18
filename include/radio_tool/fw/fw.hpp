@@ -92,6 +92,11 @@ namespace radio_tool::fw
 		 */
 		virtual auto Encrypt() -> void = 0;
 
+		/** 
+		 * Check if another firwamware handle is compatible with this
+		 */
+		virtual auto IsCompatible(const FirmwareSupport* Other) const -> bool = 0;
+
 		/**
 		 * Gets the firmware binary
 		 */
