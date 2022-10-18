@@ -27,7 +27,7 @@ namespace radio_tool::radio
     class RadioFactory
     {
     public:
-        auto OpenDevice(const uint16_t& index) const -> const RadioOperations*;
+        auto OpenDevice(const uint16_t& index) const -> RadioOperations*;
         auto ListDevices() const -> const std::vector<RadioInfo*>;
     };
 } // namespace radio_tool::radio

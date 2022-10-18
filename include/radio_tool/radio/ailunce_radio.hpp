@@ -35,17 +35,12 @@ namespace radio_tool::radio
         AilunceRadio(const std::string &prt, const std::string &fname)
             : device(prt, fname) {}
 
-        auto WriteFirmware(const std::string &file) const -> void override;
+        auto WriteFirmware(const std::string &file) -> void override;
         auto ToString() const -> const std::string override;
-
-        auto GetDevice() const -> const device::RadioDevice* override
-        {
-            return &device;
-        }
 
         static auto SupportsDevice(const std::string &) -> bool;
 
-        static auto Create(const std::string &port) -> const AilunceRadio*
+        static auto Create(const std::string &port) -> AilunceRadio*
         {
             return new AilunceRadio(port, "firmware.bin");
         }

@@ -117,7 +117,7 @@ auto TYTFW::ToString() const -> std::string
 	std::stringstream out;
 	out << "== TYT Firmware == " << std::endl
 		<< "Radio: " << firmware_model << " (" << radio_model << ")" << std::endl
-		<< "Size:  " << std::fixed << std::setprecision(2) << (data.size() / 1024.0) << " KiB" << std::endl
+		<< "Size:  " << FormatBytes(data.size()) << std::endl
 		<< "Data Segments: " << std::endl;
 	auto n = 0;
 	for (const auto& m : memory_ranges)
@@ -265,4 +265,15 @@ auto TYTFW::ApplyXOR() -> void
 	}
 
 	radio_tool::ApplyXOR(data, xor_model, xor_len);
+}
+
+auto TYTFW::IsCompatible(const FirmwareSupport* Other) const -> bool
+{
+	if (typeid(Other) != typeid(this)) {
+		return false;
+	}
+
+	auto afw = dynamic_cast<const TYTFW*>(Other);
+	return afw->radio_model == radio_model
+		&& afw->firmware_model == firmware_model;
 }

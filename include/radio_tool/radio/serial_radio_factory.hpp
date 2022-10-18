@@ -45,7 +45,7 @@ namespace radio_tool::radio
 			return os.str();
 		}
 
-		auto OpenDevice() const -> const RadioOperations * override
+		auto OpenDevice() const -> RadioOperations * override
 		{
 			return loader();
 		}

@@ -32,7 +32,6 @@ auto TYTRadio::ToString() const -> const std::string
 {
 	std::stringstream out;
 
-	auto dfu = device.GetDFU();
 	auto model = dfu.IdentifyDevice();
 	auto time = dfu.GetTime();
 
@@ -43,48 +42,50 @@ auto TYTRadio::ToString() const -> const std::string
 	return out.str();
 }
 
-auto TYTRadio::WriteFirmware(const std::string& file) const -> void
+auto TYTRadio::WriteFirmware(const std::string& file) -> void
 {
 	constexpr auto TransferSize = 1024u;
 
 	auto fw = fw::TYTFW();
 	fw.Read(file);
 
-	auto dfu = device.GetDFU();
+	auto dfu = this->dfu;
 	dfu.SendTYTCommand(dfu::TYTCommand::FirmwareUpgrade);
 	for (auto& r : fw.GetDataSegments())
 	{
-		flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.address, r.address + r.size, [&dfu](const uint32_t& addr, const uint32_t& size, const flash::FlashSector& sector) {
-			std::cerr << "Erasing: 0x" << std::setw(8) << std::setfill('0') << std::hex << addr
-				<< " [Size=0x" << std::hex << size << "]" << std::endl
-				<< "-- " << sector.ToString() << std::endl;
+		flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.address, r.address + r.size,
+			[&dfu](const uint32_t& addr, const uint32_t& size, const flash::FlashSector& sector) {
+				std::cerr << "Erasing: 0x" << std::setw(8) << std::setfill('0') << std::hex << addr
+					<< " [Size=0x" << std::hex << size << "]" << std::endl
+					<< "-- " << sector.ToString() << std::endl;
 
-			dfu.Erase(addr);
+				dfu.Erase(addr);
 			});
 
 		auto b_offset = 0u;
-		flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.address, r.address + r.size, [&dfu, &r, &TransferSize, &b_offset](const uint32_t& addr, const uint32_t& size, const flash::FlashSector& sector) {
-			const auto& binary_data = r.data;
-			const auto blocks = (int)ceil(size / (double)TransferSize);
+		flash::FlashUtil::AlignedContiguousMemoryOp(flash::STM32F40X, r.address, r.address + r.size,
+			[&dfu, &r, &TransferSize, &b_offset](const uint32_t& addr, const uint32_t& size, const flash::FlashSector&) {
+				const auto& binary_data = r.data;
+				const auto blocks = (int)ceil(size / (double)TransferSize);
 
-			std::cerr << "Writing: 0x" << std::setw(8) << std::setfill('0') << std::hex << addr
-				<< " [Size=0x" << std::hex << size << "]" << std::endl;
-			dfu.SetAddress(addr);
-			for (auto wValue = 0; wValue < blocks; wValue++)
-			{
-				auto block_offset = b_offset + (TransferSize * wValue);
-				auto to_write = std::vector<uint8_t>(
-					binary_data.begin() + block_offset,
-					binary_data.begin() + block_offset + std::min(TransferSize, r.size - block_offset)
-					);
+				std::cerr << "Writing: 0x" << std::setw(8) << std::setfill('0') << std::hex << addr
+					<< " [Size=0x" << std::hex << size << "]" << std::endl;
+				dfu.SetAddress(addr);
+				for (auto wValue = 0; wValue < blocks; wValue++)
+				{
+					auto block_offset = b_offset + (TransferSize * wValue);
+					auto to_write = std::vector<uint8_t>(
+						binary_data.begin() + block_offset,
+						binary_data.begin() + block_offset + std::min(TransferSize, r.size - block_offset)
+						);
 
-				/*std::cerr
-					<< "-- wValue=0x" << std::setw(2) << std::setfill('0') << std::hex << (2 + wValue)
-					<< ", Size=0x" << to_write.size()
-					<< std::endl;*/
-				dfu.Download(to_write, 2 + wValue);
-			}
-			b_offset += size;
+					/*std::cerr
+						<< "-- wValue=0x" << std::setw(2) << std::setfill('0') << std::hex << (2 + wValue)
+						<< ", Size=0x" << to_write.size()
+						<< std::endl;*/
+					dfu.Download(to_write, 2 + wValue);
+				}
+				b_offset += size;
 			});
 	}
 }

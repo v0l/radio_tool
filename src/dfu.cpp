@@ -48,11 +48,11 @@ auto DFU::Erase(const uint32_t &addr) const -> void
     Download(data);
 }
 
-auto DFU::Download(const std::vector<uint8_t>& data, const uint16_t &wValue) const -> void
+auto DFU::Download(const std::vector<uint8_t> &data, const uint16_t &wValue) const -> void
 {
     InitDownload();
     // tehnically we shouldnt const_cast here but libusb *?WONT?* modify this data
-    auto err = libusb_control_transfer(device, 0x21, static_cast<uint8_t>(DFURequest::DNLOAD), wValue, 0, const_cast<unsigned char*>(data.data()), data.size(), this->timeout);
+    auto err = libusb_control_transfer(device, 0x21, static_cast<uint8_t>(DFURequest::DNLOAD), wValue, 0, const_cast<unsigned char *>(data.data()), data.size(), this->timeout);
     if (err < LIBUSB_SUCCESS)
     {
         throw DFUException(libusb_error_name(err));
@@ -63,13 +63,16 @@ auto DFU::Download(const std::vector<uint8_t>& data, const uint16_t &wValue) con
     if (status.state != DFUState::DFU_DOWNLOAD_BUSY)
     {
         throw DFUException("Command execution failed");
-    } else if(status.timeout > 0) {
+    }
+    else if (status.timeout > 0)
+    {
         //std::this_thread::sleep_for(std::chrono::nanoseconds(status.timeout));
     }
 
     //check the command executed ok
     auto status2 = GetStatus();
-    if(status2.state != DFUState::DFU_DOWNLOAD_IDLE) {
+    if (status2.state != DFUState::DFU_DOWNLOAD_IDLE)
+    {
         throw DFUException("Command execution failed");
     }
 }
@@ -89,7 +92,6 @@ auto DFU::Upload(const uint16_t &size, const uint8_t &wValue) const -> std::vect
     }
     return data;
 }
-
 
 auto DFU::GetState() const -> DFUState
 {
@@ -136,7 +138,8 @@ auto DFU::Abort() const -> void
     }
 }
 
-auto DFU::Detach() const -> void {
+auto DFU::Detach() const -> void
+{
     CheckDevice();
     auto err = libusb_control_transfer(device, 0x21, static_cast<uint8_t>(DFURequest::DETACH), 0, 0, nullptr, 0, this->timeout);
     if (err < LIBUSB_SUCCESS)
@@ -150,8 +153,6 @@ auto DFU::CheckDevice() const -> void
     if (this->device == nullptr)
         throw std::runtime_error("Device is not opened");
 }
-
-
 
 auto DFU::InitDownload() const -> void
 {

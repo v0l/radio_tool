@@ -154,7 +154,7 @@ namespace radio_tool::h8sx
             : timeout(5000), device(device) {}
 
         auto Init() const -> void;
-        auto IdentifyDevice() -> std::string;
+        auto IdentifyDevice() const -> std::string;
         auto Download(const std::vector<uint8_t> &) const -> void;
 
     private:

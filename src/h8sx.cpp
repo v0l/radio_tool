@@ -31,7 +31,7 @@
 
 using namespace radio_tool::h8sx;
 
-auto H8SX::IdentifyDevice() -> std::string
+auto H8SX::IdentifyDevice() const -> std::string
 {
     int err = 0;
     int transferred = 0, received = 0;
@@ -84,7 +84,7 @@ auto H8SX::IdentifyDevice() -> std::string
                                &received,
                                0);
     CHECK_ERR("error in device selection!");
-    dir = (struct dev_inq_hdr_t *)buf;
+    auto dir = (struct dev_inq_hdr_t *)buf;
     // TODO: Validate checksum
     buf[sizeof(struct dev_inq_hdr_t) + dir->nchar] = '\0';
 

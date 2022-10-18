@@ -23,7 +23,7 @@
 
 using namespace radio_tool::radio;
 
-auto RadioFactory::OpenDevice(const uint16_t &index) const -> const RadioOperations *
+auto RadioFactory::OpenDevice(const uint16_t &index) const -> RadioOperations *
 {
     auto devices = ListDevices();
 

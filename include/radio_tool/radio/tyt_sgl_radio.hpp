@@ -1,6 +1,6 @@
 /**
  * This file is part of radio_tool.
- * Copyright (c) 2022 v0l <radio_tool@v0l.io>
+ * Copyright (c) 2021 v0l <radio_tool@v0l.io>
  *
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,34 +18,35 @@
 #pragma once
 
 #include <radio_tool/radio/radio.hpp>
-#include <radio_tool/h8sx/h8sx.hpp>
+#include <radio_tool/hid/tyt_hid.hpp>
 
 #include <functional>
-#include <libusb-1.0/libusb.h>
 
 namespace radio_tool::radio
 {
-	class YaesuRadio : public RadioOperations
+	class TYTSGLRadio : public RadioOperations
 	{
 	public:
-		static const auto VID = 0x045b;
-		static const auto PID = 0x0025;
-
-		YaesuRadio(libusb_device_handle* h)
-			: h8sx(h) {}
+		TYTSGLRadio(libusb_device_handle* h);
 
 		auto WriteFirmware(const std::string& file) -> void override;
 		auto ToString() const -> const std::string override;
 
 		static auto SupportsDevice(const libusb_device_descriptor& dev) -> bool
 		{
-			return dev.idVendor == VID && dev.idProduct == PID;
+			if (dev.idVendor == hid::TYTHID::VID && dev.idProduct == hid::TYTHID::PID)
+			{
+				return true;
+			}
+			return false;
 		}
 
-		static auto Create(libusb_device_handle* h) -> YaesuRadio* {
-			return new YaesuRadio(h);
+		static auto Create(libusb_device_handle* h) -> TYTSGLRadio*
+		{
+			return new TYTSGLRadio(h);
 		}
 	private:
-		h8sx::H8SX h8sx;
+		hid::TYTHID device;
+		auto checksum(std::vector<uint8_t>::const_iterator&& begin, std::vector<uint8_t>::const_iterator&& end) const -> uint32_t;
 	};
 } // namespace radio_tool::radio

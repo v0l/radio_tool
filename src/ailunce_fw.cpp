@@ -126,3 +126,13 @@ auto AilunceFW::ApplyXOR() -> void
 			data[z] ^= 0x07;
 	}
 }
+
+auto AilunceFW::IsCompatible(const FirmwareSupport* Other) const -> bool
+{
+	if (typeid(Other) != typeid(this)) {
+		return false;
+	}
+
+	auto afw = dynamic_cast<const AilunceFW*>(Other);
+	return afw->radio_model == radio_model;
+}

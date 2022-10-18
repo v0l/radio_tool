@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.2.0)
-project(radio_tool VERSION 0.2.1)
+project(radio_tool VERSION 0.2.2)
 
 option(BUILD_TESTING "Enable tests" OFF)
 
@@ -12,7 +12,7 @@ if(NOT CMAKE_GENERATOR_PLATFORM)
   set(CMAKE_GENERATOR_PLATFORM x64)
 endif()
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -55,18 +55,20 @@ set(ALL_SRC
     src/usb_radio_factory.cpp
     src/serial_radio_factory.cpp
     src/tyt_radio.cpp
-    src/tyt_device.cpp
     src/ymodem_device.cpp
     src/tyt_dfu.cpp
     src/tyt_fw.cpp
+    src/tyt_fw_sgl.cpp
     src/cs_fw.cpp
     src/ailunce_radio.cpp
     src/ailunce_fw.cpp
     src/yaesu_radio.cpp
-    src/yaesu_device.cpp
     src/yaesu_fw.cpp
     src/fymodem.c
     src/rdt.cpp
+    src/hid.cpp
+    src/tyt_hid.cpp
+    src/tyt_sgl_radio.cpp
     "${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp"
 )
 
@@ -80,6 +82,7 @@ target_include_directories(radio_tool PUBLIC include)
 target_link_libraries(radio_tool radiotool)
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
+  target_link_libraries(radiotool pthread)
   target_link_libraries(radiotool PkgConfig::LibUSB)
   target_link_libraries(radio_tool PkgConfig::LibUSB)
   target_include_directories(radiotool PUBLIC ${LibUSB_INCLUDEDIR})
