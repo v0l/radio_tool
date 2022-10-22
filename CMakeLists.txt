@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.2.0)
 project(radio_tool VERSION 0.2.2)
 
 option(BUILD_TESTING "Enable tests" OFF)
+option(C_EXPORT "Enable C style interface" OFF)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
@@ -72,9 +73,13 @@ set(ALL_SRC
     "${CMAKE_CURRENT_BINARY_DIR}/src/version.cpp"
 )
 
+if(C_EXPORT) 
+  set(ALL_SRC ${ALL_SRC} "src/export.cpp")
+endif()
+
 file(GLOB_RECURSE ALL_HEADERS include false "*.h*")
 
-add_library(radiotool ${ALL_SRC} ${ALL_HEADERS})
+add_library(radiotool SHARED ${ALL_SRC} ${ALL_HEADERS})
 target_include_directories(radiotool PUBLIC include)
 
 add_executable(radio_tool src/radio_tool.cpp)
@@ -82,8 +87,7 @@ target_include_directories(radio_tool PUBLIC include)
 target_link_libraries(radio_tool radiotool)
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
-  target_link_libraries(radiotool pthread)
-  target_link_libraries(radiotool PkgConfig::LibUSB)
+  target_link_libraries(radiotool pthread PkgConfig::LibUSB)
   target_link_libraries(radio_tool PkgConfig::LibUSB)
   target_include_directories(radiotool PUBLIC ${LibUSB_INCLUDEDIR})
   target_include_directories(radio_tool PUBLIC ${LibUSB_INCLUDEDIR})
@@ -108,6 +112,7 @@ if(XOR_TOOL_INC)
 endif()
 
 install(TARGETS radio_tool RUNTIME DESTINATION bin)
+install(TARGETS radiotool)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

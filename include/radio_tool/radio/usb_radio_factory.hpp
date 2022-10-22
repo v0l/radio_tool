@@ -24,7 +24,6 @@
 #include <memory>
 #include <functional>
 #include <thread>
-#include <format>
 
 #include <libusb-1.0/libusb.h>
 

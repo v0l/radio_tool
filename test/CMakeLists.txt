@@ -27,6 +27,10 @@ endif()
 add_executable(test_fw test_fw.cpp)
 add_executable(test_util test_util.cpp)
 
+if(C_EXPORT) 
+  add_executable(c_export_test c_export_test.c)
+endif()
+
 #Add firmware tests, "radio" is the model returned from GetRadioModel()
 function(AddFirmwareTest file radio)
     ExternalData_Add_Test(data_${file}
