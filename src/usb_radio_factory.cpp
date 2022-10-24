@@ -179,9 +179,13 @@ auto USBRadioFactory::OpenDevice(const uint8_t& bus, const uint8_t& port) -> lib
 			{
 				libusb_device_handle* handle;
 
-				if (libusb_open(devs[x], &handle) == LIBUSB_SUCCESS)
+				if ((err = libusb_open(devs[x], &handle)) == LIBUSB_SUCCESS)
 				{
 					return handle;
+				} 
+				else 
+				{
+					throw std::runtime_error(libusb_error_name(err));
 				}
 				break;
 			}
