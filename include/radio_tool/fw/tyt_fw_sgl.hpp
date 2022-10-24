@@ -24,6 +24,8 @@
 #include <cstring>
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
+#include <memory>
 
 namespace radio_tool::fw
 {
