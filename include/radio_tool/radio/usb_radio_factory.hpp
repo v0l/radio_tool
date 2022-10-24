@@ -78,7 +78,7 @@ namespace radio_tool::radio
 		auto HandleEvents() -> void;
 	private:
 		auto GetDeviceString(const uint8_t &, libusb_device_handle *) const -> std::wstring;
-		static auto OpenDevice(const uint8_t &bus, const uint8_t &port) -> libusb_device_handle *;
+		static auto OpenDevice(const uint8_t &bus, const uint8_t &port, const uint8_t& address) -> libusb_device_handle *;
 		static auto CreateContext() -> libusb_context *;
 
 		libusb_context* usb_ctx;

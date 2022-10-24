@@ -102,10 +102,11 @@ auto USBRadioFactory::ListDevices(const uint16_t& idx_offset) const -> const std
 
 							auto bus = libusb_get_bus_number(cdev);
 							auto port = libusb_get_port_number(cdev);
+							auto addr = libusb_get_device_address(cdev);
 
-							auto fnOpen = [bus, port, &fnSupport]()
+							auto fnOpen = [bus, port, addr, &fnSupport]()
 							{
-								auto openDev = OpenDevice(bus, port);
+								auto openDev = OpenDevice(bus, port, addr);
 								return fnSupport.CreateOperations(openDev);
 							};
 
@@ -160,7 +161,7 @@ auto USBRadioFactory::GetDeviceString(const uint8_t& desc, libusb_device_handle*
 	return std::wstring(u16.begin(), u16.end());
 }
 
-auto USBRadioFactory::OpenDevice(const uint8_t& bus, const uint8_t& port) -> libusb_device_handle*
+auto USBRadioFactory::OpenDevice(const uint8_t& bus, const uint8_t& port, const uint8_t& address) -> libusb_device_handle*
 {
 	auto usb_ctx = CreateContext();
 
@@ -175,7 +176,8 @@ auto USBRadioFactory::OpenDevice(const uint8_t& bus, const uint8_t& port) -> lib
 		{
 			auto b = libusb_get_bus_number(devs[x]);
 			auto p = libusb_get_port_number(devs[x]);
-			if (b == bus && p == port)
+			auto a = libusb_get_device_address(devs[x]);
+			if (b == bus && p == port && a == address)
 			{
 				libusb_device_handle* handle;
 
