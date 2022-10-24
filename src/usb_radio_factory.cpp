@@ -34,8 +34,8 @@ using namespace radio_tool::radio;
 
 struct DeviceMapper
 {
-	std::function<bool(const libusb_device_descriptor&)> SupportsDevice;
-	std::function<RadioOperations* (libusb_device_handle*)> CreateOperations;
+	std::function<bool(const libusb_device_descriptor &)> SupportsDevice;
+	std::function<RadioOperations *(libusb_device_handle *)> CreateOperations;
 };
 
 /**
@@ -44,8 +44,7 @@ struct DeviceMapper
 const std::vector<DeviceMapper> RadioSupports = {
 	{TYTRadio::SupportsDevice, TYTRadio::Create},
 	{TYTSGLRadio::SupportsDevice, TYTSGLRadio::Create},
-	{YaesuRadio::SupportsDevice, YaesuRadio::Create}
-};
+	{YaesuRadio::SupportsDevice, YaesuRadio::Create}};
 
 USBRadioFactory::USBRadioFactory() : usb_ctx(nullptr)
 {
@@ -62,11 +61,11 @@ USBRadioFactory::~USBRadioFactory()
 	libusb_exit(ctx);
 }
 
-auto USBRadioFactory::ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*>
+auto USBRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const std::vector<RadioInfo *>
 {
-	std::vector<RadioInfo*> ret;
+	std::vector<RadioInfo *> ret;
 
-	libusb_device** devs;
+	libusb_device **devs;
 	auto ndev = libusb_get_device_list(usb_ctx, &devs);
 	int err = LIBUSB_SUCCESS;
 	auto n_idx = 0;
@@ -78,13 +77,13 @@ auto USBRadioFactory::ListDevices(const uint16_t& idx_offset) const -> const std
 			libusb_device_descriptor desc;
 			if (LIBUSB_SUCCESS == (err = libusb_get_device_descriptor(devs[x], &desc)))
 			{
-				for (const auto& fnSupport : RadioSupports)
+				for (const auto &fnSupport : RadioSupports)
 				{
 					if (fnSupport.SupportsDevice(desc))
 					{
 						int err = LIBUSB_SUCCESS;
-						libusb_device_handle* h;
-						auto cdev = const_cast<libusb_device*>(devs[x]);
+						libusb_device_handle *h;
+						auto cdev = const_cast<libusb_device *>(devs[x]);
 						if (LIBUSB_SUCCESS == (err = libusb_open(cdev, &h)))
 						{
 							std::wstring mfg, prd;
@@ -117,15 +116,20 @@ auto USBRadioFactory::ListDevices(const uint16_t& idx_offset) const -> const std
 						}
 						else
 						{
-							std::cerr << "Failed to open device VID=0x"
-								<< std::hex << std::setw(4) << std::setfill('0') << desc.idVendor
-								<< ", PID=0x"
-								<< std::hex << std::setw(4) << std::setfill('0') << desc.idProduct
-								<< " (" << libusb_error_name(err) << ")"
-								<< std::endl;
+							std::cerr << "[" << x << "] Failed to open device VID=0x"
+									  << std::hex << std::setw(4) << std::setfill('0') << desc.idVendor
+									  << ", PID=0x"
+									  << std::hex << std::setw(4) << std::setfill('0') << desc.idProduct
+									  << " (" << libusb_error_name(err) << ")"
+									  << std::endl;
 						}
 					}
 				}
+			}
+			else
+			{
+				std::cerr << "[" << x << "] Failed to get device descriptor: "
+						  << libusb_error_name(err) << std::endl;
 			}
 		}
 
@@ -138,7 +142,7 @@ auto USBRadioFactory::ListDevices(const uint16_t& idx_offset) const -> const std
 	return ret;
 }
 
-auto USBRadioFactory::GetDeviceString(const uint8_t& desc, libusb_device_handle* h) const -> std::wstring
+auto USBRadioFactory::GetDeviceString(const uint8_t &desc, libusb_device_handle *h) const -> std::wstring
 {
 	auto err = 0;
 	int prd_len = 0;
@@ -157,15 +161,15 @@ auto USBRadioFactory::GetDeviceString(const uint8_t& desc, libusb_device_handle*
 
 	// Encoded as UTF-16 (LE), Prefixed with length and some other byte.
 	typedef std::codecvt_utf16<char16_t, 1114111UL, std::little_endian> cvt;
-	auto u16 = std::wstring_convert<cvt, char16_t>().from_bytes((const char*)prd + 2, (const char*)prd + prd_len);
+	auto u16 = std::wstring_convert<cvt, char16_t>().from_bytes((const char *)prd + 2, (const char *)prd + prd_len);
 	return std::wstring(u16.begin(), u16.end());
 }
 
-auto USBRadioFactory::OpenDevice(const uint8_t& bus, const uint8_t& port, const uint8_t& address) -> libusb_device_handle*
+auto USBRadioFactory::OpenDevice(const uint8_t &bus, const uint8_t &port, const uint8_t &address) -> libusb_device_handle *
 {
 	auto usb_ctx = CreateContext();
 
-	libusb_device** devs;
+	libusb_device **devs;
 	auto ndev = libusb_get_device_list(usb_ctx, &devs);
 	int err = LIBUSB_SUCCESS;
 	auto n_idx = 0;
@@ -179,13 +183,13 @@ auto USBRadioFactory::OpenDevice(const uint8_t& bus, const uint8_t& port, const 
 			auto a = libusb_get_device_address(devs[x]);
 			if (b == bus && p == port && a == address)
 			{
-				libusb_device_handle* handle;
+				libusb_device_handle *handle;
 
 				if ((err = libusb_open(devs[x], &handle)) == LIBUSB_SUCCESS)
 				{
 					return handle;
-				} 
-				else 
+				}
+				else
 				{
 					throw std::runtime_error(libusb_error_name(err));
 				}
@@ -203,9 +207,9 @@ auto USBRadioFactory::OpenDevice(const uint8_t& bus, const uint8_t& port, const 
 	return nullptr;
 }
 
-auto USBRadioFactory::CreateContext() -> libusb_context*
+auto USBRadioFactory::CreateContext() -> libusb_context *
 {
-	libusb_context* usb_ctx;
+	libusb_context *usb_ctx;
 
 	auto err = libusb_init(&usb_ctx);
 	if (err != LIBUSB_SUCCESS)
@@ -214,7 +218,7 @@ auto USBRadioFactory::CreateContext() -> libusb_context*
 	}
 #if defined(LIBUSB_API_VERSION) && (LIBUSB_API_VERSION >= 0x01000107)
 	libusb_set_log_cb(
-		usb_ctx, [](libusb_context*, enum libusb_log_level, const char* str)
+		usb_ctx, [](libusb_context *, enum libusb_log_level, const char *str)
 		{ std::wcout << str << std::endl; },
 		LIBUSB_LOG_CB_CONTEXT);
 #endif
@@ -224,10 +228,9 @@ auto USBRadioFactory::CreateContext() -> libusb_context*
 
 auto USBRadioFactory::HandleEvents() -> void
 {
-	std::cerr << "USB events tread started: #" << std::this_thread::get_id() << std::endl;
 	while (usb_ctx != nullptr)
 	{
-		timeval timeout = { 0, 100 };
+		timeval timeout = {0, 100};
 		auto err = libusb_handle_events_timeout(usb_ctx, &timeout);
 		if (err != LIBUSB_SUCCESS)
 		{
@@ -240,5 +243,4 @@ auto USBRadioFactory::HandleEvents() -> void
 			}
 		}
 	}
-	std::cerr << "USB events tread exited: #" << std::this_thread::get_id() << std::endl;
 }

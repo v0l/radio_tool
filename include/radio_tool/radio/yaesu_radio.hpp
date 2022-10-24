@@ -32,7 +32,9 @@ namespace radio_tool::radio
 		static const auto PID = 0x0025;
 
 		YaesuRadio(libusb_device_handle* h)
-			: h8sx(h) {}
+			: h8sx(h) {
+				h8sx.Init();
+			}
 
 		auto WriteFirmware(const std::string& file) -> void override;
 		auto ToString() const -> const std::string override;
