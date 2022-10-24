@@ -33,60 +33,8 @@ using namespace radio_tool::h8sx;
 
 auto H8SX::IdentifyDevice() const -> std::string
 {
-    int err = 0;
-    int transferred = 0, received = 0;
-    uint8_t buf[BUF_SIZE];
-
-    // First command     0x55 -> Begin inquiry phase
-    uint8_t cmd = static_cast<uint8_t>(H8SXCmd::BEGIN_INQUIRY);
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               &cmd,
-                               1,
-                               &transferred,
-                               0);
-    CHECK_ERR("cannot begin inquiry phase!");
-
-    // Expected response 0xE6 <- (ACK)
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
-    CHECK_ERR("I/O error!");
-    if (buf[0] != 0xE6)
-        err = -1;
-    CHECK_ERR("wrong response from radio!");
-
-    // Second command     0x20 -> Supported Device Inquiry
-    cmd = static_cast<uint8_t>(H8SXCmd::DEVICE_INQUIRY);
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               &cmd,
-                               1,
-                               &transferred,
-                               0);
-    CHECK_ERR("I/O error!");
-
-    // Expected response  <- Supported Device Response
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
-    // Checksum
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               1,
-                               &received,
-                               0);
-    CHECK_ERR("error in device selection!");
-    auto dir = (struct dev_inq_hdr_t *)buf;
-    // TODO: Validate checksum
-    buf[sizeof(struct dev_inq_hdr_t) + dir->nchar] = '\0';
+    struct dev_inq_hdr_t *dir = nullptr;
+    InquireDevice(&dir);
 
     // Return device identifier
     std::ostringstream dev_str;
@@ -95,7 +43,9 @@ auto H8SX::IdentifyDevice() const -> std::string
             << dir->code[2]
             << dir->code[3]
             << "-"
-            << buf + sizeof(struct dev_inq_hdr_t);
+            << (char*)dir + sizeof(struct dev_inq_hdr_t);
+
+    free(dir);
     return dev_str.str();
 }
 
@@ -117,20 +67,11 @@ auto H8SX::Download(const std::vector<uint8_t> &data) const -> void
         std::copy(data.begin() + i * 1024, data.begin() + (i + 1) * 1024, c.data);
         bin_sum += Checksum((uint8_t *)&(c.data), 1024);
         c.sum = Checksum((uint8_t *)&c, sizeof(c) - 1);
-        err = libusb_bulk_transfer(device,
-                                   BULK_EP_OUT,
-                                   (uint8_t *)&c,
-                                   sizeof(c),
-                                   &transferred,
-                                   0);
+        err = libusb_bulk_transfer(device, BULK_EP_OUT, (uint8_t *)&c, sizeof(c), &transferred, 0);
         CHECK_ERR("error during programming!");
+
         // Expected response 0x06 <- (ACK)
-        err = libusb_bulk_transfer(device,
-                                   BULK_EP_IN,
-                                   buf,
-                                   sizeof(buf),
-                                   &received,
-                                   0);
+        err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
         CHECK_ERR("error during programming!");
         if (buf[0] != 0x06)
             err = -1;
@@ -141,20 +82,11 @@ auto H8SX::Download(const std::vector<uint8_t> &data) const -> void
 
     // Stop Programming Operation
     struct prog_end_t e = {};
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               (uint8_t *)&e,
-                               sizeof(e),
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, (uint8_t *)&e, sizeof(e), &transferred, 0);
     CHECK_ERR("error during programming stop!");
+
     // Expected response 0x06 <- (ACK)
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
     CHECK_ERR("error during programming stop!");
     if (buf[0] != 0x06)
         err = -1;
@@ -162,20 +94,11 @@ auto H8SX::Download(const std::vector<uint8_t> &data) const -> void
 
     // User MAT Sum Check 0x4B ->
     cmd = static_cast<uint8_t>(H8SXCmd::USER_MAT_CHECKSUM);
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               &cmd,
-                               1,
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, &cmd, 1, &transferred, 0);
     CHECK_ERR("error during user MAT sum check!");
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
     CHECK_ERR("error during user MAT sum check!");
+
     struct sum_chk_t *chk = (struct sum_chk_t *)buf;
     if (chk->cmd != 0x5B &&
         chk->size != 4 &&
@@ -192,6 +115,9 @@ auto H8SX::InitDownload() const -> void
     uint8_t buf[BUF_SIZE];
     uint8_t sum = 0;
 
+    struct dev_inq_hdr_t *dir = nullptr;
+    InquireDevice(&dir);
+
     // Select device to flash
     struct dev_sel_t sel = {0};
     sel.cmd = static_cast<uint8_t>(H8SXCmd::DEVICE_SELECT);
@@ -199,20 +125,11 @@ auto H8SX::InitDownload() const -> void
     for (int i = 0; i < 4; i++)
         sel.code[i] = dir->code[i];
     sel.sum = Checksum((uint8_t *)&sel, sizeof(sel) - 1);
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               (uint8_t *)&sel,
-                               sizeof(sel),
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, (uint8_t *)&sel, sizeof(sel), &transferred, 0);
     CHECK_ERR("error in device selection!");
+
     // Expected response 0x06 <- (ACK)
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
     CHECK_ERR("error in device selection!");
     if (buf[0] != 0x06)
         err = -1;
@@ -220,44 +137,21 @@ auto H8SX::InitDownload() const -> void
 
     // 0x21 -> Clock Mode Inquiry
     uint8_t cmd = static_cast<uint8_t>(H8SXCmd::CLOCK_MODE_INQUIRY);
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               &cmd,
-                               1,
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, &cmd, 1, &transferred, 0);
     CHECK_ERR("error during clock mode inquiry!");
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               (uint8_t *)&buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, (uint8_t *)&buf, sizeof(buf), &received, 0);
     CHECK_ERR("error during clock mode inquiry!");
+
     // Checksum
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               &sum,
-                               1,
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, &sum, 1, &received, 0);
 
     // 0x11 -> Clock Mode Selection
     uint8_t csel[] = {0x11, 0x01, 0x01, 0xed};
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               (uint8_t *)&csel,
-                               sizeof(csel),
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, (uint8_t *)&csel, sizeof(csel), &transferred, 0);
     CHECK_ERR("error during clock mode selection!");
+
     // Expected response 0x06 <- (ACK)
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
     CHECK_ERR("error in clock mode selection!");
     if (buf[0] != 0x06)
         err = -1;
@@ -265,65 +159,34 @@ auto H8SX::InitDownload() const -> void
 
     // 0x27 -> Programming Unit Inquiry
     cmd = static_cast<uint8_t>(H8SXCmd::PROG_UNIT_INQUIRY);
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               &cmd,
-                               1,
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, &cmd, 1, &transferred, 0);
     CHECK_ERR("error during programming mode inquiry!");
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               (uint8_t *)&buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, (uint8_t *)&buf, sizeof(buf), &received, 0);
     CHECK_ERR("error during programming mode inquiry!");
+
     // Checksum
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               &sum,
-                               1,
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, &sum, 1, &received, 0);
 
     // 0x3F -> New Bit-Rate Selection
     uint8_t bsel[] = {0x3f, 0x07, 0x04, 0x80, 0x06, 0x40,
                       0x02, 0x01, 0x01, 0xec};
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               (uint8_t *)&bsel,
-                               sizeof(bsel),
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, (uint8_t *)&bsel, sizeof(bsel), &transferred, 0);
     CHECK_ERR("error during bit rate selection!");
+
     // Expected response 0x06 <- (ACK)
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
     CHECK_ERR("error during bit rate selection!");
     if (buf[0] != 0x06)
         err = -1;
     CHECK_ERR("error during bit rate selection!");
+
     // Bit rate confirmation 0x06 ->
     cmd = 0x06;
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               &cmd,
-                               1,
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, &cmd, 1, &transferred, 0);
     CHECK_ERR("error during bit rate confirmation!");
+
     // Expected response 0x06 <- (ACK)
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
     CHECK_ERR("error during bit rate confirmation!");
     if (buf[0] != 0x06)
         err = -1;
@@ -331,20 +194,11 @@ auto H8SX::InitDownload() const -> void
 
     // Transition to Programming/Erasing State 0x40 ->
     cmd = static_cast<uint8_t>(H8SXCmd::BEGIN_PROGRAMMING);
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               &cmd,
-                               1,
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, &cmd, 1, &transferred, 0);
     CHECK_ERR("error during transition to programming state!");
+
     // Expected response 0x06 <- (ACK)
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
     CHECK_ERR("error during transition to programming state!");
     if (buf[0] != 0x06)
         err = -1;
@@ -352,24 +206,17 @@ auto H8SX::InitDownload() const -> void
 
     // User MAT Programming Selection 0x43 ->
     cmd = static_cast<uint8_t>(H8SXCmd::USER_MAT_SELECT);
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_OUT,
-                               &cmd,
-                               1,
-                               &transferred,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, &cmd, 1, &transferred, 0);
     CHECK_ERR("error during user MAT programming selection!");
+
     // Expected response 0x06 <- (ACK)
-    err = libusb_bulk_transfer(device,
-                               BULK_EP_IN,
-                               buf,
-                               sizeof(buf),
-                               &received,
-                               0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
     CHECK_ERR("error during user MAT programming selection!");
     if (buf[0] != 0x06)
         err = -1;
     CHECK_ERR("error during user MAT programming selection!");
+
+    free(dir);
 }
 
 auto H8SX::Init() const -> void
@@ -416,4 +263,41 @@ auto H8SX::Checksum(const uint8_t *data, size_t len) const -> uint8_t
     sum = ~sum;
     sum++;
     return sum;
+}
+
+auto H8SX::InquireDevice(struct dev_inq_hdr_t **hdr) const -> void
+{
+    int err = 0;
+    int transferred = 0, received = 0;
+    auto buf = (uint8_t *)calloc(1, BUF_SIZE);
+
+    // First command     0x55 -> Begin inquiry phase
+    uint8_t cmd = static_cast<uint8_t>(H8SXCmd::BEGIN_INQUIRY);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, &cmd, 1, &transferred, 0);
+    CHECK_ERR("cannot begin inquiry phase!");
+
+    // Expected response 0xE6 <- (ACK)
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
+
+    CHECK_ERR("I/O error!");
+    if (buf[0] != 0xE6)
+        err = -1;
+    CHECK_ERR("wrong response from radio!");
+
+    // Second command     0x20 -> Supported Device Inquiry
+    cmd = static_cast<uint8_t>(H8SXCmd::DEVICE_INQUIRY);
+    err = libusb_bulk_transfer(device, BULK_EP_OUT, &cmd, 1, &transferred, 0);
+    CHECK_ERR("I/O error!");
+
+    // Expected response  <- Supported Device Response
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
+    // Checksum
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, 1, &received, 0);
+
+    CHECK_ERR("error in device selection!");
+    auto dir = (struct dev_inq_hdr_t *)buf;
+    // TODO: Validate checksum
+    buf[sizeof(struct dev_inq_hdr_t) + dir->nchar] = '\0';
+
+    *hdr = dir;
 }

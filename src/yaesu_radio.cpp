@@ -46,6 +46,5 @@ auto YaesuRadio::WriteFirmware(const std::string& file) -> void
 
 	auto to_write = fw.GetData();
 	h8sx.Init();
-	h8sx.IdentifyDevice();
 	h8sx.Download(to_write);
 }

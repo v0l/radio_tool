@@ -162,11 +162,11 @@ namespace radio_tool::h8sx
 
         auto GetDeviceString(const libusb_device_descriptor &, libusb_device_handle *) const -> std::wstring;
         auto Checksum(const uint8_t *data, const size_t len) const -> uint8_t;
+        auto InquireDevice(struct dev_inq_hdr_t** hdr) const -> void;
 
     protected:
         const uint16_t timeout;
         libusb_device_handle *device;
-        struct dev_inq_hdr_t *dir;
 
         auto CheckDevice() const -> void;
 
