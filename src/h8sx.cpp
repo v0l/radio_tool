@@ -278,8 +278,7 @@ auto H8SX::InquireDevice(struct dev_inq_hdr_t **hdr) const -> void
 
     // Expected response 0xE6 <- (ACK)
     err = libusb_bulk_transfer(device, BULK_EP_IN, buf, BUF_SIZE, &received, 0);
-
-    CHECK_ERR("I/O error!");
+    CHECK_ERR("failed to receive reply to inquiry!");
     if (buf[0] != 0xE6)
         err = -1;
     CHECK_ERR("wrong response from radio!");
@@ -287,14 +286,16 @@ auto H8SX::InquireDevice(struct dev_inq_hdr_t **hdr) const -> void
     // Second command     0x20 -> Supported Device Inquiry
     cmd = static_cast<uint8_t>(H8SXCmd::DEVICE_INQUIRY);
     err = libusb_bulk_transfer(device, BULK_EP_OUT, &cmd, 1, &transferred, 0);
-    CHECK_ERR("I/O error!");
+    CHECK_ERR("failed to query supported device!");
 
     // Expected response  <- Supported Device Response
     err = libusb_bulk_transfer(device, BULK_EP_IN, buf, BUF_SIZE, &received, 0);
+    CHECK_ERR("failed to receive supported device response!");
+
     // Checksum
     err = libusb_bulk_transfer(device, BULK_EP_IN, buf, 1, &received, 0);
+    CHECK_ERR("failed to receive checksum!");
 
-    CHECK_ERR("error in device selection!");
     auto dir = (struct dev_inq_hdr_t *)buf;
     // TODO: Validate checksum
     buf[sizeof(struct dev_inq_hdr_t) + dir->nchar] = '\0';
