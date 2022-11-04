@@ -277,7 +277,7 @@ auto H8SX::InquireDevice(struct dev_inq_hdr_t **hdr) const -> void
     CHECK_ERR("cannot begin inquiry phase!");
 
     // Expected response 0xE6 <- (ACK)
-    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, BUF_SIZE, &received, 0);
 
     CHECK_ERR("I/O error!");
     if (buf[0] != 0xE6)
@@ -290,7 +290,7 @@ auto H8SX::InquireDevice(struct dev_inq_hdr_t **hdr) const -> void
     CHECK_ERR("I/O error!");
 
     // Expected response  <- Supported Device Response
-    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, sizeof(buf), &received, 0);
+    err = libusb_bulk_transfer(device, BULK_EP_IN, buf, BUF_SIZE, &received, 0);
     // Checksum
     err = libusb_bulk_transfer(device, BULK_EP_IN, buf, 1, &received, 0);
 
