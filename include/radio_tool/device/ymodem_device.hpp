@@ -19,6 +19,7 @@
 
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace radio_tool::device
 {
