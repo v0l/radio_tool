@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iomanip>
 #include <functional>
+#include <cstdint>
 
 namespace radio_tool::radio
 {

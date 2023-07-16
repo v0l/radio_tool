@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <iterator>
+#include <cstdint>
 
 namespace radio_tool::fw
 {
