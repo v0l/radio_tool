@@ -26,6 +26,14 @@
 #include <iterator>
 #include <iomanip>
 
+#if defined(_MSC_VER)
+#define bswap32(x) _byteswap_ulong((x))
+#define bswap16(x) _byteswap_ushort((x))
+#else
+#define bswap32(x) __builtin_bswap32((x))
+#define bswap16(x) __builtin_bswap16((x))
+#endif
+
 namespace radio_tool
 {
 	constexpr auto kiB = (1UL << 10);
