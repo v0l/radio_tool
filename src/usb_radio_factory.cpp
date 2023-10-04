@@ -93,6 +93,12 @@ auto USBRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const std
 								mfg = L"Yaesu";
 								prd = L"FT-70D";
 							}
+                            // Raddioddity & others
+                            else if (desc.idVendor == hid::TYTHID::VID && desc.idProduct == hid::TYTHID::PID)
+                            {
+                                mfg = L"TYT";
+                                prd = L"SGL";
+                            }
 							else
 							{
 								mfg = GetDeviceString(desc.iManufacturer, h);

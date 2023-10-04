@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <iostream>
 #include <vector>
+#include "radio_tool/util.hpp"
 
 using namespace radio_tool::radio;
 
@@ -50,8 +51,7 @@ auto TYTSGLRadio::WriteFirmware(const std::string &file) -> void
 	fw.Read(file);
 	auto config = fw.GetConfig();
 
-	device.SendCommand(hid::tyt::commands::Download);
-	auto rsp = device.WaitForReply();
+    auto rsp = device.SendCommand(hid::tyt::commands::Download);
 	if (std::equal(rsp.data.begin(), rsp.data.end(), hid::tyt::commands::Update.begin()))
 	{
 		device.SendCommandAndOk(hid::tyt::OK);
@@ -68,8 +68,7 @@ auto TYTSGLRadio::WriteFirmware(const std::string &file) -> void
 	}
 
 	// send key
-	device.SendCommand(std::vector<uint8_t>(config->header.model_key.begin(), config->header.model_key.end()), 0x08, 0xff);
-	auto rsp_key = device.WaitForReply();
+	auto rsp_key = device.SendCommand(std::vector<uint8_t>(config->header.model_key.begin(), config->header.model_key.end()), 0x08, 0xff);
 	if (!std::equal(rsp_key.data.begin(), rsp_key.data.end(), config->header.model_key.begin()))
 	{
 		auto key_rsp = std::string(rsp_key.data.begin(), rsp_key.data.end());
@@ -80,15 +79,15 @@ auto TYTSGLRadio::WriteFirmware(const std::string &file) -> void
 		throw new std::runtime_error(msg.str());
 	}
 
-	device.SendCommandAndOk(hid::tyt::commands::FlashProgram);
+	device.SendCommandAndOk(hid::tyt::commands::FlashProgram, 0x08, 0xff);
 
 	device.SendCommandAndOk(std::vector<uint8_t>(config->header.radio_group.begin(), config->header.radio_group.end()), 0x10, 0xff);
 	device.SendCommandAndOk(std::vector<uint8_t>(config->header.radio_model.begin(), config->header.radio_model.end()), 0x08, 0xff);
 	device.SendCommandAndOk(std::vector<uint8_t>(config->header.protocol_version.begin(), config->header.protocol_version.end()));
 
-	device.SendCommandAndOk(hid::tyt::commands::FlashErase);
+	device.SendCommandAndOk(hid::tyt::commands::FlashErase, 0x08, 0xff);
 	device.SendCommandAndOk(hid::tyt::OK);
-	device.SendCommandAndOk(hid::tyt::commands::Program);
+	device.SendCommandAndOk(hid::tyt::commands::Program, 0x08, 0xff);
 
 	constexpr auto TransferSize = 0x20u;
 	constexpr auto HeaderSize = 0x06u;
@@ -101,8 +100,8 @@ auto TYTSGLRadio::WriteFirmware(const std::string &file) -> void
 	while (address < binary.size)
 	{
 		auto transferSize = std::min(TransferSize, binary.size - address);
-		*(uint32_t *)buf.data() = address;
-		*(uint16_t *)(buf.data() + 4) = transferSize;
+        *(uint32_t *)buf.data() = bswap32(address);
+        *(uint16_t *)(buf.data() + 4) = bswap16(transferSize);
 
 		auto src = binary.data.begin() + address;
 		std::copy(src, src + transferSize, buf.begin() + HeaderSize);
@@ -117,11 +116,12 @@ auto TYTSGLRadio::WriteFirmware(const std::string &file) -> void
 
 			auto checksumCommand = std::vector<uint8_t>(hid::tyt::commands::End.size() + 5, 0xff);
 			std::copy(hid::tyt::commands::End.begin(), hid::tyt::commands::End.end(), checksumCommand.begin());
-			*(uint32_t *)(checksumCommand.data() + hid::tyt::commands::End.size()) = checksum(binary.data.begin() + start, binary.data.begin() + end);
+			*(uint32_t *)(checksumCommand.data() + hid::tyt::commands::End.size() + 1) = checksum(binary.data.begin() + start, binary.data.begin() + end);
 			device.SendCommandAndOk(checksumCommand);
 
 			checksumBlock++;
-		}
+            std::cerr << "Sent block " << checksumBlock << std::endl;
+        }
 	}
 }
 
