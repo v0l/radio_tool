@@ -22,12 +22,7 @@
 #include <cstring>
 #include <exception>
 #include <thread>
-
-#if defined(_MSC_VER)
-#define bswap32(x) _byteswap_ulong((x))
-#else
-#define bswap32(x) __builtin_bswap32((x))
-#endif
+#include "radio_tool/util.hpp"
 
 using namespace radio_tool::h8sx;
 

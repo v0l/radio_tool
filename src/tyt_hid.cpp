@@ -44,7 +44,7 @@ auto TYTHID::Setup() -> void
 		libusb_close(device);
 		throw std::runtime_error(libusb_error_name(err));
 	}
-
+    /*
 	auto buffer = (uint8_t*)malloc(64);
 	auto tx = libusb_alloc_transfer(0);
 	libusb_fill_interrupt_transfer(
@@ -55,6 +55,7 @@ auto TYTHID::Setup() -> void
 		},
 		this, 5000);
 	libusb_submit_transfer(tx);
+    */
 }
 
 auto TYTHID::OnTransfer(libusb_transfer* tx) -> void
@@ -79,9 +80,9 @@ auto TYTHID::OnTransfer(libusb_transfer* tx) -> void
 	libusb_submit_transfer(tx);
 }
 
-auto TYTHID::SendCommand(const tyt::Command& cmd) -> void
+auto TYTHID::SendCommand(const tyt::Command& cmd) -> tyt::Command
 {
-	std::vector<uint8_t> payload(std::max(42, (int)cmd.data.size()));
+	std::vector<uint8_t> payload((int)cmd.data.size() + 4);
 	std::fill(payload.begin(), payload.end(), 0x00);
 
 	auto nums = (uint16_t*)payload.data();
@@ -90,19 +91,24 @@ auto TYTHID::SendCommand(const tyt::Command& cmd) -> void
 	std::copy(cmd.data.begin(), cmd.data.end(), payload.begin() + 4);
 
 	InterruptWrite(TYTHID::EP_OUT, payload);
+    auto data = InterruptRead(TYTHID::EP_IN, 42);
+    auto type = ((uint16_t)data[1] << 8) | data[0];
+    auto len  = ((uint16_t)data[3] << 8) | data[2];
+    return tyt::Command((tyt::CommandType)type, len,
+                            std::vector<uint8_t>(data.begin() + 4, data.begin() + 4 + len));
 }
 
-auto TYTHID::SendCommand(const std::vector<uint8_t>& cmd) -> void
+auto TYTHID::SendCommand(const std::vector<uint8_t>& cmd) -> tyt::Command
 {
-	SendCommand(tyt::Command(tyt::CommandType::DeviceToHost, cmd.size(), cmd));
+	return SendCommand(tyt::Command(tyt::CommandType::HostToDevice, cmd.size(), cmd));
 }
 
-auto TYTHID::SendCommand(const std::vector<uint8_t>& cmd, const uint8_t& size, const uint8_t& fill) -> void
+auto TYTHID::SendCommand(const std::vector<uint8_t>& cmd, const uint8_t& size, const uint8_t& fill) -> tyt::Command
 {
 	auto ncmd = std::vector<uint8_t>(size, fill);
 	std::copy(cmd.begin(), cmd.end(), ncmd.begin());
 
-	SendCommand(ncmd);
+	return SendCommand(ncmd);
 }
 
 auto TYTHID::WaitForReply() -> tyt::Command
@@ -130,8 +136,7 @@ auto TYTHID::WaitForReply() -> tyt::Command
 
 auto TYTHID::SendCommandAndOk(const tyt::Command& cmd) -> void
 {
-	SendCommand(cmd);
-	auto ok = WaitForReply();
+    auto ok = SendCommand(cmd);
 	if (!(ok == tyt::OKResponse))
 	{
 		radio_tool::PrintHex(ok.data.begin(), ok.data.end());
@@ -141,8 +146,7 @@ auto TYTHID::SendCommandAndOk(const tyt::Command& cmd) -> void
 
 auto TYTHID::SendCommandAndOk(const std::vector<uint8_t>& cmd) -> void
 {
-	SendCommand(cmd);
-	auto ok = WaitForReply();
+    auto ok = SendCommand(cmd);
 	if (!(ok == tyt::OKResponse))
 	{
 		radio_tool::PrintHex(ok.data.begin(), ok.data.end());
@@ -152,8 +156,7 @@ auto TYTHID::SendCommandAndOk(const std::vector<uint8_t>& cmd) -> void
 
 auto TYTHID::SendCommandAndOk(const std::vector<uint8_t>& cmd, const uint8_t& size, const uint8_t& fill) -> void
 {
-	SendCommand(cmd, size, fill);
-	auto ok = WaitForReply();
+    auto ok = SendCommand(cmd, size, fill);
 	if (!(ok == tyt::OKResponse))
 	{
 		radio_tool::PrintHex(ok.data.begin(), ok.data.end());
