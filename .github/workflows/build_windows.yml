@@ -1,0 +1,47 @@
+name: WindowsRelease
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Install dependencies with vcpkg
+      run: |
+        C:\vcpkg\vcpkg.exe install libusb:x64-windows libusb:x86-windows
+      env:
+        VCPKG_ROOT: C:\vcpkg
+        
+    - name: Configure CMake
+      run: |
+        cmake -B build -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTING=ON
+      env:
+        VCPKG_ROOT: C:\vcpkg
+        
+    - name: Build
+      run: |
+        cmake --build build --config ${{ matrix.configuration }} --parallel 4
+      env:
+        VCPKG_ROOT: C:\vcpkg
+        
+    - name: Test
+      run: |
+        cd build
+        ctest -C ${{ matrix.configuration }} --timeout 600 --output-on-failure
+        
+    - name: Package
+      run: |
+        $version = "${{ github.run_number }}"
+        Compress-Archive -Path "build\${{ matrix.configuration }}\*" -DestinationPath "radio_tool_${{ matrix.configuration }}_$version.zip"
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.configuration }}_bin
+        path: radio_tool_${{ matrix.configuration }}_${{ github.run_number }}.zip
