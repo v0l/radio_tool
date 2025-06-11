@@ -1,4 +1,5 @@
 name: UbuntuRelease
+# CI workflow for Ubuntu builds and testing
 on: 
   push:
     branches: ["main"]
