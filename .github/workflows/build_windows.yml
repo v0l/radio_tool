@@ -1,0 +1,57 @@
+name: WindowsRelease
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup vcpkg
+      uses: microsoft/setup-msbuild@v2
+      
+    - name: Cache vcpkg
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ env.VCPKG_ROOT }}\installed
+          ${{ github.workspace }}\build\ExternalData\Objects
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/CMakeLists.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
+    
+    - name: Install dependencies
+      run: |
+        cd $env:VCPKG_ROOT
+        git pull
+        .\bootstrap-vcpkg.bat
+        .\vcpkg install libusb:x86-windows libusb:x64-windows
+        
+    - name: Configure CMake
+      run: |
+        cmake -H. -B./build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DBUILD_TESTING=1
+        
+    - name: Build
+      run: |
+        cmake --build ./build --config ${{ matrix.configuration }} --parallel 4
+        
+    - name: Test
+      run: |
+        cd build
+        ctest -C ${{ matrix.configuration }} --timeout 600 --output-on-failure
+        
+    - name: Package
+      run: |
+        $version = "${{ github.run_number }}"
+        Compress-Archive -Path "build\${{ matrix.configuration }}\*" -DestinationPath "radio_tool_${{ matrix.configuration }}_$version.zip"
+        
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.configuration }}_bin
+        path: radio_tool_${{ matrix.configuration }}_${{ github.run_number }}.zip
