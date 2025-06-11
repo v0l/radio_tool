@@ -73,7 +73,8 @@ auto SerialRadioFactory::OpDeviceList(std::function<void(const std::string&, con
 	auto openResult = RegOpenKeyExA(HKEY_LOCAL_MACHINE, (LPSTR)"HARDWARE\\DEVICEMAP\\SERIALCOMM", 0, KEY_READ | KEY_WOW64_64KEY, &comKey);
 	if (openResult != ERROR_SUCCESS)
 	{
-		throw std::runtime_error("Failed to enumerate serial ports");
+		// Registry key doesn't exist - no serial ports available
+		return;
 	}
 
 	constexpr auto BufferSize = 1024L;
