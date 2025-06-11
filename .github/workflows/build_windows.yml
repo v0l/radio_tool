@@ -15,14 +15,20 @@ jobs:
     - name: Install dependencies with vcpkg
       run: |
         C:\vcpkg\vcpkg.exe install libusb:x64-windows libusb:x86-windows
+      env:
+        VCPKG_ROOT: C:\vcpkg
         
     - name: Configure CMake
       run: |
         cmake -B build -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DBUILD_TESTING=ON
+      env:
+        VCPKG_ROOT: C:\vcpkg
         
     - name: Build
       run: |
         cmake --build build --config ${{ matrix.configuration }} --parallel 4
+      env:
+        VCPKG_ROOT: C:\vcpkg
         
     - name: Test
       run: |
