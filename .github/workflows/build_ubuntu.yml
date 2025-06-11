@@ -7,16 +7,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     - name: apt-install
       run: |
         sudo apt update
-        sudo apt install libusb-1.0-0-dev cmake gcc-9
+        sudo apt install libusb-1.0-0-dev cmake
     - name: run-cmake
       run: |
         cd ${{github.workspace}}
         mkdir build && cd build
-        cmake -DBUILD_TESTING=1 -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=/usr/bin/gcc-9 -DCMAKE_CXX_COMPILER=/usr/bin/g++-9 ..
+        cmake -DBUILD_TESTING=1 -DCMAKE_BUILD_TYPE=Release ..
     - name: make
       run: |
         cd ${{github.workspace}}/build
@@ -29,13 +29,13 @@ jobs:
       run: |
         cd ${{github.workspace}}/build
         cpack -C Release
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: release-deb
         path: |
           ${{github.workspace}}/build/*.deb
           ${{github.workspace}}/build/*.deb.sha256
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: release-tar
         path: |
