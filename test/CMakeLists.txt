@@ -3,7 +3,7 @@ project(radio_tool_tests VERSION 0.1.0)
 
 include(ExternalData)
 set(ExternalData_URL_TEMPLATES
-    "file://${CMAKE_CURRENT_SOURCE_DIR}/firmware/%(algo)/%(hash)"
+    "https://data.v0l.io/radio_tool/firmware/%(algo)/%(hash)"
  )
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
@@ -44,7 +44,7 @@ endfunction()
 
 # Firmware tests disabled - firmware files no longer available
 #DM-1701
-AddFirmwareTest(dm1701_2.03.bin "DM1701")
+#AddFirmwareTest(dm1701_2.03.bin "DM1701")
 
 #MD-2017
 #AddFirmwareTest(TYT2017_UV_CSV__V3.33.bin "MD2017")
@@ -83,7 +83,7 @@ AddFirmwareTest(dm1701_2.03.bin "DM1701")
 #AddFirmwareTest(md9600_rec_d6.09.bin "MD9600")
 
 #MD-390
-AddFirmwareTest(TYT_Vocoder_MD390_S13.12.bin "MD390")
+#AddFirmwareTest(TYT_Vocoder_MD390_S13.12.bin "MD390")
 #AddFirmwareTest(TYT_Vocoder_MD390_S13.20.bin "MD390")
 #AddFirmwareTest(TYT_Vocoder_MD390_S15.02.bin "MD390")
 #AddFirmwareTest(TYT_Vocoder_MD390_S15.04.bin "MD390")
@@ -93,14 +93,14 @@ AddFirmwareTest(TYT_Vocoder_MD390_S13.12.bin "MD390")
 #AddFirmwareTest(TYT_Vocoder_MD380_D13.20.bin "MD380")
 #AddFirmwareTest(TYT_Vocoder_MD380_D14.07.bin "MD380")
 #AddFirmwareTest(TYT_TFT_MD380_D3.20.bin "MD380")
-AddFirmwareTest(D013.034.bin "MD380")
+#AddFirmwareTest(D013.034.bin "MD380")
 
 #MD-446
 #AddFirmwareTest(TYT_Vocoder_MD446_D13.20.bin "MD380")
 #AddFirmwareTest(TYT_TFT_MD446_D3.20.bin "MD380")
 
 #MD-280
-AddFirmwareTest(MD280.002.018.bin "MD280")
+#AddFirmwareTest(MD280.002.018.bin "MD280")
 
 #RT3S
 #AddFirmwareTest(RT3S_CSV__V16.06.bin "UV3X0")
