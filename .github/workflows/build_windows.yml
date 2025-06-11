@@ -12,14 +12,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Setup vcpkg
+    - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
       
     - name: Cache vcpkg
       uses: actions/cache@v4
       with:
         path: |
-          ${{ env.VCPKG_ROOT }}\installed
+          C:\vcpkg\installed
           ${{ github.workspace }}\build\ExternalData\Objects
         key: ${{ runner.os }}-vcpkg-${{ hashFiles('**/CMakeLists.txt') }}
         restore-keys: |
@@ -27,14 +27,22 @@ jobs:
     
     - name: Install dependencies
       run: |
-        cd $env:VCPKG_ROOT
-        git pull
-        .\bootstrap-vcpkg.bat
-        .\vcpkg install libusb:x86-windows libusb:x64-windows
+        # Use pre-installed vcpkg on Windows runners
+        if (Test-Path "C:\vcpkg\vcpkg.exe") {
+          Write-Host "Using pre-installed vcpkg"
+          C:\vcpkg\vcpkg.exe install libusb:x86-windows libusb:x64-windows
+        } else {
+          Write-Host "vcpkg not found, setting up manually"
+          cd $env:VCPKG_ROOT
+          git pull
+          .\bootstrap-vcpkg.bat
+          .\vcpkg install libusb:x86-windows libusb:x64-windows
+        }
         
     - name: Configure CMake
       run: |
-        cmake -H. -B./build -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake" -DBUILD_TESTING=1
+        $vcpkgPath = if (Test-Path "C:\vcpkg\scripts\buildsystems\vcpkg.cmake") { "C:\vcpkg\scripts\buildsystems\vcpkg.cmake" } else { "$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" }
+        cmake -H. -B./build -DCMAKE_TOOLCHAIN_FILE="$vcpkgPath" -DBUILD_TESTING=1
         
     - name: Build
       run: |
