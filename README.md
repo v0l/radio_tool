@@ -28,13 +28,11 @@ Db = Codeplug database
 ```
 # Download
 
-Windows: [AppVeyor](https://ci.appveyor.com/project/v0l/radio-tool)
+Download pre-built binaries from [GitHub Actions](https://github.com/v0l/radio_tool/actions)
 
-Linux: [Github Actions](https://github.com/v0l/radio_tool/actions)
-
-![AppVeyor](https://ci.appveyor.com/api/projects/status/github/v0l/radio_tool?svg=true)
-
-![Release](https://github.com/v0l/radio_tool/workflows/UbuntuRelease/badge.svg)
+![Ubuntu](https://github.com/v0l/radio_tool/workflows/UbuntuRelease/badge.svg)
+![Windows](https://github.com/v0l/radio_tool/workflows/WindowsRelease/badge.svg)
+![macOS](https://github.com/v0l/radio_tool/workflows/OSXRelease/badge.svg)
 
 Otherwise you can use the instructions below to build
 
