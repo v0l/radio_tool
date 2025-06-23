@@ -18,12 +18,6 @@ endif()
 include_directories(../include)
 link_libraries(radiotool)
 
-if(XOR_TOOL_INC)
-  add_executable(test_xor test_xor_tool.cpp)
-  include_directories(${XOR_TOOL_INC})
-  add_definitions(-DXOR_TOOL)
-endif()
-
 add_executable(test_fw test_fw.cpp)
 add_executable(test_util test_util.cpp)
 
@@ -33,12 +27,6 @@ function(AddFirmwareTest file radio)
         NAME test_fw_${file}
         COMMAND test_fw DATA{./firmware/${file}} ${radio}
     )
-    if(XOR_TOOL_INC)
-      ExternalData_Add_Test(data_${file}
-          NAME test_xor_${file}
-          COMMAND test_xor DATA{./firmware/${file}}
-      )
-    endif()
     ExternalData_Add_Target(data_${file})
 endfunction()
 

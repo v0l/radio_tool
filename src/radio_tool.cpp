@@ -1,17 +1,17 @@
 /**
  * This file is part of radio_tool.
  * Copyright (c) 2020 v0l <radio_tool@v0l.io>
- * 
+ *
  * radio_tool is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
- * 
+ *
  * radio_tool is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with radio_tool. If not, see <https://www.gnu.org/licenses/>.
  */
@@ -23,10 +23,7 @@
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
 #include <radio_tool/version.hpp>
-
-#ifdef XOR_TOOL
-#include <xor_tool.hpp>
-#endif
+#include <radio_tool/xor_tool.hpp>
 
 #include <iostream>
 #include <filesystem>
@@ -87,11 +84,7 @@ int main(int argc, char **argv)
             ("fw-info", "Print info about a firmware file")
             ("wrap", "Wrap a firmware bin (use --help wrap, for more info)")
             ("unwrap", "Unwrap a fimrware file")
-#ifdef XOR_TOOL
             ("make-xor", "Try to make an XOR key for the input firmware");
-#else
-            ;
-#endif
 
         options.add_options("Codeplug")
             ("codeplug-info", "Print info about a codeplug file");
@@ -131,11 +124,11 @@ int main(int argc, char **argv)
 
         if (cmd.count("list-radios"))
         {
-            //TODO: list radio models supported
+            // TODO: list radio models supported
             exit(0);
         }
 
-        //do non device specific commands
+        // do non device specific commands
         if (cmd.count("fw-info"))
         {
             auto file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
@@ -246,17 +239,16 @@ int main(int argc, char **argv)
             exit(0);
         }
 
-#ifdef XOR_TOOL
         if (cmd.count("make-xor"))
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
             auto fw_handler = FirmwareFactory::GetFirmwareFileHandler(in_file);
             fw_handler->Read(in_file);
 
-            auto key = radio_tool::fw::XORTool::MakeXOR(fw_handler->GetData());
+            auto key = radio_tool::XORTool::MakeXOR(fw_handler->GetData());
             for (const auto &region : fw_handler->GetDataSegments())
             {
-                if (radio_tool::fw::XORTool::Verify(region.address, region.data, key))
+                if (radio_tool::XORTool::Verify(region.address, region.data, key))
                 {
                     std::cout
                         << "Region @ 0x" << std::setfill('0') << std::setw(8) << std::hex << region.address
@@ -268,13 +260,13 @@ int main(int argc, char **argv)
 
             // dump in C format
             std::cout << "const uint8_t[] key = {";
-            for(const auto &v : key) {
+            for (const auto &v : key)
+            {
                 std::cout << "0x" << std::hex << std::setfill('0') << std::setw(2) << (int)v << ",";
             }
             std::cout << "};" << std::endl;
             exit(0);
         }
-#endif
 
         auto rdFactory = RadioFactory();
         if (cmd.count("list"))
@@ -351,7 +343,7 @@ auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> voi
     {
         auto x = cmd["dump-reg"].as<uint16_t>();
         std::cerr << "Read register: 0x" << std::setfill('0') << std::setw(2) << std::hex << x << std::endl;
-        //radio_tool::PrintHex(dfu.ReadRegister(static_cast<const TYTRegister>(x)));
+        // radio_tool::PrintHex(dfu.ReadRegister(static_cast<const TYTRegister>(x)));
     }
 
     if (cmd.count("dump-bootloader"))
@@ -363,7 +355,7 @@ auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> voi
         if (outf.is_open())
         {
             auto mem = dfu->Upload(size, 2);
-            //radio_tool::PrintHex(mem);
+            // radio_tool::PrintHex(mem);
             outf.write((char *)mem.data(), mem.size());
             outf.close();
         }
@@ -376,17 +368,17 @@ auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> voi
 
     if (cmd.count("get-time"))
     {
-        //auto tm = dfu.GetTime();
-        //std::cerr << ctime(&tm);
+        // auto tm = dfu.GetTime();
+        // std::cerr << ctime(&tm);
     }
 
     if (cmd.count("set-time"))
     {
-        //dfu.SetTime();
+        // dfu.SetTime();
     }
 
     if (cmd.count("reboot"))
     {
-        //dfu.Reboot();
+        // dfu.Reboot();
     }
 }
