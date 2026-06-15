@@ -67,7 +67,10 @@ int main(int argc, char **argv)
 
         options.add_options("Programming")
             ("f,flash", "Flash firmware")
-            ("p,program", "Upload codeplug");
+            ("p,program", "Upload codeplug")
+            ("read-codeplug", "Download codeplug to --out file")
+            ("delta", "Upload only the chunks that differ from the radio (dirty-chunk write)")
+            ("baud", "Serial baud rate for codeplug ops (57600=OpenRTX, 119200=vendor fw)", cxxopts::value<uint32_t>()->default_value("57600"), "<rate>");
 
         options.add_options("All radio")
             ("info", "Print some info about the radio")
@@ -303,6 +306,21 @@ int main(int argc, char **argv)
 
         if (cmd.count("program"))
         {
+            auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
+            auto baud = cmd["baud"].as<uint32_t>();
+            auto delta = cmd.count("delta") > 0;
+            radio->WriteCodeplug(in_file, baud, delta);
+            std::cout << "Done!" << std::endl;
+            exit(0);
+        }
+
+        if (cmd.count("read-codeplug"))
+        {
+            auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
+            auto baud = cmd["baud"].as<uint32_t>();
+            radio->ReadCodeplug(out_file, baud);
+            std::cout << "Done!" << std::endl;
+            exit(0);
         }
     }
     catch (const radio_tool::dfu::DFUException &dfuEx)

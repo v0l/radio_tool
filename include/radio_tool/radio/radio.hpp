@@ -22,6 +22,8 @@
 #include <iomanip>
 #include <functional>
 #include <cstdint>
+#include <vector>
+#include <stdexcept>
 
 namespace radio_tool::radio
 {
@@ -61,8 +63,30 @@ namespace radio_tool::radio
 		 */
 		virtual auto WriteFirmware(const std::string &file) -> void = 0;
 
-		// virtual auto WriteCodeplug();
-		// virtual auto ReadCodeplug();
+		/**
+		 * Write a codeplug image to the device (CPS upload).
+		 *
+		 * @param file   Path to the codeplug .bin image.
+		 * @param baud   Serial baud rate (e.g. 57600 for OpenRTX, 119200 vendor).
+		 * @param delta  When true, only write the chunks that differ from the
+		 *               codeplug currently on the radio (dirty-chunk write),
+		 *               using an on-radio manifest of per-chunk CRC32s.
+		 *
+		 * The default implementation throws so radios that do not implement the
+		 * CPS codeplug protocol still build/link.
+		 */
+		virtual auto WriteCodeplug(const std::string & /*file*/, const uint32_t & /*baud*/, const bool & /*delta*/) -> void
+		{
+			throw std::runtime_error("This radio does not support codeplug upload");
+		}
+
+		/**
+		 * Read the codeplug image from the device (CPS download) to a file.
+		 */
+		virtual auto ReadCodeplug(const std::string & /*file*/, const uint32_t & /*baud*/) -> void
+		{
+			throw std::runtime_error("This radio does not support codeplug download");
+		}
 
 		/**
 		 * Get general info about the radio

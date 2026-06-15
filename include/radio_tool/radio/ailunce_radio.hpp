@@ -36,6 +36,8 @@ namespace radio_tool::radio
             : device(prt, fname) {}
 
         auto WriteFirmware(const std::string &file) -> void override;
+        auto WriteCodeplug(const std::string &file, const uint32_t &baud, const bool &delta) -> void override;
+        auto ReadCodeplug(const std::string &file, const uint32_t &baud) -> void override;
         auto ToString() const -> const std::string override;
 
         static auto SupportsDevice(const std::string &) -> bool;
