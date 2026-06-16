@@ -21,6 +21,10 @@
 #include <radio_tool/radio/tyt_sgl_radio.hpp>
 #include <radio_tool/radio/yaesu_radio.hpp>
 
+#ifdef _WIN32
+#include <winsock2.h> // for struct timeval
+#endif
+
 #include <libusb-1.0/libusb.h>
 
 #include <exception>
