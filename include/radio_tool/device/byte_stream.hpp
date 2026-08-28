@@ -49,6 +49,15 @@ namespace radio_tool::device
 		virtual auto FlushInput() const -> void = 0;
 
 		/**
+		 * The clone block size this link works best with. A packet based
+		 * link like BLE carries larger blocks than a serial cable does.
+		 */
+		virtual auto BlockSizeHint() const -> size_t
+		{
+			return 0x40;
+		}
+
+		/**
 		 * Read exactly len bytes or throw
 		 */
 		auto ReadExact(const size_t &len, const uint32_t &timeout_ms, const std::string &what) const -> std::vector<uint8_t>;

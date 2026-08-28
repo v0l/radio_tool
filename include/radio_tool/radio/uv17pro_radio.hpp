@@ -66,6 +66,7 @@ namespace radio_tool::radio
 
 		auto WriteFirmware(const std::string &file) -> void override;
 		auto ReadCodeplug(const std::string &file) -> void override;
+		auto WriteCodeplug(const std::string &file) -> void override;
 		auto ToString() const -> const std::string override;
 
 		static auto Models() -> const std::vector<UV17ProModel> &;
@@ -75,6 +76,16 @@ namespace radio_tool::radio
 		 * Download the codeplug image without writing it to disk
 		 */
 		auto Download() const -> std::vector<uint8_t>;
+
+		/**
+		 * Upload a codeplug image already in memory
+		 */
+		auto Upload(const std::vector<uint8_t> &data) const -> void;
+
+		/**
+		 * Total size of the memory regions for this model
+		 */
+		auto MemoryTotal() const -> size_t;
 
 		/**
 		 * The "encryption" these radios apply to memory reads, which is a
@@ -87,6 +98,7 @@ namespace radio_tool::radio
 		auto Identify() const -> void;
 		auto SendMagic(const std::vector<uint8_t> &magic, const size_t &response_len, const std::string &what) const -> std::vector<uint8_t>;
 		auto ReadBlock(const uint16_t &addr, const uint8_t &size) const -> std::vector<uint8_t>;
+		auto WriteBlock(const uint16_t &addr, const std::vector<uint8_t> &data) const -> void;
 
 		std::unique_ptr<device::ByteStream> port;
 		const UV17ProModel model;

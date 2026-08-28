@@ -72,6 +72,15 @@ namespace radio_tool::device
 		auto FlushInput() const -> void override;
 
 		/**
+		 * Radios in this family expect larger blocks over BLE than over a
+		 * cable, matching what CHIRP sends
+		 */
+		auto BlockSizeHint() const -> size_t override
+		{
+			return 0x80;
+		}
+
+		/**
 		 * The service and characteristic we ended up talking to
 		 */
 		auto ToString() const -> std::string;

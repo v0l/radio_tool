@@ -24,6 +24,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <cstring>
+#include <algorithm>
 
 using namespace radio_tool::radio;
 using namespace radio_tool::device;
@@ -31,6 +32,8 @@ using namespace radio_tool::device;
 namespace
 {
 	constexpr auto ACK = 0x06;
+	//marks a codeplug saved by CHIRP, which appends metadata after the image
+	constexpr uint8_t ChirpMagic[] = {'c', 'h', 'i', 'r', 'p', 0xee, 'i', 'm', 'g'};
 	//a BLE link is much slower to answer than a USB cable, the first reply
 	//after connecting has been measured at well over a second
 	constexpr auto ReadTimeout = 8000u;
@@ -191,15 +194,21 @@ auto UV17ProRadio::ReadBlock(const uint16_t &addr, const uint8_t &size) const ->
 	return Crypt(model.encryption_key, std::vector<uint8_t>(rsp.begin() + 4, rsp.end()));
 }
 
-auto UV17ProRadio::Download() const -> std::vector<uint8_t>
+auto UV17ProRadio::MemoryTotal() const -> size_t
 {
-	Identify();
-
-	auto total = 0u;
+	size_t total = 0;
 	for (const auto &r : model.regions)
 	{
 		total += r.size;
 	}
+	return total;
+}
+
+auto UV17ProRadio::Download() const -> std::vector<uint8_t>
+{
+	Identify();
+
+	auto total = MemoryTotal();
 
 	std::vector<uint8_t> data;
 	data.reserve(total);
@@ -219,6 +228,109 @@ auto UV17ProRadio::Download() const -> std::vector<uint8_t>
 	std::cerr << std::endl;
 
 	return data;
+}
+
+auto UV17ProRadio::WriteBlock(const uint16_t &addr, const std::vector<uint8_t> &data) const -> void
+{
+	std::vector<uint8_t> frame = {(uint8_t)'W', (uint8_t)(addr >> 8), (uint8_t)(addr & 0xff), (uint8_t)data.size()};
+	auto payload = Crypt(model.encryption_key, data);
+	frame.insert(frame.end(), payload.begin(), payload.end());
+
+	port->Write(frame);
+
+	std::stringstream what;
+	what << "ack for block 0x" << std::hex << std::setw(4) << std::setfill('0') << addr;
+	auto ack = port->ReadExact(1, ReadTimeout, what.str());
+
+	if (ack[0] != ACK)
+	{
+		std::stringstream err;
+		err << "Radio rejected block 0x" << std::hex << std::setw(4) << std::setfill('0') << addr
+			<< " (got 0x" << (int)ack[0] << ", expected 0x06)";
+		throw std::runtime_error(err.str());
+	}
+}
+
+auto UV17ProRadio::Upload(const std::vector<uint8_t> &data) const -> void
+{
+	auto total = MemoryTotal();
+	if (data.size() < total)
+	{
+		std::stringstream err;
+		err << "Codeplug is too small for this radio (have " << std::dec << data.size()
+			<< " bytes, need " << total << ")";
+		throw std::runtime_error(err.str());
+	}
+
+	Identify();
+
+	//a cable carries the memory in small blocks, BLE in larger ones, matching
+	//what the vendor software and CHIRP do on each link
+	auto block_size = port->BlockSizeHint();
+
+	size_t done = 0;
+	std::cerr << "Uploading codeplug..." << std::endl;
+	for (const auto &region : model.regions)
+	{
+		for (auto addr = region.start; addr < region.start + region.size; addr += block_size)
+		{
+			//the last block of a region can be short, the radio still wants a
+			//full block, so pad the tail
+			auto count = std::min((size_t)block_size, (size_t)(region.start + region.size - addr));
+			std::vector<uint8_t> block(data.begin() + done, data.begin() + done + count);
+			block.resize(block_size, 0xff);
+			done += count;
+
+			WriteBlock((uint16_t)addr, block);
+
+			std::cerr << "\r 0x" << std::hex << std::setw(4) << std::setfill('0') << (int)addr
+					  << " (" << std::dec << done << " / " << total << " bytes)" << std::flush;
+		}
+	}
+	std::cerr << std::endl;
+}
+
+auto UV17ProRadio::WriteCodeplug(const std::string &file) -> void
+{
+	std::ifstream in(file, std::ios_base::in | std::ios_base::binary | std::ios_base::ate);
+	if (!in.is_open())
+	{
+		throw std::runtime_error("Cant open file: " + file);
+	}
+
+	auto size = (size_t)in.tellg();
+	in.seekg(0);
+	std::vector<uint8_t> data(size);
+	in.read((char *)data.data(), size);
+	in.close();
+
+	auto total = MemoryTotal();
+	if (size < total)
+	{
+		std::stringstream err;
+		err << "Codeplug " << file << " is too small for a " << model.name
+			<< " (" << std::dec << size << " bytes, expected at least " << total << ")";
+		throw std::runtime_error(err.str());
+	}
+
+	//anything past the memory itself is the model name we stamp on a download,
+	//or metadata added by CHIRP, and is not sent to the radio
+	auto tail = std::vector<uint8_t>(data.begin() + total, data.end());
+	auto expect = ToBytes(model.chirp_model);
+	auto tagged = tail.size() >= expect.size() &&
+				  std::equal(expect.begin(), expect.end(), tail.begin());
+	auto from_chirp = std::search(tail.begin(), tail.end(), ChirpMagic, ChirpMagic + sizeof(ChirpMagic)) != tail.end();
+
+	if (!tail.empty() && !tagged && !from_chirp)
+	{
+		std::cerr << "Warning: " << file << " is not stamped for a " << model.chirp_model
+				  << ", writing the first " << std::dec << total << " bytes anyway" << std::endl;
+	}
+
+	data.resize(total);
+	Upload(data);
+
+	std::cerr << "Wrote " << std::dec << total << " bytes to the radio" << std::endl;
 }
 
 auto UV17ProRadio::ReadCodeplug(const std::string &file) -> void
