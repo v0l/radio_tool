@@ -301,16 +301,6 @@ auto SerialPort::Read(const size_t &len, const uint32_t &timeout_ms) const -> st
 	return ret;
 }
 
-auto SerialPort::ReadExact(const size_t &len, const uint32_t &timeout_ms, const std::string &what) const -> std::vector<uint8_t>
-{
-	auto ret = Read(len, timeout_ms);
-	if (ret.size() != len)
-	{
-		throw std::runtime_error("Timed out reading " + what + " (wanted " + std::to_string(len) +
-								 " bytes, got " + std::to_string(ret.size()) + ")");
-	}
-	return ret;
-}
 
 auto SerialPort::FlushInput() const -> void
 {

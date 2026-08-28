@@ -21,6 +21,9 @@
 
 #include <radio_tool/radio/tyt_radio.hpp>
 #include <radio_tool/radio/serial_radio_factory.hpp>
+#ifdef RADIO_TOOL_BLE
+#include <radio_tool/device/ble_port.hpp>
+#endif
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
 #include <radio_tool/version.hpp>
@@ -64,6 +67,8 @@ int main(int argc, char **argv)
             ("l,list", "List devices")
             ("d,device", "Device to use", cxxopts::value<uint16_t>(), "<index>")
             ("port", "Serial port to use, for radios which clone over a serial cable", cxxopts::value<std::string>(), "</dev/ttyUSB0>")
+            ("ble", "Bluetooth LE address, for radios which clone over Bluetooth", cxxopts::value<std::string>(), "<00:11:22:33:44:55>")
+            ("ble-adapter", "Bluetooth adapter to use, if this machine has more than one", cxxopts::value<std::string>(), "<hci0>")
             ("i,in", "Input file", cxxopts::value<std::string>(), "<file>")
             ("o,out", "Output file", cxxopts::value<std::string>(), "<file>");
 
@@ -93,7 +98,8 @@ int main(int argc, char **argv)
             ("codeplug-info", "Print info about a codeplug file");
 
         options.add_options("Serial radio")
-            ("list-serial-models", "List the models which can be used with --port");
+            ("list-serial-models", "List the models which can be used with --port or --ble")
+            ("list-ble", "Scan for Bluetooth LE devices in range");
 
         options.add_options("Wrap")
             ("s,segment", "Add a segment for wrapping", cxxopts::value<std::vector<std::string>>(), "<0x08000000:region_0.bin>")
@@ -283,14 +289,33 @@ int main(int argc, char **argv)
             exit(0);
         }
 
-        // radios on a plain serial cable cannot be identified from the cable,
-        // so the user gives us the port and the model
-        if (cmd.count("port"))
+        if (cmd.count("list-ble"))
         {
-            auto port = cmd["port"].as<std::string>();
+#ifdef RADIO_TOOL_BLE
+            std::cout << "Scanning..." << std::endl;
+            for (const auto &d : radio_tool::device::BlePort::Scan(
+                     10000, cmd.count("ble-adapter") ? cmd["ble-adapter"].as<std::string>() : ""))
+            {
+                std::cout << d.address << "  " << d.name << std::endl;
+            }
+            exit(0);
+#else
+            std::cout << "This build has no Bluetooth support, rebuild with -DBUILD_BLE=ON" << std::endl;
+            exit(1);
+#endif
+        }
+
+        // neither a serial cable nor a BLE radio can be identified by itself,
+        // so the user gives us the port or address along with the model
+        if (cmd.count("port") || cmd.count("ble"))
+        {
             auto model = GetOptionOrErr<std::string>(cmd, "radio", "Radio model not specified, see --list-serial-models");
 
-            auto radio = std::unique_ptr<RadioOperations>(SerialRadioFactory::OpenPort(port, model));
+            auto radio = std::unique_ptr<RadioOperations>(
+                cmd.count("ble")
+                    ? SerialRadioFactory::OpenBle(cmd["ble"].as<std::string>(), model,
+                                                  cmd.count("ble-adapter") ? cmd["ble-adapter"].as<std::string>() : "")
+                    : SerialRadioFactory::OpenPort(cmd["port"].as<std::string>(), model));
 
             if (cmd.count("read-codeplug"))
             {

@@ -67,6 +67,11 @@ namespace radio_tool::radio
 		static auto OpenPort(const std::string &port, const std::string &model) -> RadioOperations *;
 
 		/**
+		 * Open a radio which clones over Bluetooth LE rather than a cable
+		 */
+		static auto OpenBle(const std::string &address, const std::string &model, const std::string &adapter = "") -> RadioOperations *;
+
+		/**
 		 * Names accepted by OpenPort
 		 */
 		static auto SupportedModels() -> const std::vector<std::string>;

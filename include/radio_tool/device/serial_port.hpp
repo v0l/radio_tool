@@ -17,6 +17,8 @@
  */
 #pragma once
 
+#include <radio_tool/device/byte_stream.hpp>
+
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -27,7 +29,7 @@ namespace radio_tool::device
 	 * A plain 8N1 serial port, for radios which clone over a serial cable
 	 * rather than USB (Baofeng UV-5R and friends)
 	 */
-	class SerialPort
+	class SerialPort : public ByteStream
 	{
 	public:
 		SerialPort(const std::string &port, const uint32_t &baud);
@@ -39,7 +41,7 @@ namespace radio_tool::device
 		/**
 		 * Write all bytes to the port
 		 */
-		auto Write(const std::vector<uint8_t> &data) const -> void;
+		auto Write(const std::vector<uint8_t> &data) const -> void override;
 
 		/**
 		 * Write bytes one at a time with a delay between each byte,
@@ -50,17 +52,12 @@ namespace radio_tool::device
 		/**
 		 * Read up to len bytes, returns fewer bytes if the port times out
 		 */
-		auto Read(const size_t &len, const uint32_t &timeout_ms) const -> std::vector<uint8_t>;
-
-		/**
-		 * Read exactly len bytes or throw
-		 */
-		auto ReadExact(const size_t &len, const uint32_t &timeout_ms, const std::string &what) const -> std::vector<uint8_t>;
+		auto Read(const size_t &len, const uint32_t &timeout_ms) const -> std::vector<uint8_t> override;
 
 		/**
 		 * Discard anything sitting in the input buffer
 		 */
-		auto FlushInput() const -> void;
+		auto FlushInput() const -> void override;
 
 		static auto Sleep(const uint32_t &ms) -> void;
 

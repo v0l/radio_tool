@@ -2,13 +2,16 @@ cmake_minimum_required(VERSION 3.10.0)
 project(radio_tool VERSION 0.3.0)
 
 option(BUILD_TESTING "Enable tests" OFF)
+option(BUILD_BLE "Enable Bluetooth LE support (fetches SimpleBLE)" ON)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release)
 endif()
 string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LOWER)
 
-if(NOT CMAKE_GENERATOR_PLATFORM)
+#only Visual Studio generators accept a platform, setting it unconditionally
+#breaks any sub-build using Unix Makefiles
+if(NOT CMAKE_GENERATOR_PLATFORM AND CMAKE_GENERATOR MATCHES "Visual Studio")
   set(CMAKE_GENERATOR_PLATFORM x64)
 endif()
 
@@ -41,6 +44,19 @@ elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-DNOMINMAX -DVC_EXTRALEAN -DWIN32_LEAN_AND_MEAN)
 endif()
 
+#SimpleBLE, for radios which clone over Bluetooth LE instead of a cable
+if(BUILD_BLE)
+  include(FetchContent)
+  FetchContent_Declare(
+    simpleble
+    GIT_REPOSITORY https://github.com/simpleble/simpleble.git
+    GIT_TAG v1.1.0
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR simpleble
+  )
+  FetchContent_MakeAvailable(simpleble)
+endif()
+
 if(BUILD_TESTING)
   include(CTest)
   enable_testing()
@@ -68,6 +84,8 @@ set(ALL_SRC
     src/rdt.cpp
     src/uv5r_codeplug.cpp
     src/uv5r_radio.cpp
+    src/uv17pro_radio.cpp
+    src/byte_stream.cpp
     src/serial_port.cpp
     src/hid.cpp
     src/tyt_hid.cpp
@@ -77,8 +95,17 @@ set(ALL_SRC
 
 file(GLOB_RECURSE ALL_HEADERS include false "*.h*")
 
+if(BUILD_BLE)
+  list(APPEND ALL_SRC src/ble_port.cpp)
+endif()
+
 add_library(radiotool ${ALL_SRC} ${ALL_HEADERS})
 target_include_directories(radiotool PUBLIC include)
+
+if(BUILD_BLE)
+  target_compile_definitions(radiotool PUBLIC RADIO_TOOL_BLE)
+  target_link_libraries(radiotool simpleble::simpleble)
+endif()
 
 add_executable(radio_tool src/radio_tool.cpp)
 target_include_directories(radio_tool PUBLIC include)
@@ -117,7 +144,7 @@ set(CPACK_PACKAGE_CHECKSUM SHA256)
 set(CPACK_STRIP_FILES true)
 
 set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libusb-1.0-0")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libusb-1.0-0, libdbus-1-3")
 set(CPACK_DEBIAN_PACKAGE_SECTION "hamradio")
 set(CPACK_DEBIAN_COMPRESSION_TYPE "xz")
 include(CPack)

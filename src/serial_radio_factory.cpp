@@ -19,9 +19,15 @@
 #include <radio_tool/radio/radio.hpp>
 #include <radio_tool/radio/ailunce_radio.hpp>
 #include <radio_tool/radio/uv5r_radio.hpp>
+#include <radio_tool/radio/uv17pro_radio.hpp>
 #include <radio_tool/util.hpp>
 
+#ifdef RADIO_TOOL_BLE
+#include <radio_tool/device/ble_port.hpp>
+#endif
+
 #include <functional>
+#include <memory>
 #include <string>
 #include <iostream>
 
@@ -51,6 +57,10 @@ auto SerialRadioFactory::SupportedModels() -> const std::vector<std::string>
 	{
 		ret.push_back(m.name);
 	}
+	for (const auto& m : UV17ProRadio::Models())
+	{
+		ret.push_back(m.name);
+	}
 	return ret;
 }
 
@@ -60,6 +70,10 @@ auto SerialRadioFactory::OpenPort(const std::string& port, const std::string& mo
 	{
 		return new UV5RRadio(port, *uv5r);
 	}
+	if (auto uv17 = UV17ProRadio::GetModel(model))
+	{
+		return new UV17ProRadio(port, *uv17);
+	}
 
 	auto err = std::string("Unknown radio model '" + model + "', supported models are:");
 	for (const auto& m : SupportedModels())
@@ -67,6 +81,30 @@ auto SerialRadioFactory::OpenPort(const std::string& port, const std::string& mo
 		err += " " + m;
 	}
 	throw std::runtime_error(err);
+}
+
+auto SerialRadioFactory::OpenBle(const std::string& address, const std::string& model, const std::string& adapter) -> RadioOperations*
+{
+#ifdef RADIO_TOOL_BLE
+	auto uv17 = UV17ProRadio::GetModel(model);
+	if (uv17 == nullptr)
+	{
+		auto err = std::string("Radio model '" + model + "' does not clone over Bluetooth, supported models are:");
+		for (const auto& m : UV17ProRadio::Models())
+		{
+			err += std::string(" ") + m.name;
+		}
+		throw std::runtime_error(err);
+	}
+
+	auto ble = std::make_unique<device::BlePort>(address, adapter);
+	return new UV17ProRadio(std::move(ble), *uv17);
+#else
+	(void)address;
+	(void)model;
+	(void)adapter;
+	throw std::runtime_error("This build has no Bluetooth support, rebuild with -DBUILD_BLE=ON");
+#endif
 }
 
 auto SerialRadioFactory::ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*>

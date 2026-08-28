@@ -124,6 +124,22 @@ The image is byte compatible with a CHIRP `.img` for the same radio, so it can b
 in [CHIRP](https://chirpmyradio.com/projects/chirp/wiki/Home) as well. Run
 `--list-serial-models` for the accepted `--radio` values.
 
+### Radios that clone over Bluetooth LE
+The UV-17Pro family, which includes the UV-5R Mini and UV-5G Mini, has no programming
+cable at all and clones over Bluetooth LE. Enable Bluetooth on the radio, then find it
+and read it:
+
+```bash
+./radio_tool --list-ble
+0C:64:8F:1E:00:75  walkie-talkie
+
+./radio_tool --ble 0C:64:8F:1E:00:75 --radio UV5RMINI --read-codeplug -o my_radio.img
+```
+
+Use `--ble-adapter hci1` if the machine has more than one Bluetooth adapter. A BLE link
+answers far more slowly than a cable, and a radio only advertises intermittently, so
+finding it can take several seconds.
+
 ## Wrap Firmware
 ```bash
 ./radio_tool --wrap -o wrapped.bin -r DM1701 -s 0x0800C000:main.bin
