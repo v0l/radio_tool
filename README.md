@@ -17,6 +17,7 @@ Radio Firmware tool
 | Baofeng | [DM-1701](https://www.baofengradio.com/products/dm-1701) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
 | Baofeng | [DM-1801](https://www.baofengradio.com/products/dm-1801) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
 | Baofeng | [RD-5R](https://www.baofengradio.com/products/rd-5r) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
+| Baofeng | UV-5R / UV-82 / UV-6 | ✖️ | ✖️ | ✖️ | ✔️ | ✖️ |
 | Connect Systems | [CS800D](https://www.connectsystems.com/products/top/radios/CS800D.htm) | ✖️ | ✖️ | ✔️ | ✖️ | ✖️ |
 | Ailunce | [HD1](https://www.ailunce.com/Product/HD1/Overview) | ✖️ | ✔️ | ✔️ | ✖️ | ✖️ |
 | Yaesu | [FT-70DR](https://www.yaesu.com/indexVS.cfm?cmd=DisplayProducts&ProdCatID=249&encProdID=7CDB93B02164B1FB036530FBD7D37F1A&DivisionID=65&isArchived=0) | ✖️ | ✔️ | ✖️ | ✖️ | ✖️ |
@@ -75,8 +76,9 @@ Usage:
   -L, --list-radios     List supported radios
 
  Programming options:
-  -f, --flash    Flash firmware
-  -p, --program  Upload codeplug
+  -f, --flash         Flash firmware
+  -p, --program       Upload codeplug
+      --read-codeplug Download the codeplug from the radio to --out
 
  Firmware options:
       --fw-info  Print info about a firmware file
@@ -97,12 +99,30 @@ Usage:
 
  Codeplug options:
       --codeplug-info  Print info about a codeplug file
+
+ Serial radio options:
+      --port </dev/ttyUSB0>   Serial port to use
+      --list-serial-models    List models which can be used with --port
 ```
 
 ## Flash Firmware
 ```bash
 ./radio_tool -d 0 -f -i new_firmware.bin
 ```
+
+## Download a codeplug (Baofeng UV-5R family)
+These radios clone over a plain USB serial cable, which cannot be told apart from any
+other serial cable, so the port and the model are given explicitly. Turn the radio off,
+seat the cable fully in the mic/speaker jack, then turn the radio back on before running:
+
+```bash
+./radio_tool --port /dev/ttyUSB0 --radio UV5R --read-codeplug -o my_radio.img
+./radio_tool --codeplug-info -i my_radio.img
+```
+
+The image is byte compatible with a CHIRP `.img` for the same radio, so it can be opened
+in [CHIRP](https://chirpmyradio.com/projects/chirp/wiki/Home) as well. Run
+`--list-serial-models` for the accepted `--radio` values.
 
 ## Wrap Firmware
 ```bash

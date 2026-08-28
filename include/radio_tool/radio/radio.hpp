@@ -21,6 +21,8 @@
 #include <sstream>
 #include <iomanip>
 #include <functional>
+#include <stdexcept>
+#include <vector>
 #include <cstdint>
 
 namespace radio_tool::radio
@@ -61,8 +63,21 @@ namespace radio_tool::radio
 		 */
 		virtual auto WriteFirmware(const std::string &file) -> void = 0;
 
-		// virtual auto WriteCodeplug();
-		// virtual auto ReadCodeplug();
+		/**
+		 * Download the codeplug from the radio and save it to a file
+		 */
+		virtual auto ReadCodeplug(const std::string &) -> void
+		{
+			throw std::runtime_error("Codeplug download is not supported for this radio");
+		}
+
+		/**
+		 * Upload a codeplug file to the radio
+		 */
+		virtual auto WriteCodeplug(const std::string &) -> void
+		{
+			throw std::runtime_error("Codeplug upload is not supported for this radio");
+		}
 
 		/**
 		 * Get general info about the radio

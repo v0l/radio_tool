@@ -18,6 +18,7 @@
 #include <radio_tool/radio/serial_radio_factory.hpp>
 #include <radio_tool/radio/radio.hpp>
 #include <radio_tool/radio/ailunce_radio.hpp>
+#include <radio_tool/radio/uv5r_radio.hpp>
 #include <radio_tool/util.hpp>
 
 #include <functional>
@@ -42,6 +43,31 @@ struct DeviceMapper
 
 const std::vector<DeviceMapper> Drivers = {
 	{AilunceRadio::SupportsDevice, AilunceRadio::Create} };
+
+auto SerialRadioFactory::SupportedModels() -> const std::vector<std::string>
+{
+	auto ret = std::vector<std::string>();
+	for (const auto& m : UV5RRadio::Models())
+	{
+		ret.push_back(m.name);
+	}
+	return ret;
+}
+
+auto SerialRadioFactory::OpenPort(const std::string& port, const std::string& model) -> RadioOperations*
+{
+	if (auto uv5r = UV5RRadio::GetModel(model))
+	{
+		return new UV5RRadio(port, *uv5r);
+	}
+
+	auto err = std::string("Unknown radio model '" + model + "', supported models are:");
+	for (const auto& m : SupportedModels())
+	{
+		err += " " + m;
+	}
+	throw std::runtime_error(err);
+}
 
 auto SerialRadioFactory::ListDevices(const uint16_t& idx_offset) const -> const std::vector<RadioInfo*>
 {

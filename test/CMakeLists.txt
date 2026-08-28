@@ -23,6 +23,13 @@ add_executable(test_util test_util.cpp)
 add_executable(test_codeplug test_codeplug.cpp)
 add_test(NAME test_codeplug COMMAND test_codeplug)
 
+# UV-5R clone protocol against a simulated radio on a pty (needs python3)
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND AND NOT WIN32)
+  add_test(NAME test_uv5r_download
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_uv5r_download.sh $<TARGET_FILE:radio_tool> ${CMAKE_CURRENT_SOURCE_DIR})
+endif()
+
 #Add firmware tests, "radio" is the model returned from GetRadioModel()
 function(AddFirmwareTest file radio)
     ExternalData_Add_Test(data_${file}

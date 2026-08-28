@@ -20,6 +20,7 @@
 #include <radio_tool/codeplug/codeplug_factory.hpp>
 
 #include <radio_tool/radio/tyt_radio.hpp>
+#include <radio_tool/radio/serial_radio_factory.hpp>
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
 #include <radio_tool/version.hpp>
@@ -62,12 +63,14 @@ int main(int argc, char **argv)
             ("h,help", "Show this message", cxxopts::value<std::string>()->implicit_value(""), "<command>")
             ("l,list", "List devices")
             ("d,device", "Device to use", cxxopts::value<uint16_t>(), "<index>")
+            ("port", "Serial port to use, for radios which clone over a serial cable", cxxopts::value<std::string>(), "</dev/ttyUSB0>")
             ("i,in", "Input file", cxxopts::value<std::string>(), "<file>")
             ("o,out", "Output file", cxxopts::value<std::string>(), "<file>");
 
         options.add_options("Programming")
             ("f,flash", "Flash firmware")
-            ("p,program", "Upload codeplug");
+            ("p,program", "Upload codeplug")
+            ("read-codeplug", "Download the codeplug from the radio to --out");
 
         options.add_options("All radio")
             ("info", "Print some info about the radio")
@@ -88,6 +91,9 @@ int main(int argc, char **argv)
 
         options.add_options("Codeplug")
             ("codeplug-info", "Print info about a codeplug file");
+
+        options.add_options("Serial radio")
+            ("list-serial-models", "List the models which can be used with --port");
 
         options.add_options("Wrap")
             ("s,segment", "Add a segment for wrapping", cxxopts::value<std::vector<std::string>>(), "<0x08000000:region_0.bin>")
@@ -116,7 +122,7 @@ int main(int argc, char **argv)
             }
             else
             {
-                help_groups = {"General", "Programming", "Firmware", "All radio", "TYT Radio", "Codeplug"};
+                help_groups = {"General", "Programming", "Firmware", "All radio", "TYT Radio", "Serial radio", "Codeplug"};
             }
             std::cerr << options.help(help_groups) << std::endl;
             exit(0);
@@ -268,6 +274,50 @@ int main(int argc, char **argv)
             exit(0);
         }
 
+        if (cmd.count("list-serial-models"))
+        {
+            for (const auto &m : SerialRadioFactory::SupportedModels())
+            {
+                std::cout << m << std::endl;
+            }
+            exit(0);
+        }
+
+        // radios on a plain serial cable cannot be identified from the cable,
+        // so the user gives us the port and the model
+        if (cmd.count("port"))
+        {
+            auto port = cmd["port"].as<std::string>();
+            auto model = GetOptionOrErr<std::string>(cmd, "radio", "Radio model not specified, see --list-serial-models");
+
+            auto radio = std::unique_ptr<RadioOperations>(SerialRadioFactory::OpenPort(port, model));
+
+            if (cmd.count("read-codeplug"))
+            {
+                auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
+                radio->ReadCodeplug(out_file);
+                std::cout << "Done!" << std::endl;
+                exit(0);
+            }
+
+            if (cmd.count("program"))
+            {
+                auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
+                radio->WriteCodeplug(in_file);
+                std::cout << "Done!" << std::endl;
+                exit(0);
+            }
+
+            if (cmd.count("info"))
+            {
+                std::cout << radio->ToString() << std::endl;
+                exit(0);
+            }
+
+            std::cout << "You must specify an operation, try --info or --read-codeplug" << std::endl;
+            exit(1);
+        }
+
         auto rdFactory = RadioFactory();
         if (cmd.count("list"))
         {
@@ -301,8 +351,20 @@ int main(int argc, char **argv)
             exit(0);
         }
 
+        if (cmd.count("read-codeplug"))
+        {
+            auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
+            radio->ReadCodeplug(out_file);
+            std::cout << "Done!" << std::endl;
+            exit(0);
+        }
+
         if (cmd.count("program"))
         {
+            auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
+            radio->WriteCodeplug(in_file);
+            std::cout << "Done!" << std::endl;
+            exit(0);
         }
     }
     catch (const radio_tool::dfu::DFUException &dfuEx)

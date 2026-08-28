@@ -66,6 +66,9 @@ set(ALL_SRC
     src/yaesu_fw.cpp
     src/fymodem.c
     src/rdt.cpp
+    src/uv5r_codeplug.cpp
+    src/uv5r_radio.cpp
+    src/serial_port.cpp
     src/hid.cpp
     src/tyt_hid.cpp
     src/tyt_sgl_radio.cpp

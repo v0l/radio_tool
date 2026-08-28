@@ -19,6 +19,7 @@
 
 #include <radio_tool/codeplug/codeplug.hpp>
 #include <radio_tool/codeplug/rdt.hpp>
+#include <radio_tool/codeplug/uv5r.hpp>
 
 #include <string>
 #include <memory>
@@ -32,7 +33,8 @@ namespace radio_tool::codeplug
      * All codeplug handlers
      */
     const std::vector<std::pair<std::function<bool(const std::string &)>, std::function<std::unique_ptr<CodeplugSupport>()>>> AllCodeplugs = {
-        {RDT::SupportsCodeplug, RDT::Create}
+        {RDT::SupportsCodeplug, RDT::Create},
+        {UV5R::SupportsCodeplug, UV5R::Create}
     };
 
     class CodeplugFactory

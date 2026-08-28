@@ -59,6 +59,18 @@ namespace radio_tool::radio
 	public:
 		auto ListDevices(const uint16_t &idx_offset) const -> const std::vector<RadioInfo *> override;
 
+		/**
+		 * Open a radio on a specific port, for models which cannot be
+		 * detected from the cable alone (the UV-5R family uses generic
+		 * USB serial cables, so the model has to be given by the user)
+		 */
+		static auto OpenPort(const std::string &port, const std::string &model) -> RadioOperations *;
+
+		/**
+		 * Names accepted by OpenPort
+		 */
+		static auto SupportedModels() -> const std::vector<std::string>;
+
 	private:
 		auto OpDeviceList(std::function<void(const std::string &, const uint16_t &)>) const -> void;
 	};
