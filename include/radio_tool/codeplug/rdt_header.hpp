@@ -43,41 +43,55 @@ namespace radio_tool::codeplug
         Anytone = 2
     };
 
+    /**
+     * Size of the RDT header in bytes
+     */
+    constexpr auto RDTHeaderSize = 0x225u;
+
     class RDTHeader 
     {
     public:
+        RDTHeader()
+            : type(RDTType::Unknown), n0(0), channel_offset(0), n1(0), n2(0), n3(0),
+              n4(0), n5(0), n6(0), n7(0), nz(), complete(false)
+        {
+        }
+
         auto Read(std::ifstream& i) -> void 
         {
-            magic.resize(0x05);
-            i.read((char*)magic.data(), 0x05);
+            complete = false;
+
+            magic = ReadFixedString(i, 0x05);
             i.read((char*)&n0, sizeof(uint8_t));
             i.read((char*)&channel_offset, sizeof(uint32_t));
             i.read((char*)&n1, sizeof(uint8_t));
-            target.resize(0x06);
-            i.read((char*)target.data(), 0x06);
+            target = ReadFixedString(i, 0x06);
             i.read((char*)&n2, sizeof(uint8_t));
             i.read((char*)&n3, sizeof(uint32_t));
 
-            target_name.resize(0xff);
-            i.read((char*)target_name.data(), 0xff);
-            target_name.resize(strlen(target_name.c_str()));
+            target_name = ReadFixedString(i, 0xff);
 
             i.read((char*)&n4, sizeof(uint32_t));
             i.read((char*)&n5, sizeof(uint32_t));
             i.read((char*)&n6, sizeof(uint32_t));
             i.read((char*)&n7, sizeof(uint32_t));
 
-            radio.resize(0x10);
-            i.read((char*)radio.data(), 0x10);
-            radio.resize(strlen(radio.c_str()));
+            radio = ReadFixedString(i, 0x10);
 
             i.read((char*)nz, sizeof(uint32_t) * 0x3c);
-            type = RDTType::TYT;
+
+            //only mark the header as usable if every read above succeeded
+            complete = i.good();
+            type = complete ? RDTType::TYT : RDTType::Unknown;
         }
 
         auto Validate() const -> bool
         {
-            if("DfuSe"s != magic)
+            if(!complete)
+            {
+                return false;
+            }
+            else if("DfuSe"s != magic)
             {
                 return false;
             } 
@@ -133,5 +147,29 @@ namespace radio_tool::codeplug
         uint32_t n7;
         std::string radio; //0x10
         uint32_t nz[0x3c];
+
+    private:
+        /**
+         * Read a fixed size string, truncated at the first null byte.
+         * Unlike strlen this never reads past the end of the buffer when
+         * the field is not null terminated.
+         */
+        static auto ReadFixedString(std::ifstream& i, const size_t& len) -> std::string
+        {
+            std::string ret(len, '\0');
+            i.read((char*)ret.data(), len);
+            if(!i.good())
+            {
+                return std::string();
+            }
+            auto end = ret.find('\0');
+            if(end != std::string::npos)
+            {
+                ret.resize(end);
+            }
+            return ret;
+        }
+
+        bool complete;
     };
 }

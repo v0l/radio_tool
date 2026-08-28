@@ -23,6 +23,8 @@
 #include <string>
 #include <memory>
 #include <functional>
+#include <fstream>
+#include <stdexcept>
 
 namespace radio_tool::codeplug
 {
@@ -38,6 +40,14 @@ namespace radio_tool::codeplug
     public:
         static auto GetCodeplugHandler(const std::string &file) -> std::unique_ptr<CodeplugSupport>
         {
+            {
+                std::ifstream test(file, std::ios_base::in | std::ios_base::binary);
+                if (!test.is_open())
+                {
+                    throw std::runtime_error("Cant open file: " + file);
+                }
+            }
+
             for (const auto &try_this : AllCodeplugs)
             {
                 if (try_this.first(file))
@@ -46,7 +56,7 @@ namespace radio_tool::codeplug
                 }
             }
 
-            return nullptr;
+            throw std::runtime_error("Codeplug file not supported");
         }
     };
 } // namespace radio_tool::codeplug

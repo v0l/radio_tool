@@ -55,7 +55,7 @@ namespace radio_tool::codeplug
         auto ToString() const -> const std::string override;
     private:
         RDTHeader header;
-        time_t timestamp;
+        time_t timestamp = 0;
         RDTGeneral general;
     };
 }

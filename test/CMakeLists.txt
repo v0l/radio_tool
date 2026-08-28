@@ -20,6 +20,8 @@ link_libraries(radiotool)
 
 add_executable(test_fw test_fw.cpp)
 add_executable(test_util test_util.cpp)
+add_executable(test_codeplug test_codeplug.cpp)
+add_test(NAME test_codeplug COMMAND test_codeplug)
 
 #Add firmware tests, "radio" is the model returned from GetRadioModel()
 function(AddFirmwareTest file radio)

@@ -27,6 +27,8 @@ namespace radio_tool::codeplug
     class CodeplugSupport
     {
     public:
+        virtual ~CodeplugSupport() = default;
+
         /**
          * Read a codeplug from disk
          */
