@@ -17,7 +17,7 @@ auto HID::InterruptRead(const uint8_t &ep, const uint16_t &len) const -> std::ve
 
     if (rlen != len)
     {
-        data.reserve(rlen);
+        data.resize(rlen);
     }
     return data;
 }
@@ -42,7 +42,7 @@ auto HID::BulkRead(const uint8_t &ep, const uint16_t &len) const -> std::vector<
     std::vector<uint8_t> data(len);
 
     int rlen = 0;
-    auto err = libusb_interrupt_transfer(device, ep, data.data(), len, &rlen, timeout);
+    auto err = libusb_bulk_transfer(device, ep, data.data(), len, &rlen, timeout);
     if (err != LIBUSB_SUCCESS)
     {
         throw std::runtime_error(libusb_error_name(err));
@@ -50,7 +50,7 @@ auto HID::BulkRead(const uint8_t &ep, const uint16_t &len) const -> std::vector<
 
     if (rlen != len)
     {
-        data.reserve(rlen);
+        data.resize(rlen);
     }
     return data;
 }

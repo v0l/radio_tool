@@ -51,7 +51,20 @@ auto TYTSGLRadio::WriteFirmware(const std::string &file) -> void
 	fw.Read(file);
 	auto config = fw.GetConfig();
 
-    auto rsp = device.SendCommand(hid::tyt::commands::Download);
+    auto rsp = [this]()
+    {
+        try
+        {
+            return device.SendCommand(hid::tyt::commands::Download);
+        }
+        catch (const std::exception &e)
+        {
+            throw std::runtime_error(
+                std::string("Radio did not respond to the download command (") + e.what() + "). " +
+                "Is it in firmware update mode? Power it on holding SK1 and SK2, the screen stays blank.");
+        }
+    }();
+
 	if (std::equal(rsp.data.begin(), rsp.data.end(), hid::tyt::commands::Update.begin()))
 	{
 		device.SendCommandAndOk(hid::tyt::OK);
@@ -60,11 +73,12 @@ auto TYTSGLRadio::WriteFirmware(const std::string &file) -> void
 	{
 		auto download_rsp = std::string(rsp.data.begin(), rsp.data.end());
 		auto update_rsp = std::string(hid::tyt::commands::Update.begin(), hid::tyt::commands::Update.end());
-		std::stringstream msg("Invalid response, expected '");
-		msg << update_rsp << "'"
-			<< " got '" << download_rsp << "'";
+		std::stringstream msg;
+		msg << "Invalid response, expected '" << update_rsp << "'"
+			<< " got '" << download_rsp << "'"
+			<< " (is the radio in firmware update mode?)";
 
-		throw new std::runtime_error(msg.str());
+		throw std::runtime_error(msg.str());
 	}
 
 	// send key
@@ -72,11 +86,11 @@ auto TYTSGLRadio::WriteFirmware(const std::string &file) -> void
 	if (!std::equal(rsp_key.data.begin(), rsp_key.data.end(), config->header.model_key.begin()))
 	{
 		auto key_rsp = std::string(rsp_key.data.begin(), rsp_key.data.end());
-		std::stringstream msg("Invalid response, expected firmware key '");
-		msg << config->header.model_key << "'"
+		std::stringstream msg;
+		msg << "Invalid response, expected firmware key '" << config->header.model_key << "'"
 			<< " got '" << key_rsp << "'";
 
-		throw new std::runtime_error(msg.str());
+		throw std::runtime_error(msg.str());
 	}
 
 	device.SendCommandAndOk(hid::tyt::commands::FlashProgram, 0x08, 0xff);

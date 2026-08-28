@@ -19,6 +19,7 @@
 #include <radio_tool/util.hpp>
 
 #include <stdexcept>
+#include <iostream>
 
 using namespace radio_tool::hid;
 
@@ -26,11 +27,30 @@ auto TYTHID::Setup() -> void
 {
 	auto err = 0;
 
-	err = libusb_set_configuration(device, 0x01);
+	//the kernel hid driver binds these radios on Linux, hand the interface
+	//over to us for the duration of the session
+	if (libusb_kernel_driver_active(device, 0x00) == 1)
+	{
+		libusb_set_auto_detach_kernel_driver(device, 1);
+	}
+
+	//setting the configuration fails with BUSY when a driver is attached,
+	//and is pointless when the device is already in the one configuration
+	auto config = 0;
+	err = libusb_get_configuration(device, &config);
 	if (err != LIBUSB_SUCCESS)
 	{
 		libusb_close(device);
 		throw std::runtime_error(libusb_error_name(err));
+	}
+	if (config != 0x01)
+	{
+		err = libusb_set_configuration(device, 0x01);
+		if (err != LIBUSB_SUCCESS)
+		{
+			libusb_close(device);
+			throw std::runtime_error(libusb_error_name(err));
+		}
 	}
 	err = libusb_claim_interface(device, 0x00);
 	if (err != LIBUSB_SUCCESS)
@@ -38,11 +58,12 @@ auto TYTHID::Setup() -> void
 		libusb_close(device);
 		throw std::runtime_error(libusb_error_name(err));
 	}
+	//HID SET_IDLE, some bootloaders in this family stall it, which is
+	//harmless as we only use the interrupt endpoints
 	err = libusb_control_transfer(device, 0x21, 0x0a, 0, 0, nullptr, 0, timeout);
 	if (err != LIBUSB_SUCCESS)
 	{
-		libusb_close(device);
-		throw std::runtime_error(libusb_error_name(err));
+		std::cerr << "Warning: SET_IDLE failed (" << libusb_error_name(err) << "), continuing" << std::endl;
 	}
     /*
 	auto buffer = (uint8_t*)malloc(64);
@@ -90,10 +111,23 @@ auto TYTHID::SendCommand(const tyt::Command& cmd) -> tyt::Command
 	nums[1] = cmd.data.size();
 	std::copy(cmd.data.begin(), cmd.data.end(), payload.begin() + 4);
 
-	InterruptWrite(TYTHID::EP_OUT, payload);
-    auto data = InterruptRead(TYTHID::EP_IN, 42);
+	//the OUT endpoint on these radios is bulk, only the IN endpoint is
+	//interrupt, sending an interrupt urb to it is rejected with EINVAL
+	BulkWrite(TYTHID::EP_OUT, payload);
+
+	//read a full packet, the device sends 64 bytes and asking for fewer
+	//risks an overflow error
+	auto data = InterruptRead(TYTHID::EP_IN, 0x40);
+    if (data.size() < 4)
+    {
+        throw std::runtime_error("Short response from radio");
+    }
     auto type = ((uint16_t)data[1] << 8) | data[0];
     auto len  = ((uint16_t)data[3] << 8) | data[2];
+    if ((size_t)(len + 4) > data.size())
+    {
+        throw std::runtime_error("Radio reported more data than it sent");
+    }
     return tyt::Command((tyt::CommandType)type, len,
                             std::vector<uint8_t>(data.begin() + 4, data.begin() + 4 + len));
 }
