@@ -1,0 +1,28 @@
+# Access to amateur radios in bootloader mode, without running as root.
+#
+# Install with:
+#   sudo cp 99-radio-tool.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload && sudo udevadm trigger
+#
+# Two mechanisms, because one of them is not always enough. uaccess hands the
+# device to whoever is logged in at the seat, which is what dfu-util's own
+# rules do, but it only works for a session logind considers local: over ssh,
+# or in a session with no seat, it grants nothing. The group is what covers
+# that case, so both are set.
+#
+# These identifiers belong to bootloaders rather than to radios. 0483:df11 in
+# particular is the ST DFU bootloader and is on a great many devices that are
+# not radios, so this grants access to those too. That is the same trade
+# dfu-util makes.
+
+# TYT, Retevis and Baofeng radios in DFU mode: MD-380, MD-UV380, MD-9600,
+# DM-1701, MD-2017 and relatives
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="df11", TAG+="uaccess", MODE="0660", GROUP="plugdev"
+
+# Radioddity and Baofeng radios in bootloader mode: GD-77, GD-77S, DM-1801,
+# RD-5R. The kernel binds these as HID, so the tool detaches that driver and
+# needs write access to do it.
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="15a2", ATTRS{idProduct}=="0073", TAG+="uaccess", MODE="0660", GROUP="plugdev"
+
+# Yaesu radios in bootloader mode: FT-70D
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="045b", ATTRS{idProduct}=="0025", TAG+="uaccess", MODE="0660", GROUP="plugdev"

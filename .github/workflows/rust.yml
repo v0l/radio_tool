@@ -1,0 +1,44 @@
+name: Rust
+# Self contained: the reference firmware files live in the repo, so this needs
+# no cmake, no libusb and no C++ build.
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # the serial transport needs libudev headers on Linux
+      - name: apt-install
+        run: sudo apt update && sudo apt install -y libudev-dev pkg-config
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: fmt
+        working-directory: rust
+        run: cargo fmt --check
+
+      - name: clippy
+        working-directory: rust
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: test
+        working-directory: rust
+        run: cargo test --all-targets
+
+      - name: doc tests
+        working-directory: rust
+        run: cargo test --doc

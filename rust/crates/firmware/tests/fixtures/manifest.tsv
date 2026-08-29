@@ -1,0 +1,23 @@
+#kind	model	address	length	seed	file	source
+tyt	DM1701	0x800c000	0x400	1	tyt_DM1701.bin	radio_tool
+tyt	MD9600	0x800c000	0x400	2	tyt_MD9600.bin	radio_tool
+tyt	UV3X0	0x800c000	0x400	3	tyt_UV3X0.bin	radio_tool
+tyt	UV3X0 GPS	0x800c000	0x400	4	tyt_UV3X0_GPS.bin	radio_tool
+tyt	MD380	0x800c000	0x400	5	tyt_MD380.bin	radio_tool
+tyt	MD390	0x800c000	0x400	6	tyt_MD390.bin	radio_tool
+tyt	MD446	0x800c000	0x400	7	tyt_MD446.bin	radio_tool
+tyt	MD280	0x800c000	0x400	8	tyt_MD280.bin	radio_tool
+tyt	MD2017	0x800c000	0x400	9	tyt_MD2017.bin	radio_tool
+tyt	MD2017 GPS	0x800c000	0x400	10	tyt_MD2017_GPS.bin	radio_tool
+sgl	GD77	0x0	0x400	11	sgl_GD77.bin	radio_tool
+sgl	GD77S	0x0	0x400	12	sgl_GD77S.bin	radio_tool
+sgl	BF5R	0x0	0x400	13	sgl_BF5R.bin	radio_tool
+sgl	DM1801	0x0	0x400	14	sgl_DM1801.bin	radio_tool
+cs	CS800	0x20000	0x100	15	cs_CS800_0x100.bin	radio_tool
+cs	CS800	0x20000	0x101	16	cs_CS800_0x101.bin	radio_tool
+cs	CS800	0x20000	0x2001	17	cs_CS800_0x2001.bin	radio_tool
+ailunce	HD1	0x0	0x400	18	ailunce_HD1_0x400.bin	radio_tool
+ailunce	HD1	0x0	0x102	19	ailunce_HD1_0x102.bin	radio_tool
+yaesu	FT70	0x0	0x400	20	yaesu_FT70.bin	radio_tool
+tyt	MD380	0x800c000	0x400	5	tyt_MD380_md380tools.bin	md380tools
+cs	CS800	0x20000	0x100	15	cs_CS800_0x100_csfwtool.bin	csfwtool

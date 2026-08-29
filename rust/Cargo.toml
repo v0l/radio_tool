@@ -1,0 +1,25 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/radio-tool",
+    "crates/codeplug",
+    "crates/device",
+    "crates/firmware",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/v0l/radio_tool"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+
+[workspace.lints.clippy]
+indexing_slicing = "warn"
+panic = "warn"
+unwrap_used = "warn"
+expect_used = "warn"

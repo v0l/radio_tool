@@ -1,6 +1,11 @@
 build/
 .vscode/
 *.bin
+#the cipher tables and the reference firmware files are generated, but they
+#are inputs to the Rust build and tests and have to be committed
+!rust/crates/firmware/ciphers/*.bin
+!rust/crates/firmware/tests/fixtures/*.bin
+rust/target/
 .DS_Store
 .vs/
 CMakeSettings.json
@@ -8,4 +13,6 @@ test/bin2sgl
 test/random*
 Testing/Temporary
 
-html/
+html/#recovered vendor firmware, fetched by test/firmware/recover.py and verified
+#against the committed sha256 manifest. Vendor property, not ours to commit.
+test/firmware/data/

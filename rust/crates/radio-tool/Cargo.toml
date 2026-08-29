@@ -1,0 +1,22 @@
+[package]
+name = "radio-tool"
+description = "Read, write and inspect amateur radio firmware and codeplug files"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "radio-tool"
+path = "src/main.rs"
+
+[dependencies]
+firmware = { path = "../firmware" }
+codeplug = { path = "../codeplug" }
+device = { path = "../device" }
+clap = { version = "4", features = ["derive"] }
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+
+[lints]
+workspace = true
