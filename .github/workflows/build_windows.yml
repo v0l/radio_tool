@@ -3,6 +3,11 @@ on:
   push:
     branches: ["main"]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: windows-latest
@@ -10,7 +15,7 @@ jobs:
       matrix:
         configuration: [Debug, Release]
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     
     - name: Install dependencies with vcpkg
       run: |
@@ -41,7 +46,7 @@ jobs:
         Compress-Archive -Path "build\${{ matrix.configuration }}\*" -DestinationPath "radio_tool_${{ matrix.configuration }}_$version.zip"
         
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ${{ matrix.configuration }}_bin
         path: radio_tool_${{ matrix.configuration }}_${{ github.run_number }}.zip

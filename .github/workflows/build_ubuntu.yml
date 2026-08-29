@@ -4,15 +4,20 @@ on:
   push:
     branches: ["main"]
   pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: apt-install
       run: |
         sudo apt update
-        sudo apt install libusb-1.0-0-dev cmake
+        sudo apt install -y libusb-1.0-0-dev libdbus-1-dev pkg-config cmake
     - name: run-cmake
       run: |
         cd ${{github.workspace}}
@@ -30,13 +35,13 @@ jobs:
       run: |
         cd ${{github.workspace}}/build
         cpack -C Release
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: release-deb
         path: |
           ${{github.workspace}}/build/*.deb
           ${{github.workspace}}/build/*.deb.sha256
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: release-tar
         path: |
