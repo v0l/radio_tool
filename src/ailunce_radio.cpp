@@ -70,13 +70,18 @@ auto AilunceRadio::WriteFirmware(const std::string &file) -> void
 
 auto AilunceRadio::SupportsDevice(const std::string &port) -> bool
 {
-    // not possible to detect from serial port?
-    // ideally we could map serial ports to USB devices to validate VID:PID
+    // The VID/PID lookup only works on Windows, everywhere else we cannot map
+    // a serial port back to a USB device yet and have to accept any port.
     //
-    // ✅ possible windows solution: https://aticleworld.com/get-com-port-of-usb-serial-device/
+    // possible windows solution: https://aticleworld.com/get-com-port-of-usb-serial-device/
     // possible linux solution: https://unix.stackexchange.com/a/81767
     auto ids = GetComPortUSBIds(port);
-    return (ids.first == VID && ids.second == PID) || true;
+    if (ids.first == 0 && ids.second == 0)
+    {
+        //no information available on this platform
+        return true;
+    }
+    return ids.first == VID && ids.second == PID;
 }
 
 auto AilunceRadio::GetComPortUSBIds(const std::string &port) -> std::pair<uint16_t, uint16_t>
@@ -150,7 +155,8 @@ auto AilunceRadio::GetComPortUSBIds(const std::string &port) -> std::pair<uint16
 
     RegCloseKey(comKey);
 #else
-
+    //no way to map a serial port back to a USB device on this platform yet
+    (void)port;
 #endif
     return std::make_pair(0, 0);
 }

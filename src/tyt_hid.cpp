@@ -103,12 +103,21 @@ auto TYTHID::OnTransfer(libusb_transfer* tx) -> void
 
 auto TYTHID::SendCommand(const tyt::Command& cmd) -> tyt::Command
 {
-	std::vector<uint8_t> payload((int)cmd.data.size() + 4);
-	std::fill(payload.begin(), payload.end(), 0x00);
+	if (cmd.data.size() > 0xffff)
+	{
+		throw std::runtime_error("Command payload is too large");
+	}
 
-	auto nums = (uint16_t*)payload.data();
-	nums[0] = (uint16_t)cmd.type;
-	nums[1] = cmd.data.size();
+	std::vector<uint8_t> payload(cmd.data.size() + 4, 0x00);
+
+	//the header is two little endian 16 bit fields, written byte by byte so
+	//the buffer does not have to be aligned for a uint16_t
+	auto tx_type = (uint16_t)cmd.type;
+	auto tx_len = (uint16_t)cmd.data.size();
+	payload[0] = (uint8_t)(tx_type & 0xff);
+	payload[1] = (uint8_t)(tx_type >> 8);
+	payload[2] = (uint8_t)(tx_len & 0xff);
+	payload[3] = (uint8_t)(tx_len >> 8);
 	std::copy(cmd.data.begin(), cmd.data.end(), payload.begin() + 4);
 
 	//the OUT endpoint on these radios is bulk, only the IN endpoint is
@@ -154,9 +163,21 @@ auto TYTHID::WaitForReply() -> tyt::Command
 
 	if (tx->status == LIBUSB_TRANSFER_COMPLETED)
 	{
-		//setup return
-		auto nums = (uint16_t*)tx->buffer;
-		auto ret = tyt::Command((tyt::CommandType)nums[0], nums[1], std::vector<uint8_t>(tx->buffer + 4, tx->buffer + 4 + nums[1]));
+		if (tx->actual_length < 4)
+		{
+			throw std::runtime_error("Short response from radio");
+		}
+
+		//setup return, the length field comes from the device and must not be
+		//trusted to index past what was actually transferred
+		auto type = ((uint16_t)tx->buffer[1] << 8) | tx->buffer[0];
+		auto len = ((uint16_t)tx->buffer[3] << 8) | tx->buffer[2];
+		if ((int)(len + 4) > tx->actual_length)
+		{
+			throw std::runtime_error("Radio reported more data than it sent");
+		}
+
+		auto ret = tyt::Command((tyt::CommandType)type, len, std::vector<uint8_t>(tx->buffer + 4, tx->buffer + 4 + len));
 		radio_tool::PrintHex(ret.data.begin(), ret.data.end());
 
 		tx = nullptr;

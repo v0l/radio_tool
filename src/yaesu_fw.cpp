@@ -28,7 +28,7 @@ auto YaesuFW::Read(const std::string& file) -> void
 	{
 		// Compute binary file size
 		i.seekg(0, std::ios_base::end);
-		auto binarySize = i.tellg();
+		auto binarySize = (size_t)i.tellg();
 		i.seekg(0);
 
 		// Read binary
@@ -84,15 +84,18 @@ auto YaesuFW::SupportsFirmwareFile(const std::string& file) -> bool
 
 auto YaesuFW::SupportsRadioModel(const std::string& model) -> bool
 {
-	return true;
+	//this used to claim every model, which meant the model handler for any
+	//radio listed after this one in the factory (Ailunce) was never reached
+	//and its firmware was written out unencrypted
+	return model == "FT70" || model == "FT70D" || model == "FT-70D";
 }
 
 auto YaesuFW::IsCompatible(const FirmwareSupport* Other) const -> bool
 {
-	if (typeid(Other) != typeid(this)) {
+	auto afw = dynamic_cast<const YaesuFW*>(Other);
+	if (afw == nullptr) {
 		return false;
 	}
 
-	auto afw = dynamic_cast<const YaesuFW*>(Other);
 	return afw->radio_model == radio_model;
 }

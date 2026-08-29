@@ -84,5 +84,10 @@ namespace radio_tool::radio
 		mutable std::vector<uint8_t> ident;
 		mutable std::string firmware_version;
 		mutable bool dropped_byte = false;
+
+		//the clone protocol is a single pass, each of these steps can only run
+		//once per session
+		mutable bool firmware_read = false;
+		mutable bool data_read = false;
 	};
 } // namespace radio_tool::radio

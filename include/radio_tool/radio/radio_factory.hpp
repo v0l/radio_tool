@@ -18,6 +18,9 @@
 #pragma once
 
 #include <radio_tool/radio/radio.hpp>
+#include <radio_tool/radio/usb_radio_factory.hpp>
+
+#include <memory>
 
 namespace radio_tool::radio
 {
@@ -29,5 +32,12 @@ namespace radio_tool::radio
     public:
         auto OpenDevice(const uint16_t& index) const -> RadioOperations*;
         auto ListDevices() const -> const std::vector<RadioInfo*>;
+
+    private:
+        //The USB factory owns the libusb context, and every device handle
+        //handed out by ListDevices captures it. It used to be a local, so the
+        //context was destroyed as ListDevices returned and opening any device
+        //dereferenced freed memory. It has to outlive what it hands out.
+        mutable std::shared_ptr<USBRadioFactory> usb;
     };
 } // namespace radio_tool::radio

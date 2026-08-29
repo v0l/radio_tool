@@ -19,6 +19,7 @@
 #include <radio_tool/dfu/dfu_exception.hpp>
 #include <radio_tool/util.hpp>
 
+#include <algorithm>
 #include <cstring>
 
 using namespace radio_tool::dfu;
@@ -27,9 +28,10 @@ auto TYTDFU::IdentifyDevice() const -> std::string
 {
 	auto data = ReadRegister(TYTRegister::RadioInfo);
 
-	//model is null-terminated str, get len with strlen
-	auto slen = strlen((const char*)data.data());
-	return std::string(data.begin(), data.begin() + slen + 1);
+	//model is a null terminated string, but the register is a fixed size
+	//buffer which is not guaranteed to contain a terminator
+	auto end = std::find(data.begin(), data.end(), '\0');
+	return std::string(data.begin(), end);
 }
 
 auto TYTDFU::ReadRegister(const TYTRegister& reg) const -> std::vector<uint8_t>

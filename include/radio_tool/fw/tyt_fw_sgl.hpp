@@ -142,6 +142,13 @@ namespace radio_tool::fw
 	{
 	public:
 		TYTSGLFW() : FirmwareSupport(), config(nullptr) {}
+		~TYTSGLFW() override
+		{
+			delete config;
+		}
+
+		TYTSGLFW(const TYTSGLFW&) = delete;
+		auto operator=(const TYTSGLFW&) -> TYTSGLFW& = delete;
 
 		auto Read(const std::string& file) -> void override;
 		auto Write(const std::string& file) -> void override;
@@ -184,6 +191,15 @@ namespace radio_tool::fw
 		}
 
 	private:
+		/**
+		 * Replace the config, keeping the model but taking a new header
+		 */
+		auto SetConfig(const TYTSGLRadioConfig* cfg) -> void
+		{
+			delete config;
+			config = cfg;
+		}
+
 		const TYTSGLRadioConfig* config;
 	};
 

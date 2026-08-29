@@ -20,6 +20,7 @@
 
 #include <random>
 #include <iterator>
+#include <cstring>
 
 using namespace radio_tool::fw;
 
@@ -39,7 +40,7 @@ auto TYTSGLFW::Read(const std::string& file) -> void
 
 	for (const auto& cfg : tyt::config::sgl::All) {
 		if (cfg.header.radio_group == hdr.radio_group) {
-			config = new TYTSGLRadioConfig(cfg.radio_model, hdr, cfg.cipher, cfg.cipher_len, cfg.xor_offset);
+			SetConfig(new TYTSGLRadioConfig(cfg.radio_model, hdr, cfg.cipher, cfg.cipher_len, cfg.xor_offset));
 			break;
 		}
 	}
@@ -59,6 +60,10 @@ auto TYTSGLFW::Read(const std::string& file) -> void
 
 		data.resize(hdr.length);
 		i.read((char*)data.data(), hdr.length);
+		if ((uint32_t)i.gcount() != hdr.length)
+		{
+			throw std::runtime_error("Firmware file is truncated, the binary is shorter than the header says");
+		}
 
 		memory_ranges.push_back(std::pair<uint32_t, uint32_t>(0, data.size()));
 	}
@@ -110,33 +115,43 @@ auto TYTSGLFW::ReadHeader(const std::string& file) -> const SGLHeader
 	i.open(file, i.binary);
 	if (i.is_open())
 	{
-		uint8_t header1[Header1Len];
+		uint8_t header1[Header1Len] = {};
 		i.read((char*)header1, Header1Len);
+		if (!i.good())
+		{
+			throw std::runtime_error("File is too small to hold an SGL header");
+		}
 
 		if (!std::equal(header1, header1 + 4, tyt::config::sgl::Magic.begin()))
 		{
 			throw std::runtime_error("Invalid SGL header magic");
 		}
 
-		for (auto x = 4;x < Header1Len;x++) {
+		for (auto x = 4u;x < Header1Len;x++) {
 			header1[x] ^= tyt::config::sgl::Magic[x % 4];
 		}
 
-		auto sgl_version = std::stoi((char*)header1 + 9);
+		//the version is the tail of the "ENCV001" string, read a bounded copy
+		//rather than letting stoi walk off the end of the buffer
+		auto sgl_version = std::stoi(std::string((char*)header1 + 9, 2));
 		if (sgl_version != 1) {
-			std::stringstream msg("Invalid SGL version: ");
-			msg << sgl_version;
+			std::stringstream msg;
+			msg << "Invalid SGL version: " << sgl_version;
 			throw std::runtime_error(msg.str());
 		}
 
 		auto header2_offset = *(uint16_t*)(header1 + 12);
 
 		i.seekg(header2_offset, i.beg);
-		uint8_t header2[Header2Len];
+		uint8_t header2[Header2Len] = {};
 		i.read((char*)header2, Header2Len);
+		if (!i.good())
+		{
+			throw std::runtime_error("File is too small to hold the second SGL header");
+		}
 
 		auto h2_xor = header1 + 14;
-		for (auto x = 0;x < Header2Len;x++) {
+		for (auto x = 0u;x < Header2Len;x++) {
 			header2[x] ^= h2_xor[x % 2];
 		}
 
@@ -165,7 +180,7 @@ auto TYTSGLFW::SupportsFirmwareFile(const std::string& file) -> bool
 			return true;
 		}
 	}
-	catch (std::exception e) {
+	catch (const std::exception& e) {
 		std::cerr << e.what() << std::endl;
 	}
 	return false;
@@ -197,7 +212,9 @@ auto TYTSGLFW::SetRadioModel(const std::string& model) -> void
 	{
 		if (rg.radio_model == model)
 		{
-			config = new TYTSGLRadioConfig(rg.radio_model, rg.header.AsNew(data.size()), rg.cipher, rg.cipher_len, rg.xor_offset);
+			//the radio model is normally selected before any firmware data has
+			//been added, so the length in the header is fixed up in Encrypt
+			SetConfig(new TYTSGLRadioConfig(rg.radio_model, rg.header.AsNew(data.size()), rg.cipher, rg.cipher_len, rg.xor_offset));
 			break;
 		}
 	}
@@ -205,6 +222,11 @@ auto TYTSGLFW::SetRadioModel(const std::string& model) -> void
 
 auto TYTSGLFW::Decrypt() -> void
 {
+	if (config == nullptr)
+	{
+		throw std::runtime_error("No radio model set, cannot decrypt firmware");
+	}
+
 	auto cx = 0;
 	for (auto& dx : data)
 	{
@@ -215,6 +237,20 @@ auto TYTSGLFW::Decrypt() -> void
 
 auto TYTSGLFW::Encrypt() -> void
 {
+	if (config == nullptr)
+	{
+		throw std::runtime_error("No radio model set, cannot encrypt firmware");
+	}
+
+	//SetRadioModel runs before the firmware data is appended, so the length in
+	//the header is only known here. Without this the header claims a length of
+	//zero and Write refuses to save the file.
+	if (config->header.length < data.size())
+	{
+		SetConfig(new TYTSGLRadioConfig(config->radio_model, config->header.AsNew(data.size()),
+			config->cipher, config->cipher_len, config->xor_offset));
+	}
+
 	// before encrypting make sure the data is the correct length
 	// if too short add padding
 	// if too big? ...official firmware writing tool wont work probably
@@ -234,7 +270,8 @@ auto TYTSGLFW::Encrypt() -> void
 
 auto TYTSGLFW::IsCompatible(const FirmwareSupport* other) const -> bool
 {
-	if (typeid(other) != typeid(TYTSGLFW)) {
+	auto fw = dynamic_cast<const TYTSGLFW*>(other);
+	if (fw == nullptr || fw->config == nullptr) {
 		return false;
 	}
 
@@ -242,7 +279,6 @@ auto TYTSGLFW::IsCompatible(const FirmwareSupport* other) const -> bool
 		throw std::runtime_error("Header is not loaded, cannot compare firmware support");
 	}
 
-	auto fw = dynamic_cast<const TYTSGLFW*>(other);
 	return fw->config->header.IsCompatible(config->header)
 		&& fw->config->radio_model == config->radio_model;
 }
@@ -264,7 +300,8 @@ auto SGLHeader::ToString() const -> std::string
 
 auto SGLHeader::AsNew(const uint32_t& binary_len) const -> const SGLHeader
 {
-	std::default_random_engine eng;
+	std::random_device rd;
+	std::default_random_engine eng(rd());
 
 	// model key
 	std::uniform_int_distribution<uint16_t> model_key_dist('!', '}');
@@ -311,7 +348,8 @@ auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 
 	// h2 xor key
 	auto h2_key_offset = 14;
-	std::default_random_engine eng;
+	std::random_device rd;
+	std::default_random_engine eng(rd());
 	std::uniform_int_distribution<uint16_t> dist(0, 0xffff);
 	auto key = dist(eng);
 	*(uint16_t*)(header.data() + h2_key_offset) = key;
@@ -331,12 +369,12 @@ auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 	if (encrypt) {
 		// encrypt header 2
 		auto h2_key = (uint8_t*)(header.data() + h2_key_offset);
-		for (auto h2x = 0;h2x < Header2Len;h2x++) {
+		for (auto h2x = 0u;h2x < Header2Len;h2x++) {
 			*(h2 + h2x) ^= h2_key[h2x % 2];
 		}
 
 		// encrypt header 1
-		for (auto h1x = 4;h1x < Header1Len;h1x++) {
+		for (auto h1x = 4u;h1x < Header1Len;h1x++) {
 			*(header.data() + h1x) ^= tyt::config::sgl::Magic[h1x % 4];
 		}
 	}

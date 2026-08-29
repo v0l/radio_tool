@@ -50,6 +50,14 @@ auto DFU::Erase(const uint32_t &addr) const -> void
 
 auto DFU::Download(const std::vector<uint8_t> &data, const uint16_t &wValue) const -> void
 {
+    if (getenv("RT_TRACE"))
+    {
+        fprintf(stderr, "TRACE DNLOAD wValue=%u len=%u first=%02x %02x %02x %02x %02x\n",
+                (unsigned)wValue, (unsigned)data.size(),
+                data.size() > 0 ? data[0] : 0, data.size() > 1 ? data[1] : 0,
+                data.size() > 2 ? data[2] : 0, data.size() > 3 ? data[3] : 0,
+                data.size() > 4 ? data[4] : 0);
+    }
     InitDownload();
     // tehnically we shouldnt const_cast here but libusb *?WONT?* modify this data
     auto err = libusb_control_transfer(device, 0x21, static_cast<uint8_t>(DFURequest::DNLOAD), wValue, 0, const_cast<unsigned char *>(data.data()), data.size(), this->timeout);

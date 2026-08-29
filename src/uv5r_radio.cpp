@@ -228,6 +228,14 @@ auto UV5RRadio::ReadBlock(const uint16_t &addr, const uint8_t &size, const bool 
 
 auto UV5RRadio::ReadFirmwareVersion() const -> void
 {
+	//this walks the clone protocol, so it must only run once per session,
+	//otherwise --info followed by a download would leave the radio out of step
+	if (firmware_read)
+	{
+		return;
+	}
+	firmware_read = true;
+
 	//new radios reply with junk if the aux area is read first, so read a
 	//block outside it before touching 0x1EC0
 	ReadBlock(0x1E80, BlockSize, true);
@@ -243,6 +251,12 @@ auto UV5RRadio::ReadFirmwareVersion() const -> void
 
 auto UV5RRadio::Download() const -> std::vector<uint8_t>
 {
+	if (data_read)
+	{
+		throw std::runtime_error("The codeplug has already been downloaded in this session");
+	}
+	data_read = true;
+
 	Identify();
 
 	if (model.aux_block)
@@ -314,7 +328,7 @@ auto UV5RRadio::ReadCodeplug(const std::string &file) -> void
 auto UV5RRadio::ToString() const -> const std::string
 {
 	Identify();
-	if (model.aux_block && firmware_version.empty())
+	if (model.aux_block)
 	{
 		ReadFirmwareVersion();
 	}

@@ -267,6 +267,10 @@ auto UV17ProRadio::Upload(const std::vector<uint8_t> &data) const -> void
 	//a cable carries the memory in small blocks, BLE in larger ones, matching
 	//what the vendor software and CHIRP do on each link
 	auto block_size = port->BlockSizeHint();
+	if (block_size == 0 || block_size > 0xff)
+	{
+		throw std::runtime_error("Invalid block size for this link");
+	}
 
 	size_t done = 0;
 	std::cerr << "Uploading codeplug..." << std::endl;
@@ -274,11 +278,11 @@ auto UV17ProRadio::Upload(const std::vector<uint8_t> &data) const -> void
 	{
 		for (auto addr = region.start; addr < region.start + region.size; addr += block_size)
 		{
-			//the last block of a region can be short, the radio still wants a
-			//full block, so pad the tail
+			//the last block of a region can be short. The frame carries its own
+			//length, so send a short block rather than padding out past the end
+			//of the region and writing memory the region does not cover
 			auto count = std::min((size_t)block_size, (size_t)(region.start + region.size - addr));
 			std::vector<uint8_t> block(data.begin() + done, data.begin() + done + count);
-			block.resize(block_size, 0xff);
 			done += count;
 
 			WriteBlock((uint16_t)addr, block);

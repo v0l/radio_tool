@@ -41,8 +41,12 @@ auto RadioFactory::ListDevices() const -> const std::vector<RadioInfo *>
     uint16_t idx_offset = 0;
     auto ret = std::vector<RadioInfo *>();
 
-    auto usb = USBRadioFactory();
-    auto usbDevices = usb.ListDevices(idx_offset);
+    //kept alive on the factory: the handles below capture its libusb context
+    if (!usb)
+    {
+        usb = std::make_shared<USBRadioFactory>();
+    }
+    auto usbDevices = usb->ListDevices(idx_offset);
     ret.insert(ret.end(), usbDevices.begin(), usbDevices.end());
     idx_offset += (uint16_t)usbDevices.size();
 

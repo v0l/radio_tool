@@ -19,6 +19,7 @@
 #include <radio_tool/fw/ailunce_fw.hpp>
 #include <radio_tool/util.hpp>
 
+#include <cstring>
 #include <iomanip>
 
 using namespace radio_tool::fw;
@@ -29,9 +30,9 @@ auto AilunceFW::Read(const std::string &file) -> void
 	if (i.is_open())
 	{
 		i.seekg(0, std::ios_base::end);
-		auto binarySize = i.tellg();
-		memory_ranges.push_back(std::make_pair(0, binarySize));
-		i.seekg(std::ios_base::beg);
+		auto binarySize = (size_t)i.tellg();
+		memory_ranges.push_back(std::make_pair(0u, (uint32_t)binarySize));
+		i.seekg(0, std::ios_base::beg);
 		data.resize(binarySize);
 		i.read((char *)data.data(), data.size());
 	}
@@ -88,7 +89,7 @@ auto AilunceFW::GetRadioModel() const -> const std::string
 	return "Ailunce HD1";
 }
 
-auto AilunceFW::SetRadioModel(const std::string &model) -> void
+auto AilunceFW::SetRadioModel(const std::string &) -> void
 {
 }
 
@@ -104,15 +105,19 @@ auto AilunceFW::Encrypt() -> void
 
 auto AilunceFW::ApplyXOR() -> void
 {
-	for (uint32_t i = 0; i < (data.size() / sizeof(uint32_t)); i++)
+	for (size_t i = 0; i < (data.size() / sizeof(uint32_t)); i++)
 	{
-		uint32_t *word = reinterpret_cast<uint32_t *>(data.data()) + i;
-		if (*word == 0x0 || *word == 0xffffffff)
-			*word ^= 0xffffffff;
-		else if (*word & (1 << 28))
-			*word ^= 0x01111111;
+		//the buffer is not guaranteed to be aligned for a uint32_t, so read
+		//and write the word through memcpy rather than a reinterpret_cast
+		uint32_t word = 0;
+		std::memcpy(&word, data.data() + (i * sizeof(uint32_t)), sizeof(word));
+		if (word == 0x0 || word == 0xffffffff)
+			word ^= 0xffffffff;
+		else if (word & (1 << 28))
+			word ^= 0x01111111;
 		else
-			*word ^= 0x07777777;
+			word ^= 0x07777777;
+		std::memcpy(data.data() + (i * sizeof(uint32_t)), &word, sizeof(word));
 	}
 	// Last bytes
 	for (auto z = data.size() - (data.size() % sizeof(uint32_t));
@@ -129,10 +134,10 @@ auto AilunceFW::ApplyXOR() -> void
 
 auto AilunceFW::IsCompatible(const FirmwareSupport* Other) const -> bool
 {
-	if (typeid(Other) != typeid(this)) {
+	auto afw = dynamic_cast<const AilunceFW*>(Other);
+	if (afw == nullptr) {
 		return false;
 	}
 
-	auto afw = dynamic_cast<const AilunceFW*>(Other);
 	return afw->radio_model == radio_model;
 }

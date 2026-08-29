@@ -217,7 +217,10 @@ namespace radio_tool::dfu
             out << "Status: " << radio_tool::dfu::ToString(status) << ", "
                 << "Timeout: 0x" << std::setfill('0') << std::setw(2) << std::hex << timeout << ", "
                 << "State: " << radio_tool::dfu::ToString(state) << ", "
-                << "Discarded: 0x" << std::setfill('0') << std::setw(2) << std::hex << discarded;
+                //cast: discarded is a byte, and streaming it directly printed
+                //it as a character, so a status line ended in a raw NUL
+                << "Discarded: 0x" << std::setfill('0') << std::setw(2) << std::hex
+                << static_cast<unsigned int>(discarded);
             return out.str();
         }
 

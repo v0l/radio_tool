@@ -85,6 +85,10 @@ auto USBRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const std
 				{
 					if (fnSupport.SupportsDevice(desc))
 					{
+						//the open callback outlives this loop, so it must hold a
+						//copy of the handler rather than a reference to the loop
+						//variable
+						auto support = fnSupport;
 						int err = LIBUSB_SUCCESS;
 						libusb_device_handle *h;
 						auto cdev = const_cast<libusb_device *>(devs[x]);
@@ -113,10 +117,11 @@ auto USBRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const std
 							auto port = libusb_get_port_number(cdev);
 							auto addr = libusb_get_device_address(cdev);
 
-							auto fnOpen = [bus, port, addr, &fnSupport]()
+							auto ctx = usb_ctx;
+							auto fnOpen = [ctx, bus, port, addr, support]()
 							{
-								auto openDev = OpenDevice(bus, port, addr);
-								return fnSupport.CreateOperations(openDev);
+								auto openDev = OpenDevice(ctx, bus, port, addr);
+								return support.CreateOperations(openDev);
 							};
 
 							auto nInf = new USBRadioInfo(fnOpen, mfg, prd, desc.idVendor, desc.idProduct, idx_offset + n_idx);
@@ -133,6 +138,10 @@ auto USBRadioFactory::ListDevices(const uint16_t &idx_offset) const -> const std
 									  << " (" << libusb_error_name(err) << ")"
 									  << std::endl;
 						}
+
+						//one device is only ever listed once, even if more than
+						//one handler claims to support it
+						break;
 					}
 				}
 			}
@@ -175,46 +184,47 @@ auto USBRadioFactory::GetDeviceString(const uint8_t &desc, libusb_device_handle 
 	return std::wstring(u16.begin(), u16.end());
 }
 
-auto USBRadioFactory::OpenDevice(const uint8_t &bus, const uint8_t &port, const uint8_t &address) -> libusb_device_handle *
+auto USBRadioFactory::OpenDevice(libusb_context *ctx, const uint8_t &bus, const uint8_t &port, const uint8_t &address) -> libusb_device_handle *
 {
-	auto usb_ctx = CreateContext();
+	//the handle is taken from the factory context, which stays alive for as
+	//long as the factory does. Creating a context per open leaked one every
+	//time a radio was opened.
+	libusb_device **devs = nullptr;
+	auto ndev = libusb_get_device_list(ctx, &devs);
+	if (ndev < 0)
+	{
+		throw std::runtime_error(libusb_error_name((int)ndev));
+	}
 
-	libusb_device **devs;
-	auto ndev = libusb_get_device_list(usb_ctx, &devs);
+	libusb_device_handle *handle = nullptr;
 	int err = LIBUSB_SUCCESS;
-	auto n_idx = 0;
+	auto found = false;
 
-	if (ndev >= 0)
+	for (auto x = 0; x < ndev; x++)
 	{
-		for (auto x = 0; x < ndev; x++)
+		auto b = libusb_get_bus_number(devs[x]);
+		auto p = libusb_get_port_number(devs[x]);
+		auto a = libusb_get_device_address(devs[x]);
+		if (b == bus && p == port && a == address)
 		{
-			auto b = libusb_get_bus_number(devs[x]);
-			auto p = libusb_get_port_number(devs[x]);
-			auto a = libusb_get_device_address(devs[x]);
-			if (b == bus && p == port && a == address)
-			{
-				libusb_device_handle *handle;
-
-				if ((err = libusb_open(devs[x], &handle)) == LIBUSB_SUCCESS)
-				{
-					return handle;
-				}
-				else
-				{
-					throw std::runtime_error(libusb_error_name(err));
-				}
-				break;
-			}
+			found = true;
+			err = libusb_open(devs[x], &handle);
+			break;
 		}
-
-		libusb_free_device_list(devs, 1);
 	}
-	else
+
+	libusb_free_device_list(devs, 1);
+
+	if (!found)
 	{
-		throw std::runtime_error(libusb_error_name(ndev));
+		throw std::runtime_error("Device is no longer connected");
+	}
+	if (err != LIBUSB_SUCCESS)
+	{
+		throw std::runtime_error(libusb_error_name(err));
 	}
 
-	return nullptr;
+	return handle;
 }
 
 auto USBRadioFactory::CreateContext() -> libusb_context *

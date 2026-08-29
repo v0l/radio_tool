@@ -36,17 +36,25 @@ auto CSFW::Read(const std::string& fw) -> void
 	if (in_file.is_open())
 	{
 		in_file.seekg(0, std::fstream::end);
-		auto len = in_file.tellg();
+		auto len = (uint64_t)in_file.tellg();
 		in_file.seekg(0, std::fstream::beg);
 
 		in_file.read((char*)&header, sizeof(CS800D_header));
+		if (!in_file.good())
+		{
+			throw std::runtime_error("Firmware file is too small to hold a header");
+		}
 
 		//test file size is correct
 		if (header.imagesize == 0)
 		{
 			throw std::runtime_error("Invalid firmware file");
 		}
-		if (header.imagesize + header.imageHeaderSize + sizeof(uint16_t) != len)
+		if (header.imageHeaderSize != sizeof(CS800D_header))
+		{
+			throw std::runtime_error("Invalid firmware header size");
+		}
+		if ((uint64_t)header.imagesize + header.imageHeaderSize + sizeof(uint16_t) != len)
 		{
 			throw std::runtime_error("Invalid firmware header");
 		}
@@ -97,12 +105,12 @@ auto CSFW::Write(const std::string& fw) -> void
 	if (of.is_open())
 	{
 		UpdateHeader();
-		auto data = MakeFiledata();
-		of.write((char*)data.data(), data.size());
+		auto file_data = MakeFiledata();
+		of.write((char*)file_data.data(), file_data.size());
 
 		//Apply XOR to make checksum
-		ApplyXOR(data.begin() + header.imageHeaderSize, data.end(), cipher::cs800_0, cipher::cs800_length);
-		auto cs = CSChecksum(data.begin(), data.end());
+		ApplyXOR(file_data.begin() + header.imageHeaderSize, file_data.end(), cipher::cs800_0, cipher::cs800_length);
+		auto cs = CSChecksum(file_data.begin(), file_data.end());
 
 		//XOR the checksum before writing
 		((uint8_t*)&cs)[0] = ((uint8_t*)&cs)[0] ^ cipher::cs800_0[header.imagesize % cipher::cs800_length];
@@ -165,18 +173,25 @@ auto CSFW::SupportsFirmwareFile(const std::string& file) -> bool
 	{
 		CS800D_header header = {};
 		in_file.read((char*)&header, sizeof(CS800D_header));
+		auto header_ok = in_file.good();
 		in_file.seekg(0, std::ios_base::end);
-		auto len = in_file.tellg();
+		auto len = (uint64_t)in_file.tellg();
 		in_file.close();
 
 		//test is not resource file
-		if (header.imagesize == 0)
+		if (!header_ok || header.imagesize == 0)
+		{
+			return false;
+		}
+
+		//test the header is the size we know how to read
+		if (header.imageHeaderSize != sizeof(CS800D_header))
 		{
 			return false;
 		}
 
 		//test image size matches
-		if (header.imagesize + header.imageHeaderSize + sizeof(uint16_t) != len)
+		if ((uint64_t)header.imagesize + header.imageHeaderSize + sizeof(uint16_t) != len)
 		{
 			return false;
 		}
@@ -221,10 +236,7 @@ auto CSFW::MakeFiledata() const -> std::vector<uint8_t>
 
 auto CSFW::IsCompatible(const FirmwareSupport* Other) const -> bool
 {
-	if (typeid(Other) != typeid(this)) {
-		return false;
-	}
-
-	auto afw = dynamic_cast<const CSFW*>(Other);
-	return true;
+	//there is no way to tell CS firmware files apart yet, so any other
+	//CS firmware file is considered compatible
+	return dynamic_cast<const CSFW*>(Other) != nullptr;
 }

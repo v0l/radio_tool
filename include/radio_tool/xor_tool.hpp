@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <string>
 #include <vector>
 #include <fstream>
@@ -23,8 +24,13 @@ namespace radio_tool
         {
             constexpr auto KeyLen = 1024;
 
-            uint16_t matrix[KeyLen][256];
-            memset(matrix, 0, sizeof(uint16_t) * KeyLen * 256);
+            //counts can easily run past 65535 for a large firmware file, so
+            //the histogram is 32 bit and heap allocated
+            std::vector<std::array<uint32_t, 256>> matrix(KeyLen);
+            for (auto &row : matrix)
+            {
+                row.fill(0);
+            }
 
             auto i_x = 0;
             for (const auto &b : in_binary)
@@ -38,15 +44,15 @@ namespace radio_tool
 
             for (int i = 0; i < KeyLen; i++)
             {
-                uint8_t highest = 0;
+                uint32_t highest = 0;
                 uint8_t highestval = 0;
                 for (int b = 0; b < 256; b++)
                 {
-                    uint8_t t = matrix[i][b];
+                    auto t = matrix[i][b];
                     if (highest < t)
                     {
                         highest = t;
-                        highestval = b;
+                        highestval = (uint8_t)b;
                     }
                 }
                 key[i] = highestval;
@@ -62,11 +68,16 @@ namespace radio_tool
         {
             auto address_max = base_address + in_binary.size();
             constexpr auto table_size = 0x61u; // 0x60 + 1 for stack top
-            uint32_t vector_table[table_size];
+            uint32_t vector_table[table_size] = {};
+
+            if (key.empty() || in_binary.size() < (table_size * sizeof(uint32_t)))
+            {
+                return false;
+            }
 
             // copy data from in binary to our vector_table and apply xor
             std::copy(in_binary.begin(), in_binary.begin() + (table_size * sizeof(uint32_t)), (uint8_t *)vector_table);
-            for (auto x = 0; x < table_size * sizeof(uint32_t); x++)
+            for (auto x = 0u; x < table_size * sizeof(uint32_t); x++)
             {
                 ((uint8_t *)vector_table)[x] = ((uint8_t *)vector_table)[x] ^ key[x % key.size()];
             }

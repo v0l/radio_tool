@@ -50,50 +50,55 @@ namespace radio_tool
 
 	static auto PrintHex(std::vector<uint8_t>::const_iterator&& begin, std::vector<uint8_t>::const_iterator&& end) -> void
 	{
-		auto c = 1u;
-
-		constexpr auto asciiZero = 0x30;
-		constexpr auto asciiA = 0x61 - 0x0a;
+		constexpr char hexDigits[] = "0123456789abcdef";
 
 		constexpr auto wordSize = 4;
 		constexpr auto wordCount = 4;
+		constexpr auto rowSize = wordSize * wordCount;
 
-		char eol_ascii[wordSize * wordCount + 1] = {};
-		char aV, bV;
 		std::stringstream prnt;
-		auto size = std::distance(begin, end);
-		while (begin != end)
-		{
-			auto v = (*begin);
-			auto a = v & 0x0f;
-			auto b = v >> 4;
-			aV = (a <= 9 ? asciiZero : asciiA) + a;
-			bV = (b <= 9 ? asciiZero : asciiA) + b;
-			prnt << bV << aV << " ";
+		std::string ascii;
+		auto col = 0;
 
-			auto col = c % (wordSize * wordCount);
-			eol_ascii[col] = v >= 32 && v <= 127 ? (char)v : '.';
-			if (col == 0 && c != size)
+		for (auto it = begin; it != end; std::advance(it, 1))
+		{
+			auto v = (*it);
+			prnt << hexDigits[(v >> 4) & 0x0f] << hexDigits[v & 0x0f] << " ";
+			ascii += (v >= 32 && v <= 126) ? (char)v : '.';
+
+			col++;
+			if (col == rowSize)
 			{
-				prnt << " " << eol_ascii << std::endl;
+				prnt << " " << ascii << std::endl;
+				ascii.clear();
+				col = 0;
 			}
-			else if (c % wordSize == 0)
+			else if (col % wordSize == 0)
 			{
 				prnt << "  ";
 			}
-			if (c == size)
-			{
-				if (col > 0)
-				{
-					eol_ascii[col + 1] = 0;
-				}
-				prnt << (col != 0 ? " " : "") << eol_ascii;
-			}
-			c++;
-			std::advance(begin, 1);
 		}
 
-		std::cerr << prnt.str() << std::endl;
+		if (col != 0)
+		{
+			//pad the short last row so the ascii column stays aligned
+			for (auto pad = col; pad < rowSize; pad++)
+			{
+				prnt << "   ";
+				if ((pad + 1) % wordSize == 0 && (pad + 1) != rowSize)
+				{
+					prnt << "  ";
+				}
+			}
+			prnt << " " << ascii;
+		}
+
+		auto out = prnt.str();
+		if (!out.empty() && out.back() == '\n')
+		{
+			out.pop_back();
+		}
+		std::cerr << out << std::endl;
 	}
 
 	static constexpr auto _bcd(const uint8_t& c)
@@ -196,18 +201,22 @@ namespace radio_tool
 		int32_t sum = 0,
 			count = size;
 
-		// Main summing loop
+		// Main summing loop, one 16 bit word (little endian) per iteration
 		while (count > 1)
 		{
-			sum = sum + (*data);
-			count = count - 2;
+			auto lo = (uint32_t)(*data);
 			std::advance(data, 1);
+			auto hi = (uint32_t)(*data);
+			std::advance(data, 1);
+			sum = sum + (int32_t)(lo | (hi << 8));
+			count = count - 2;
 		}
 
 		// Add left-over byte, if any
 		if (count > 0)
 		{
 			sum = sum + (*data);
+			std::advance(data, 1);
 		}
 
 		// Fold 32-bit sum to 16 bits
@@ -256,6 +265,10 @@ namespace radio_tool
 		else if (bytes >= GiB)
 		{
 			ss << (bytes / (double)GiB) << " GiB";
+		}
+		else if (bytes >= MiB)
+		{
+			ss << (bytes / (double)MiB) << " MiB";
 		}
 		else if (bytes >= kiB)
 		{

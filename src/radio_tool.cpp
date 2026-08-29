@@ -33,6 +33,8 @@
 #include <filesystem>
 #include <cxxopts.hpp>
 #include <fstream>
+#include <ctime>
+#include <limits>
 
 using namespace radio_tool::fw;
 using namespace radio_tool::radio;
@@ -49,6 +51,74 @@ auto GetOptionOrErr(const cxxopts::ParseResult &cmd, const std::string &v, const
     {
         throw std::runtime_error(err);
     }
+}
+
+/**
+ * Commands which only work on a TYT radio in DFU mode
+ * @returns true if a command was handled
+ */
+auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> bool
+{
+    if (!(cmd.count("get-status") || cmd.count("dump-reg") || cmd.count("dump-bootloader") ||
+          cmd.count("get-time") || cmd.count("set-time") || cmd.count("reboot")))
+    {
+        return false;
+    }
+
+    auto tyt_radio = dynamic_cast<radio_tool::radio::TYTRadio *>(radio);
+    if (tyt_radio == nullptr)
+    {
+        throw std::runtime_error("Cant use TYT commands on a non-TYT radio");
+    }
+
+    auto dfu = tyt_radio->GetDFU();
+
+    if (cmd.count("get-status"))
+    {
+        auto status = dfu->GetStatus();
+        std::cerr << status.ToString() << std::endl;
+    }
+
+    if (cmd.count("dump-reg"))
+    {
+        auto x = cmd["dump-reg"].as<uint16_t>();
+        std::cerr << "Read register: 0x" << std::setfill('0') << std::setw(2) << std::hex << x << std::endl;
+        auto reg = dfu->ReadRegister(static_cast<radio_tool::dfu::TYTRegister>(x));
+        radio_tool::PrintHex(reg.begin(), reg.end());
+    }
+
+    if (cmd.count("dump-bootloader"))
+    {
+        auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Output file not specified");
+        constexpr uint16_t size = 0xc000;
+        std::ofstream outf;
+        outf.open(out_file, std::ios_base::out | std::ios_base::binary);
+        if (!outf.is_open())
+        {
+            throw std::runtime_error("Failed to open output file: " + out_file);
+        }
+        auto mem = dfu->Upload(size, 2);
+        outf.write((char *)mem.data(), mem.size());
+        outf.close();
+    }
+
+    if (cmd.count("get-time"))
+    {
+        auto tm = dfu->GetTime();
+        std::cerr << (tm == -1 ? "N/A\n" : ctime(&tm));
+    }
+
+    if (cmd.count("set-time"))
+    {
+        dfu->SetTime();
+    }
+
+    if (cmd.count("reboot"))
+    {
+        dfu->Reboot();
+    }
+
+    return true;
 }
 
 int main(int argc, char **argv)
@@ -134,12 +204,6 @@ int main(int argc, char **argv)
             exit(0);
         }
 
-        if (cmd.count("list-radios"))
-        {
-            // TODO: list radio models supported
-            exit(0);
-        }
-
         // do non device specific commands
         if (cmd.count("fw-info"))
         {
@@ -176,14 +240,14 @@ int main(int argc, char **argv)
                 {
                     uint32_t addr = 0;
                     auto addr_str = sx.substr(0, schar);
-                    if (addr_str.find("0x") != addr_str.npos)
+                    //stoull, not stoi: any address with the top bit set is out
+                    //of range for a 32 bit int
+                    auto parsed = std::stoull(addr_str, 0, addr_str.find("0x") != addr_str.npos ? 16 : 10);
+                    if (parsed > (unsigned long long)std::numeric_limits<uint32_t>::max())
                     {
-                        addr = std::stoi(addr_str, 0, 16);
+                        throw std::runtime_error("Segment address out of range: " + addr_str);
                     }
-                    else
-                    {
-                        addr = std::stoi(addr_str, 0, 10);
-                    }
+                    addr = (uint32_t)parsed;
 
                     auto filename = sx.substr(schar + 1);
                     std::cerr << "Adding segment 0x"
@@ -194,12 +258,16 @@ int main(int argc, char **argv)
                     if (f_seg.is_open())
                     {
                         f_seg.seekg(0, f_seg.end);
-                        auto len = f_seg.tellg();
+                        auto len = (size_t)f_seg.tellg();
                         f_seg.seekg(0, f_seg.beg);
 
                         std::vector<uint8_t> seg_data;
                         seg_data.resize(len);
                         f_seg.read((char *)seg_data.data(), len);
+                        if ((size_t)f_seg.gcount() != len)
+                        {
+                            throw std::runtime_error("Failed to read segment file: " + filename);
+                        }
                         f_seg.close();
 
                         fw->AppendSegment(addr, seg_data);
@@ -368,6 +436,11 @@ int main(int argc, char **argv)
             exit(0);
         }
 
+        if (tytCommands(cmd, radio))
+        {
+            exit(0);
+        }
+
         if (cmd.count("flash"))
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
@@ -406,66 +479,5 @@ int main(int argc, char **argv)
     {
         std::cerr << "Error: " << gex.what() << std::endl;
         exit(1);
-    }
-}
-
-auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> void
-{
-    if (typeid(radio) == typeid(radio_tool::radio::TYTRadio))
-    {
-        std::cerr << "Cant use TYT commands on non-tyt radio!" << std::endl;
-        exit(1);
-    }
-
-    auto tyt_radio = dynamic_cast<radio_tool::radio::TYTRadio *>(radio);
-    auto dfu = tyt_radio->GetDFU();
-
-    if (cmd.count("get-status"))
-    {
-        auto status = dfu->GetStatus();
-        std::cerr << status.ToString() << std::endl;
-    }
-
-    if (cmd.count("dump-reg"))
-    {
-        auto x = cmd["dump-reg"].as<uint16_t>();
-        std::cerr << "Read register: 0x" << std::setfill('0') << std::setw(2) << std::hex << x << std::endl;
-        // radio_tool::PrintHex(dfu.ReadRegister(static_cast<const TYTRegister>(x)));
-    }
-
-    if (cmd.count("dump-bootloader"))
-    {
-        auto out_file = GetOptionOrErr<std::string>(cmd, "out", "Input file not specified");
-        auto size = 0xc000;
-        std::ofstream outf;
-        outf.open(out_file, std::ios_base::out | std::ios_base::binary);
-        if (outf.is_open())
-        {
-            auto mem = dfu->Upload(size, 2);
-            // radio_tool::PrintHex(mem);
-            outf.write((char *)mem.data(), mem.size());
-            outf.close();
-        }
-        else
-        {
-            std::cerr << "Failed to open output file: " << out_file << std::endl;
-            exit(1);
-        }
-    }
-
-    if (cmd.count("get-time"))
-    {
-        // auto tm = dfu.GetTime();
-        // std::cerr << ctime(&tm);
-    }
-
-    if (cmd.count("set-time"))
-    {
-        // dfu.SetTime();
-    }
-
-    if (cmd.count("reboot"))
-    {
-        // dfu.Reboot();
     }
 }

@@ -30,16 +30,22 @@ auto TYTFW::Read(const std::string& file) -> void
 		auto header = ReadHeader(i);
 		CheckHeader(header);
 
-		firmware_model = std::string(header.radio, header.radio + strlen((const char*)header.radio));
+		//the radio field is a fixed size buffer, it is not always null terminated
+		auto radio_end = std::find(header.radio, header.radio + sizeof(header.radio), '\0');
+		firmware_model = std::string(header.radio, radio_end);
 		counterMagic = std::vector<uint8_t>(header.counter_magic, header.counter_magic + 1 + header.counter_magic[0]);
 		radio_model = GetRadioFromMagic(counterMagic);
 
-		auto binarySize = 0;
+		uint64_t binarySize = 0;
 		for (uint32_t nMem = 0; nMem < header.n_regions; nMem++)
 		{
 			uint32_t rStart = 0, rLength = 0;
 			i.read((char*)&rStart, 4);
 			i.read((char*)&rLength, 4);
+			if (!i.good())
+			{
+				throw std::runtime_error("Firmware file is truncated, missing memory region info");
+			}
 			memory_ranges.push_back(std::make_pair(rStart, rLength));
 			binarySize += rLength;
 		}
@@ -60,11 +66,21 @@ auto TYTFW::Write(const std::string& file) -> void
 	std::ofstream fout(file, std::ios_base::binary);
 	if (fout.is_open())
 	{
+		//the region table is a fixed 0x80 byte area after the header
+		if ((sizeof(uint32_t) * memory_ranges.size() * 2) > 0x80)
+		{
+			throw std::runtime_error("Too many memory regions for a TYT firmware file");
+		}
+
 		//make header
 		TYTFirmwareHeader h = {};
 		h.n1 = 0x30000230;
 		h.n2 = 0x47004000;
 		std::copy(tyt::magic::begin.begin(), tyt::magic::begin.end(), h.magic);
+		if (firmware_model.size() > sizeof(h.radio))
+		{
+			throw std::runtime_error("Firmware model name is too long for the header");
+		}
 		std::copy(firmware_model.begin(), firmware_model.end(), h.radio);
 		for (auto cx = 0; cx < 76; cx++)
 		{
@@ -91,7 +107,8 @@ auto TYTFW::Write(const std::string& file) -> void
 		}
 
 		//add padding
-		for (uint32_t pad_x = 0; pad_x < 0x80 - (sizeof(uint32_t) * memory_ranges.size() * 2); pad_x++)
+		const auto region_bytes = sizeof(uint32_t) * memory_ranges.size() * 2;
+		for (size_t pad_x = region_bytes; pad_x < 0x80; pad_x++)
 		{
 			fout.put(0xff);
 		}
@@ -269,11 +286,11 @@ auto TYTFW::ApplyXOR() -> void
 
 auto TYTFW::IsCompatible(const FirmwareSupport* Other) const -> bool
 {
-	if (typeid(Other) != typeid(this)) {
+	auto afw = dynamic_cast<const TYTFW*>(Other);
+	if (afw == nullptr) {
 		return false;
 	}
 
-	auto afw = dynamic_cast<const TYTFW*>(Other);
 	return afw->radio_model == radio_model
 		&& afw->firmware_model == firmware_model;
 }
