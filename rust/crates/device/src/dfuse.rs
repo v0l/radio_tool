@@ -150,10 +150,7 @@ pub fn parse(text: &str, alt: u8) -> Result<Memory> {
     let mut index: u8 = 0;
 
     // the rest is pairs of an address and the runs that start there
-    loop {
-        let Some(address) = parts.next() else {
-            break;
-        };
+    while let Some(address) = parts.next() {
         let runs = parts.next().ok_or(Error::Unexpected {
             what: "memory layout",
             expected: "sector sizes after an address".to_owned(),

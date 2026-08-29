@@ -47,3 +47,23 @@ jobs:
       - name: doc tests
         working-directory: rust
         run: cargo test --doc
+
+  # Cargo.toml claims a minimum of 1.85, which is what edition 2024 needs.
+  # Nothing checked that until this job existed.
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: apt-install
+        run: sudo apt update && sudo apt install -y libudev-dev libdbus-1-dev pkg-config
+
+      - uses: dtolnay/rust-toolchain@1.85.0
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+
+      - name: check
+        working-directory: rust
+        run: cargo check --all-targets
