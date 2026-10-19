@@ -27,7 +27,7 @@ jobs:
       # the serial transport needs libudev, and btleplug needs dbus, on Linux
       - name: apt-install
         if: runner.os == 'Linux'
-        run: sudo apt update && sudo apt install -y libudev-dev libdbus-1-dev pkg-config
+        run: sudo apt update && sudo apt install -y libudev-dev libdbus-1-dev pkg-config libgl1-mesa-dev libxkbcommon-dev libwayland-dev
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -53,7 +53,7 @@ jobs:
         working-directory: rust
         run: cargo test --doc
 
-  # Cargo.toml claims a minimum of 1.85, which is what edition 2024 needs.
+  # Cargo.toml claims a minimum of 1.95, which is what egui_bench needs.
   # Nothing checked that until this job existed.
   msrv:
     runs-on: ubuntu-latest
@@ -61,9 +61,9 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: apt-install
-        run: sudo apt update && sudo apt install -y libudev-dev libdbus-1-dev pkg-config
+        run: sudo apt update && sudo apt install -y libudev-dev libdbus-1-dev pkg-config libgl1-mesa-dev libxkbcommon-dev libwayland-dev
 
-      - uses: dtolnay/rust-toolchain@1.85.0
+      - uses: dtolnay/rust-toolchain@1.95.0
 
       - uses: Swatinem/rust-cache@v2
         with:

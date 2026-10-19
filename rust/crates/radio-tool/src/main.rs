@@ -3,8 +3,9 @@
 //! This is the Rust port of radio_tool. Subcommands are the native
 //! interface; the C++ tool's flags are still accepted, see `legacy`.
 
-mod format;
 mod legacy;
+
+use radio_tool_app::{format, gui};
 
 use clap::{Parser, Subcommand};
 use firmware::{keyguess, sgl, tyt};
@@ -219,6 +220,11 @@ enum Command {
 
 fn main() -> ExitCode {
     let args: Vec<std::ffi::OsString> = std::env::args_os().collect();
+    match args.get(1..) {
+        Some([]) | None => return gui::run(None),
+        Some([one]) if Path::new(one).is_file() => return gui::run(Some(PathBuf::from(one))),
+        _ => {}
+    }
     if !is_subcommand(args.get(1)) {
         return legacy::run(&args);
     }

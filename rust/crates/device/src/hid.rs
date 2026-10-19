@@ -331,7 +331,7 @@ pub mod flashing {
 
             // every kilobyte, and again at the end, the radio wants the sum
             // of what it has just been given
-            if address % CHECKSUM_BLOCK == 0 || address == data.len() {
+            if address.is_multiple_of(CHECKSUM_BLOCK) || address == data.len() {
                 let start = CHECKSUM_BLOCK * block;
                 let sum = checksum(data.get(start..address).ok_or(Error::Port(
                     "checksum range outside the firmware".to_owned(),

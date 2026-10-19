@@ -45,10 +45,10 @@ pub fn guess_key(encrypted: &[u8]) -> Vec<u8> {
     let mut histogram = vec![[0u32; 256]; KEY_LEN];
 
     for (ix, byte) in encrypted.iter().enumerate() {
-        if let Some(row) = histogram.get_mut(ix % KEY_LEN) {
-            if let Some(count) = row.get_mut(usize::from(*byte)) {
-                *count += 1;
-            }
+        if let Some(row) = histogram.get_mut(ix % KEY_LEN)
+            && let Some(count) = row.get_mut(usize::from(*byte))
+        {
+            *count += 1;
         }
     }
 
@@ -143,7 +143,11 @@ mod tests {
                 x ^= x << 5;
                 // roughly a quarter content, the rest zeroes, which is what
                 // compiled firmware padded out to a flash sector looks like
-                if x % 4 == 0 { (x >> 8) as u8 } else { 0 }
+                if x.is_multiple_of(4) {
+                    (x >> 8) as u8
+                } else {
+                    0
+                }
             })
             .collect()
     }

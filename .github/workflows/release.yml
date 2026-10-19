@@ -31,7 +31,9 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends pkg-config libudev-dev libdbus-1-dev
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config libudev-dev libdbus-1-dev libgl1-mesa-dev libx11-dev \
+            libxcursor-dev libxrandr-dev libxi-dev libxkbcommon-dev libwayland-dev
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -46,16 +48,35 @@ jobs:
           name=radio_tool-${{ matrix.target }}
           mkdir -p "dist/$name"
           cp README.md LICENSE CHANGELOG.md rust/udev/99-radio-tool.rules "dist/$name/"
+          if [[ "${{ runner.os }}" == "Linux" ]]; then
+            cp packaging/linux/radio_tool.desktop rust/crates/radio-tool/assets/icon-256.png "dist/$name/"
+          fi
           cd dist
           if [[ "${{ matrix.target }}" == *windows* ]]; then
-            cp "../rust/target/${{ matrix.target }}/release/radio_tool.exe" "$name/"
+            cp "../rust/target/${{ matrix.target }}/release/radio_tool.exe" "../rust/target/${{ matrix.target }}/release/radio_tool-ui.exe" "$name/"
             7z a "$name.zip" "$name" >/dev/null
             sha256sum "$name.zip" > "$name.zip.sha256"
           else
-            cp "../rust/target/${{ matrix.target }}/release/radio_tool" "$name/"
+            cp "../rust/target/${{ matrix.target }}/release/radio_tool" "../rust/target/${{ matrix.target }}/release/radio_tool-ui" "$name/"
             tar czf "$name.tar.gz" "$name"
             shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256"
           fi
+      - name: app bundle
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(cargo metadata --no-deps --format-version 1 --manifest-path rust/Cargo.toml | jq -r '.packages[] | select(.name == "radio-tool") | .version')
+          app="dmg/radio_tool.app"
+          mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+          sed "s/__VERSION__/$version/g" packaging/macos/Info.plist > "$app/Contents/Info.plist"
+          cp "rust/target/${{ matrix.target }}/release/radio_tool" "rust/target/${{ matrix.target }}/release/radio_tool-ui" "$app/Contents/MacOS/"
+          cp packaging/macos/icon.icns "$app/Contents/Resources/"
+          codesign --force --deep --sign - "$app"
+          ln -s /Applications dmg/Applications
+          name=radio_tool-${{ matrix.target }}
+          hdiutil create -volname "radio_tool" -srcfolder dmg -fs HFS+ -format UDZO -ov "dist/$name.dmg"
+          (cd dist && shasum -a 256 "$name.dmg" > "$name.dmg.sha256")
       - name: install wix
         if: runner.os == 'Windows'
         run: dotnet tool install --global wix --version 5.0.2
@@ -78,6 +99,7 @@ jobs:
           path: |
             dist/*.tar.gz
             dist/*.zip
+            dist/*.dmg
             dist/*.msi
             dist/*.sha256
 

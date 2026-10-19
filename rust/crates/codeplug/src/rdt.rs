@@ -374,11 +374,8 @@ fn read_utf16(buf: &[u8], offset: usize, chars: usize) -> Result<String> {
         .ok_or(Error::Malformed("wide string field"))?;
 
     let mut units = Vec::with_capacity(chars);
-    for pair in field.chunks_exact(2) {
-        let Ok(bytes) = <[u8; 2]>::try_from(pair) else {
-            break;
-        };
-        let unit = u16::from_le_bytes(bytes);
+    for pair in field.as_chunks::<2>().0 {
+        let unit = u16::from_le_bytes(*pair);
         if unit == 0 || unit == 0xffff {
             break;
         }

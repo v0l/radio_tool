@@ -38,23 +38,23 @@ pub enum Container {
 
 impl Container {
     pub fn probe(data: &[u8]) -> Self {
-        if tyt::TytFirmware::is_supported(data) {
-            if let Ok(fw) = tyt::TytFirmware::parse(data) {
-                let field = data.get(0x10..0x20).unwrap_or_default();
-                let end = field.iter().position(|b| *b == 0).unwrap_or(field.len());
-                let model = String::from_utf8_lossy(field.get(..end).unwrap_or_default());
-                return Self::Tyt(Box::new(fw), model.into_owned());
-            }
+        if tyt::TytFirmware::is_supported(data)
+            && let Ok(fw) = tyt::TytFirmware::parse(data)
+        {
+            let field = data.get(0x10..0x20).unwrap_or_default();
+            let end = field.iter().position(|b| *b == 0).unwrap_or(field.len());
+            let model = String::from_utf8_lossy(field.get(..end).unwrap_or_default());
+            return Self::Tyt(Box::new(fw), model.into_owned());
         }
-        if cs::CsFirmware::is_supported(data) {
-            if let Ok(fw) = cs::CsFirmware::parse(data) {
-                return Self::Cs(Box::new(fw));
-            }
+        if cs::CsFirmware::is_supported(data)
+            && let Ok(fw) = cs::CsFirmware::parse(data)
+        {
+            return Self::Cs(Box::new(fw));
         }
-        if sgl::SglFirmware::is_supported(data) {
-            if let Ok(fw) = sgl::SglFirmware::parse(data) {
-                return Self::Sgl(Box::new(fw));
-            }
+        if sgl::SglFirmware::is_supported(data)
+            && let Ok(fw) = sgl::SglFirmware::parse(data)
+        {
+            return Self::Sgl(Box::new(fw));
         }
         eprintln!(
             "{}",

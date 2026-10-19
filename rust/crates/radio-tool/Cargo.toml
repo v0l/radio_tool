@@ -7,9 +7,18 @@ rust-version.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[lib]
+name = "radio_tool_app"
+path = "src/lib.rs"
+
 [[bin]]
 name = "radio_tool"
 path = "src/main.rs"
+
+[[bin]]
+name = "radio_tool-ui"
+path = "src/ui_main.rs"
+test = false
 
 [dependencies]
 firmware = { path = "../firmware" }
@@ -17,6 +26,23 @@ codeplug = { path = "../codeplug" }
 device = { path = "../device" }
 clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+eframe = { version = "0.35", default-features = false, features = [
+    "default_fonts",
+    "glow",
+    "wayland",
+    "x11",
+] }
+egui = "0.35"
+egui_bench = "0.5"
+
+[dev-dependencies]
+egui_kittest = { version = "0.35", features = ["eframe"] }
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+egui_kittest = { version = "0.35", features = ["eframe", "wgpu"] }
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
 
 [lints]
 workspace = true

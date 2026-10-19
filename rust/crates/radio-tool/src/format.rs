@@ -4,6 +4,7 @@ use firmware::{Segment, ailunce, cs, sgl, tyt, yaesu};
 use std::fmt::Write as _;
 
 /// Every firmware container, once a file has been recognised as one
+#[derive(Debug)]
 pub enum Firmware {
     /// TYT and Baofeng DM-1701
     Tyt(Box<tyt::TytFirmware>),

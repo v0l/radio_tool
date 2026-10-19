@@ -278,12 +278,11 @@ impl Uv5rCodeplug {
         }
 
         // a 0x1950 image carries the model id in the last eight bytes
-        if image.len() == 0x1950 {
-            if let Some(id) = image.get(MODEL_ID_OFFSET..) {
-                if id.iter().any(|c| c.is_ascii_uppercase()) {
-                    return true;
-                }
-            }
+        if image.len() == 0x1950
+            && let Some(id) = image.get(MODEL_ID_OFFSET..)
+            && id.iter().any(|c| c.is_ascii_uppercase())
+        {
+            return true;
         }
 
         if has_known_base_type(image) {

@@ -51,15 +51,14 @@ impl Simulator {
         // it prints the pty name once it is listening
         let deadline = Instant::now() + Duration::from_secs(10);
         while Instant::now() < deadline {
-            if let Ok(text) = std::fs::read_to_string(log) {
-                if let Some(line) = text.lines().next() {
-                    if !line.trim().is_empty() {
-                        return Some(Self {
-                            child,
-                            port: line.trim().to_owned(),
-                        });
-                    }
-                }
+            if let Ok(text) = std::fs::read_to_string(log)
+                && let Some(line) = text.lines().next()
+                && !line.trim().is_empty()
+            {
+                return Some(Self {
+                    child,
+                    port: line.trim().to_owned(),
+                });
             }
             std::thread::sleep(Duration::from_millis(100));
         }

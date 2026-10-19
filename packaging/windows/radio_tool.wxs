@@ -19,6 +19,7 @@
       <Directory Id="INSTALLFOLDER" Name="radio_tool">
         <Component Id="AppExe" Guid="ad224304-38d6-429e-abf1-fb9b69b20b5a">
           <File Id="RadioToolExe" Source="$(var.BinDir)\radio_tool.exe" KeyPath="yes" />
+          <File Id="RadioToolUiExe" Source="$(var.BinDir)\radio_tool-ui.exe" />
           <Environment Id="RadioToolPath" Name="PATH" Value="[INSTALLFOLDER]" Action="set" Part="last" System="yes" Permanent="no" />
         </Component>
         <Component Id="AppDocs" Guid="38da4151-8387-4eb9-b6a9-7464a6538453">
@@ -29,9 +30,17 @@
     </StandardDirectory>
 
 
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Component Id="AppShortcut" Guid="71db4931-c5be-4405-ad14-31520cd25cb4">
+        <Shortcut Id="RadioToolShortcut" Icon="AppIcon" Name="radio_tool" Target="[#RadioToolUiExe]" WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKLM" Key="Software\v0l\RadioTool" Name="shortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
     <Feature Id="Main" Title="radio_tool" Level="1">
       <ComponentRef Id="AppExe" />
       <ComponentRef Id="AppDocs" />
+      <ComponentRef Id="AppShortcut" />
     </Feature>
   </Package>
 </Wix>

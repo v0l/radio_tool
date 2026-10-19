@@ -20,7 +20,7 @@ Deleting it will not weaken these tests.
 
 | path | what it holds |
 | - | - |
-| `crates/radio-tool` | the command line tool |
+| `crates/radio-tool` | the command line tool and the window |
 | `crates/firmware` | firmware container formats and the XOR ciphers |
 | `crates/codeplug` | codeplug (channel memory) formats |
 | `crates/device` | clone mode protocols, and the serial transport |
@@ -30,6 +30,20 @@ Deleting it will not weaken these tests.
 | `tools/make_fixtures.py` | regenerated those reference files |
 | `tools/capture_legacy.py` | recorded what the C++ prints for its flags |
 | `crates/radio-tool/tests/legacy/cases.txt` | that recording, the contract for the old flags |
+
+## The window
+
+`radio_tool` with no arguments, or with one file, opens a window; so does
+`radio_tool-ui`, which is the one the app bundle, the Windows shortcut and the
+bench suite start. On the left are the radios: USB ones are found by scanning,
+a Baofeng on a cable or Bluetooth needs its model picked. On the right are
+cards for what that radio can do. Writing a codeplug, flashing, setting the
+clock and restarting each ask before they start. Any firmware or codeplug file
+dropped on the window, or opened, is described, a codeplug with its channels.
+
+`src/gui` holds it, with the radio work on its own thread in `worker.rs`. A
+test drives the window against the UV-5R simulator: it identifies the radio
+and reads a codeplug through the same jobs the keys start.
 
 ## The command line
 

@@ -51,12 +51,9 @@ pub fn supports_model(model: &str) -> bool {
 /// See the module docs: this is its own inverse for every word except
 /// `0x07777777` and `0xfeeeeeee`.
 pub fn transform(data: &mut [u8]) {
-    let mut chunks = data.chunks_exact_mut(4);
-    for word in chunks.by_ref() {
-        let Ok(bytes) = <[u8; 4]>::try_from(&word[..]) else {
-            continue;
-        };
-        let value = u32::from_le_bytes(bytes);
+    let (words, rest) = data.as_chunks_mut::<4>();
+    for word in words {
+        let value = u32::from_le_bytes(*word);
 
         let out = if value == 0x0000_0000 || value == 0xffff_ffff {
             value ^ 0xffff_ffff
@@ -71,7 +68,7 @@ pub fn transform(data: &mut [u8]) {
 
     // whatever does not make up a whole word is handled a byte at a time,
     // with the same shape of rule
-    for byte in chunks.into_remainder() {
+    for byte in rest {
         *byte = if *byte == 0x00 || *byte == 0xff {
             *byte ^ 0xff
         } else if *byte & 1 != 0 {
@@ -91,11 +88,15 @@ pub fn transform(data: &mut [u8]) {
 pub fn lossy_offsets(data: &[u8]) -> Vec<usize> {
     let whole = data.len() - (data.len() % 4);
 
-    let words = data.chunks_exact(4).enumerate().filter_map(|(ix, word)| {
-        let bytes = <[u8; 4]>::try_from(word).ok()?;
-        let value = u32::from_le_bytes(bytes);
-        (value == 0x0777_7777 || value == 0xfeee_eeee).then_some(ix * 4)
-    });
+    let words = data
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .enumerate()
+        .filter_map(|(ix, word)| {
+            let value = u32::from_le_bytes(*word);
+            (value == 0x0777_7777 || value == 0xfeee_eeee).then_some(ix * 4)
+        });
 
     // every trailing byte other than the two padding values is affected
     let tail = data
@@ -188,8 +189,10 @@ mod tests {
     }
 
     fn as_words(data: &[u8]) -> Vec<u32> {
-        data.chunks_exact(4)
-            .map(|c| u32::from_le_bytes(c.try_into().expect("four bytes")))
+        data.as_chunks::<4>()
+            .0
+            .iter()
+            .map(|c| u32::from_le_bytes(*c))
             .collect()
     }
 

@@ -26,7 +26,7 @@ SKIP = {"cs_CS800_0x100_csfwtool.bin", "chirp_baofeng_f11.img",
         "chirp_baofeng_uv5r.img", "chirp_baofeng_uv5r_mini.img"}
 
 CASES = [
-    [], ["--help"], ["-h", "wrap"], ["--help=Wrap"], ["--help=wrap"],
+    ["--help"], ["-h", "wrap"], ["--help=Wrap"], ["--help=wrap"],
     ["--help=tyt"], ["--help=TYT Radio"], ["--help=Serial radio"], ["--help="],
     ["foo"], ["--"], ["-"], ["--", "-l"],
     ["--bogus"], ["-x"], ["-L"], ["-d=1"], ["--x"], ["-hwrap"],

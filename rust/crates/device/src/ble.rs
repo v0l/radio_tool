@@ -93,10 +93,10 @@ async fn adapter(which: Option<&str>) -> Result<Adapter> {
             .ok_or_else(|| Error::Port("no Bluetooth adapter found".to_owned())),
         Some(wanted) => {
             for a in &adapters {
-                if let Ok(info) = a.adapter_info().await {
-                    if info.to_lowercase().contains(&wanted.to_lowercase()) {
-                        return Ok(a.clone());
-                    }
+                if let Ok(info) = a.adapter_info().await
+                    && info.to_lowercase().contains(&wanted.to_lowercase())
+                {
+                    return Ok(a.clone());
                 }
             }
             Err(Error::Port(format!(

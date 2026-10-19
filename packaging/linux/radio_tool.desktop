@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=radio_tool
+Comment=Firmware and codeplugs for handheld radios
+Exec=radio_tool-ui %f
+Icon=radio_tool
+Terminal=false
+Categories=HamRadio;Utility;
