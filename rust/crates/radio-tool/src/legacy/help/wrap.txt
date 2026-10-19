@@ -1,0 +1,9 @@
+@VERSION@
+Usage:
+  @PROG@ [OPTION...]
+
+ Wrap options:
+  -s, --segment <0x08000000:region_0.bin>
+                                Add a segment for wrapping
+  -r, --radio <DM1701>          Radio to build firmware file for
+

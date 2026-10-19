@@ -1,0 +1,11 @@
+@VERSION@
+Usage:
+  @PROG@ [OPTION...]
+
+ TYT Radio options:
+      --get-time             Gets the radio time
+      --set-time             Sets the radio time
+      --dump-reg <register>  Dump a register from the radio
+      --reboot               Reboot the radio
+      --dump-bootloader      Dump bootloader (Mac only)
+

@@ -1,0 +1,9 @@
+@VERSION@
+Usage:
+  @PROG@ [OPTION...]
+
+ Serial radio options:
+      --list-serial-models  List the models which can be used with --port 
+                            or --ble
+      --list-ble            Scan for Bluetooth LE devices in range
+

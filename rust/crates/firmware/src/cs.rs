@@ -71,6 +71,8 @@ pub struct CsFirmware {
     data: Vec<u8>,
     /// Whether the file this came from carried a checksum
     had_checksum: bool,
+    /// The version field of the header
+    version: u32,
 }
 
 impl CsFirmware {
@@ -83,6 +85,7 @@ impl CsFirmware {
             base_address: 0,
             data: Vec::new(),
             had_checksum: true,
+            version: VERSION,
         })
     }
 
@@ -91,6 +94,16 @@ impl CsFirmware {
     /// because [`Self::serialise`] always writes one.
     pub fn had_checksum(&self) -> bool {
         self.had_checksum
+    }
+
+    /// The version field of the header
+    pub fn version(&self) -> u32 {
+        self.version
+    }
+
+    /// The checksum this firmware is written with
+    pub fn checksum(&self) -> Result<u16> {
+        Ok(checksum(&self.header()?, &self.data))
     }
 
     /// Decrypted firmware data
@@ -117,6 +130,7 @@ impl CsFirmware {
         self.base_address = address;
         self.data = data.to_vec();
         self.had_checksum = true;
+        self.version = VERSION;
         Ok(())
     }
 
@@ -196,15 +210,17 @@ impl CsFirmware {
             }
         }
 
+        let version = read_u32(header, VERSION_AT).ok_or(Error::Malformed("version"))?;
+
         Ok(Self {
             base_address,
             data,
             had_checksum,
+            version,
         })
     }
 
-    /// Write a firmware file
-    pub fn serialise(&self) -> Result<Vec<u8>> {
+    fn header(&self) -> Result<[u8; HEADER_LEN]> {
         if self.data.is_empty() {
             return Err(Error::NoSegments);
         }
@@ -217,7 +233,14 @@ impl CsFirmware {
         write_u32(&mut header, IMAGE_SIZE_AT, image_size)?;
         write_u32(&mut header, RSRC_HEADER_SIZE_AT, 0)?;
         write_u32(&mut header, IMAGE_HEADER_SIZE_AT, HEADER_LEN as u32)?;
-        write_u32(&mut header, VERSION_AT, VERSION)?;
+        write_u32(&mut header, VERSION_AT, self.version)?;
+        Ok(header)
+    }
+
+    /// Write a firmware file
+    pub fn serialise(&self) -> Result<Vec<u8>> {
+        let header = self.header()?;
+        let image_size = header_image_size(&header)?;
 
         let sum = checksum(&header, &self.data);
 
@@ -287,6 +310,10 @@ fn unmask_checksum(value: u16, image_size: u32) -> u16 {
         bytes.first().copied().unwrap_or(0) ^ lo,
         bytes.get(1).copied().unwrap_or(0) ^ hi,
     ])
+}
+
+fn header_image_size(header: &[u8]) -> Result<u32> {
+    read_u32(header, IMAGE_SIZE_AT).ok_or(Error::Malformed("image size"))
 }
 
 fn read_u32(buf: &[u8], offset: usize) -> Option<u32> {

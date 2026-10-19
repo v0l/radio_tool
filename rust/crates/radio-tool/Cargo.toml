@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [[bin]]
-name = "radio-tool"
+name = "radio_tool"
 path = "src/main.rs"
 
 [dependencies]

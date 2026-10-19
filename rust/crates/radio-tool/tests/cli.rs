@@ -15,7 +15,7 @@ use std::process::{Command, Output};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 fn tool() -> &'static str {
-    env!("CARGO_BIN_EXE_radio-tool")
+    env!("CARGO_BIN_EXE_radio_tool")
 }
 
 fn fixture(crate_name: &str, name: &str) -> PathBuf {

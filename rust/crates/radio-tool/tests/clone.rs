@@ -96,7 +96,7 @@ fn we_clone_the_same_image_the_cpp_did() {
         return;
     };
 
-    let out = Command::new(env!("CARGO_BIN_EXE_radio-tool"))
+    let out = Command::new(env!("CARGO_BIN_EXE_radio_tool"))
         .args([
             "read-codeplug",
             "--port",
@@ -135,4 +135,68 @@ fn we_clone_the_same_image_the_cpp_did() {
 
     drop(sim);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn run_against_simulator(name: &str, args: &[&str]) -> Option<std::process::Output> {
+    let dir = std::env::temp_dir().join(format!("radio_tool_{name}_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("temp dir");
+    let sim = Simulator::start(&dir.join("port.txt"))?;
+    let mut full = vec!["--port", sim.port.as_str()];
+    full.extend_from_slice(args);
+    let out = Command::new(env!("CARGO_BIN_EXE_radio_tool"))
+        .args(&full)
+        .current_dir(&dir)
+        .output()
+        .expect("the tool runs");
+    drop(sim);
+    let _ = std::fs::remove_dir_all(&dir);
+    Some(out)
+}
+
+#[test]
+fn the_cpp_flags_read_the_same_image() {
+    if cfg!(windows) {
+        return;
+    }
+    let image = std::env::temp_dir().join(format!("radio_tool_flags_{}.img", std::process::id()));
+    let image_arg = image.to_string_lossy().into_owned();
+    let Some(out) = run_against_simulator(
+        "flags",
+        &["-r", "UV5R", "--read-codeplug", "-o", &image_arg],
+    ) else {
+        eprintln!("skipping: could not start the UV-5R simulator");
+        return;
+    };
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "Done!\n");
+
+    let expected =
+        std::fs::read(repo_root().join("rust/crates/codeplug/tests/fixtures/uv5r_hn5rv01.img"))
+            .expect("the reference image");
+    assert!(std::fs::read(&image).expect("written") == expected);
+    let _ = std::fs::remove_file(&image);
+}
+
+#[test]
+fn the_cpp_info_flag_reports_what_the_cpp_did() {
+    if cfg!(windows) {
+        return;
+    }
+    let Some(out) = run_against_simulator("info", &["-r", "UV5R", "--info"]) else {
+        eprintln!("skipping: could not start the UV-5R simulator");
+        return;
+    };
+    assert!(
+        out.status.success(),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        String::from_utf8_lossy(&out.stdout),
+        "Model:    Baofeng UV5R\nIdent:    50bbff20120725dd\nFirmware: HN5RV01\n"
+    );
 }

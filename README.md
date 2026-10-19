@@ -68,27 +68,33 @@ Usage:
   ./radio_tool [OPTION...]
 
  General options:
-  -h, --help <command>  Show this message
-  -l, --list            List devices
-  -d, --device <index>  Device to use
-  -i, --in <file>       Input file
-  -o, --out <file>      Output file
-  -L, --list-radios     List supported radios
+  -h, --help [=<command>(=)]    Show this message
+  -l, --list                    List devices
+  -d, --device <index>          Device to use
+      --port </dev/ttyUSB0>     Serial port to use, for radios which clone 
+                                over a serial cable
+      --ble <00:11:22:33:44:55>
+                                Bluetooth LE address, for radios which 
+                                clone over Bluetooth
+      --ble-adapter <hci0>      Bluetooth adapter to use, if this machine 
+                                has more than one
+  -i, --in <file>               Input file
+  -o, --out <file>              Output file
 
  Programming options:
-  -f, --flash         Flash firmware
-  -p, --program       Upload codeplug
-      --read-codeplug Download the codeplug from the radio to --out
+  -f, --flash          Flash firmware
+  -p, --program        Upload codeplug
+      --read-codeplug  Download the codeplug from the radio to --out
 
  Firmware options:
-      --fw-info  Print info about a firmware file
-      --wrap     Wrap a firmware bin (use --help wrap, for more info)
-      --unwrap   Unwrap a fimrware file
+      --fw-info   Print info about a firmware file
+      --wrap      Wrap a firmware bin (use --help wrap, for more info)
+      --unwrap    Unwrap a fimrware file
+      --make-xor  Try to make an XOR key for the input firmware
 
  All radio options:
-      --info                 Print some info about the radio
-      --write-custom <data>  Send custom command to radio
-      --get-status           Print the current DFU Status
+      --info        Print some info about the radio
+      --get-status  Print the current DFU Status
 
  TYT Radio options:
       --get-time             Gets the radio time
@@ -97,12 +103,13 @@ Usage:
       --reboot               Reboot the radio
       --dump-bootloader      Dump bootloader (Mac only)
 
+ Serial radio options:
+      --list-serial-models  List the models which can be used with --port 
+                            or --ble
+      --list-ble            Scan for Bluetooth LE devices in range
+
  Codeplug options:
       --codeplug-info  Print info about a codeplug file
-
- Serial radio options:
-      --port </dev/ttyUSB0>   Serial port to use
-      --list-serial-models    List models which can be used with --port
 ```
 
 ## Flash Firmware

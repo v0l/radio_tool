@@ -132,6 +132,28 @@ impl<S: ByteStream> Session<S> {
         }
     }
 
+    /// Identify the radio and read its firmware version, without reading the
+    /// memory. Spends the session like a download does.
+    pub fn info(&mut self) -> Result<RadioInfo> {
+        if self.spent {
+            return Err(Error::SessionSpent);
+        }
+        self.spent = true;
+
+        let mut info = RadioInfo {
+            ident: self.identify()?,
+            firmware: String::new(),
+        };
+
+        if self.model.aux_block {
+            self.read_block(AUX_PRIMER, BLOCK, true)?;
+            let first = self.read_block(AUX_START, BLOCK, false)?;
+            info.firmware = trim(first.get(VERSION_IN_BLOCK).unwrap_or_default());
+        }
+
+        Ok(info)
+    }
+
     /// Identify the radio and read its whole memory.
     ///
     /// The result is a CHIRP compatible image: ident, main memory, and the
@@ -225,8 +247,7 @@ impl<S: ByteStream> Session<S> {
         // 220MHz image to a 2m radio, or the other way round, bricks it.
         let radio_band = ident.get(3).copied();
         let image_band = image.get(3).copied();
-        if (radio_band == Some(VHF_220) || image_band == Some(VHF_220))
-            && radio_band != image_band
+        if (radio_band == Some(VHF_220) || image_band == Some(VHF_220)) && radio_band != image_band
         {
             return Err(Error::Incompatible(
                 "one of the radio and the image is a 220MHz model and the other is not".to_owned(),
@@ -283,7 +304,8 @@ impl<S: ByteStream> Session<S> {
             }
         }
 
-        let span = |r: &[(usize, usize)]| r.iter().map(|(s, e)| e.saturating_sub(*s)).sum::<usize>();
+        let span =
+            |r: &[(usize, usize)]| r.iter().map(|(s, e)| e.saturating_sub(*s)).sum::<usize>();
         let total = span(&RANGES_MAIN).saturating_add(span(&ranges_aux));
         let mut done = 0usize;
 
@@ -301,7 +323,8 @@ impl<S: ByteStream> Session<S> {
 
         for (start, end) in ranges_aux {
             for addr in (start..end).step_by(WRITE_BLOCK) {
-                let offset = AUX_IN_FILE.saturating_add(addr.saturating_sub(usize::from(AUX_START)));
+                let offset =
+                    AUX_IN_FILE.saturating_add(addr.saturating_sub(usize::from(AUX_START)));
                 let chunk = image
                     .get(offset..offset.saturating_add(WRITE_BLOCK))
                     .ok_or_else(|| Error::Incompatible("the aux block ends early".to_owned()))?;
@@ -339,7 +362,12 @@ impl<S: ByteStream> Session<S> {
 
     /// Write one block and wait for the radio to acknowledge it
     fn send_block(&mut self, addr: u16, data: &[u8]) -> Result<()> {
-        let mut msg = vec![b'X', (addr >> 8) as u8, (addr & 0xff) as u8, data.len() as u8];
+        let mut msg = vec![
+            b'X',
+            (addr >> 8) as u8,
+            (addr & 0xff) as u8,
+            data.len() as u8,
+        ];
         msg.extend_from_slice(data);
         self.stream.write_all(&msg)?;
         self.stream.sleep(50);
@@ -713,6 +741,20 @@ mod tests {
             "the radio complained: {:?}",
             session.stream.complaints
         );
+    }
+
+    #[test]
+    fn info_reads_the_ident_and_firmware_and_spends_the_session() {
+        let mut session = Session::new(FakeRadio::new(), model("UV5R").expect("UV5R is known"));
+        let info = session.info().expect("info succeeds");
+        assert_eq!(info.ident, [0x50, 0xbb, 0xff, 0x20, 0x12, 0x07, 0x25, 0xdd]);
+        assert_eq!(info.firmware, "HN5RV01");
+        assert!(
+            session.stream.complaints.is_empty(),
+            "{:?}",
+            session.stream.complaints
+        );
+        assert!(matches!(session.download(), Err(Error::SessionSpent)));
     }
 
     #[test]

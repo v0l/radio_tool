@@ -1,0 +1,18 @@
+@VERSION@
+Usage:
+  @PROG@ [OPTION...]
+
+ General options:
+  -h, --help [=<command>(=)]    Show this message
+  -l, --list                    List devices
+  -d, --device <index>          Device to use
+      --port </dev/ttyUSB0>     Serial port to use, for radios which clone 
+                                over a serial cable
+      --ble <00:11:22:33:44:55>
+                                Bluetooth LE address, for radios which 
+                                clone over Bluetooth
+      --ble-adapter <hci0>      Bluetooth adapter to use, if this machine 
+                                has more than one
+  -i, --in <file>               Input file
+  -o, --out <file>              Output file
+

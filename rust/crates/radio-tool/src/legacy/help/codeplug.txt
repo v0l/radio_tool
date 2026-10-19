@@ -1,0 +1,7 @@
+@VERSION@
+Usage:
+  @PROG@ [OPTION...]
+
+ Codeplug options:
+      --codeplug-info  Print info about a codeplug file
+

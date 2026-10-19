@@ -1,0 +1,8 @@
+@VERSION@
+Usage:
+  @PROG@ [OPTION...]
+
+ All radio options:
+      --info        Print some info about the radio
+      --get-status  Print the current DFU Status
+

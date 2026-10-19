@@ -353,7 +353,7 @@ impl SglFirmware {
     /// what a radio is sent
     pub fn data_as_stored(&self) -> Vec<u8> {
         let mut data = self.data.clone();
-        crate::cipher::apply_xor(&mut data, self.config.cipher, self.config.xor_offset);
+        encrypt(&mut data, self.config);
         data
     }
 
@@ -641,6 +641,15 @@ fn decrypt(data: &mut [u8], config: &RadioConfig) {
 )]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_stored_form_is_the_bytes_in_the_file() {
+        let file = include_bytes!("../tests/fixtures/sgl_GD77.bin");
+        let fw = SglFirmware::parse(file).unwrap();
+        let start = 0x400 + usize::from(fw.secrets().unwrap().binary_offset);
+        let stored = fw.data_as_stored();
+        assert_eq!(&file[start..start + stored.len()], stored.as_slice());
+    }
 
     fn sample(len: usize, seed: u32) -> Vec<u8> {
         let mut x = seed | 1;

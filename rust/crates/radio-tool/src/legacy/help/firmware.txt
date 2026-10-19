@@ -1,0 +1,10 @@
+@VERSION@
+Usage:
+  @PROG@ [OPTION...]
+
+ Firmware options:
+      --fw-info   Print info about a firmware file
+      --wrap      Wrap a firmware bin (use --help wrap, for more info)
+      --unwrap    Unwrap a fimrware file
+      --make-xor  Try to make an XOR key for the input firmware
+

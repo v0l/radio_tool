@@ -1,0 +1,9 @@
+@VERSION@
+Usage:
+  @PROG@ [OPTION...]
+
+ Programming options:
+  -f, --flash          Flash firmware
+  -p, --program        Upload codeplug
+      --read-codeplug  Download the codeplug from the radio to --out
+

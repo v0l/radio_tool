@@ -28,6 +28,31 @@ Deleting it will not weaken these tests.
 | `crates/firmware/tests/fixtures` | reference files written by the C++ tool |
 | `tools/extract_ciphers.py` | regenerated those tables from the C++ headers |
 | `tools/make_fixtures.py` | regenerated those reference files |
+| `tools/capture_legacy.py` | recorded what the C++ prints for its flags |
+| `crates/radio-tool/tests/legacy/cases.txt` | that recording, the contract for the old flags |
+
+## The command line
+
+The binary is `radio_tool`, the same name as the C++ tool, and it takes the
+C++ tool's flags unchanged: `radio_tool -d 0 -f -i fw.bin` still flashes
+without asking. Anything that does not start with a subcommand name is parsed
+the way cxxopts parsed it, quirks included, so `--help wrap` still prints the
+full help and only `--help=wrap` picks a section.
+
+`tests/legacy.rs` replays 95 invocations recorded from the C++ tool and
+requires the same stdout, stderr and exit code from this one. Where the two
+deliberately differ:
+
+- `--version` prints a version rather than failing as an unknown option.
+- A CHIRP UV-5R image, and a Connect Systems file without a checksum as
+  CSFWTOOL writes it, are read rather than refused or misread as Yaesu.
+- `-d N --read-codeplug` and `-d N -p` work on a TYT radio in DFU mode, where
+  the C++ said they were not supported.
+- A Yaesu `--wrap` writes the segments as given, unpadded, as the C++ did;
+  the `wrap` subcommand pads to whole blocks.
+
+The subcommands (`radio_tool help`) are the safer interface for new use: the
+writing ones only check unless given `--write`.
 
 ## Building and testing
 
@@ -232,11 +257,11 @@ text configuration, and applies one back to an image offline. dmrconfig
 decides what a codeplug should contain; this moves it to and from the radio.
 
 ```
-radio-tool usb-read-codeplug --output dm1701.img
+radio_tool usb-read-codeplug --output dm1701.img
 dmrconfig dm1701.img > dm1701.conf
 $EDITOR dm1701.conf
 dmrconfig -c dm1701.img dm1701.conf
-radio-tool usb-write-codeplug --input device.img --write
+radio_tool usb-write-codeplug --input device.img --write
 ```
 
 Two things to know before doing that on a DM-1701.
@@ -271,9 +296,9 @@ Two things the C++ does are deliberately not carried over as they stand:
   `0x91` vendor commands are implemented by the radio's own firmware, not by
   the bootloader. The command checks whether the radio actually left the bus
   and says so rather than reporting success.
-- The command line cannot flash an Ailunce HD1 or a Yaesu FT-70D. Both
-  protocols are implemented and tested against fakes, but wiring them up
-  would ship a command that can brick a radio nobody here can test on.
+- Flashing an Ailunce HD1 (`flash --port`) or a Yaesu FT-70D (`flash`) is
+  wired up, because the C++ tool did it and its users still need it, but
+  neither has met a radio. Both are tested against fakes only.
 
 This tool does not build codeplugs, and should not. Editing channels, zones,
 contacts and the rest is what a CPS is for, and dmrconfig does it properly
@@ -283,11 +308,11 @@ division is that dmrconfig decides what a codeplug should contain, and this
 moves it to and from the radio.
 
 ```
-radio-tool usb-read-codeplug --output dm1701.img
+radio_tool usb-read-codeplug --output dm1701.img
 dmrconfig dm1701.img > dm1701.conf
 $EDITOR dm1701.conf
 dmrconfig -c dm1701.img dm1701.conf
-radio-tool usb-write-codeplug --input device.img --write
+radio_tool usb-write-codeplug --input device.img --write
 ```
 
 Things here that the C++ does not do at all: reading a DM-1701 codeplug,
@@ -467,7 +492,8 @@ the device reported 0x0004b1c8, which matches neither a byte sum
 ```
 
 One flash on real hardware settles it. Until then the protocol is implemented
-and tested against a fake device, and is not reachable from the command line.
+and tested against a fake device. `flash` and `-f` reach it, and fail if
+the device's sum matches neither candidate.
 
 ### What a real radio has confirmed
 

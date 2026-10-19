@@ -1,10 +1,10 @@
 //! Read, write and inspect amateur radio firmware and codeplug files.
 //!
-//! This is the Rust port of radio_tool. It currently covers the commands that
-//! work on files. The ones that need a radio attached, flashing and reading
-//! codeplugs over USB, serial or Bluetooth, are still only in the C++ tool.
+//! This is the Rust port of radio_tool. Subcommands are the native
+//! interface; the C++ tool's flags are still accepted, see `legacy`.
 
 mod format;
+mod legacy;
 
 use clap::{Parser, Subcommand};
 use firmware::{keyguess, sgl, tyt};
@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 #[derive(Parser)]
-#[command(name = "radio-tool", version, about, long_about = None)]
+#[command(name = "radio_tool", version, about, long_about = None)]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -178,6 +178,9 @@ enum Command {
         /// The firmware file, wrapped in its container
         #[arg(short, long)]
         input: PathBuf,
+        /// Serial port of an Ailunce HD1, which is not a USB radio
+        #[arg(short, long)]
+        port: Option<String>,
         /// Actually write. Without this it only says what it would do.
         #[arg(long)]
         write: bool,
@@ -215,6 +218,11 @@ enum Command {
 }
 
 fn main() -> ExitCode {
+    let args: Vec<std::ffi::OsString> = std::env::args_os().collect();
+    if !is_subcommand(args.get(1)) {
+        return legacy::run(&args);
+    }
+
     let cli = Cli::parse();
     match run(cli.command) {
         Ok(()) => ExitCode::SUCCESS,
@@ -223,6 +231,19 @@ fn main() -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+fn is_subcommand(first: Option<&std::ffi::OsString>) -> bool {
+    use clap::CommandFactory;
+    let Some(first) = first.and_then(|a| a.to_str()) else {
+        return false;
+    };
+    if matches!(first, "help" | "--version" | "-V") {
+        return true;
+    }
+    Cli::command()
+        .get_subcommands()
+        .any(|c| c.get_name() == first)
 }
 
 fn run(command: Command) -> Result<(), String> {
@@ -275,7 +296,16 @@ fn run(command: Command) -> Result<(), String> {
         Command::UsbInfo => usb_info(),
         Command::UsbRegisters => usb_registers(),
         Command::UsbDump { output, alt } => usb_dump(&output, alt),
-        Command::Flash { input, write } => flash(&input, write),
+        Command::Flash {
+            input,
+            port: Some(port),
+            write,
+        } => flash_ailunce(&read(&input)?, &port, write),
+        Command::Flash {
+            input,
+            port: None,
+            write,
+        } => flash(&input, write),
         Command::UsbLeave { address } => usb_leave(address.as_deref()),
         Command::BleScan { seconds, adapter } => ble_scan(seconds, adapter.as_deref()),
         Command::Ports => {
@@ -343,32 +373,82 @@ fn wrap(radio: &str, segments: &[String], output: &Path) -> Result<(), String> {
         .map(|s| parse_segment(s))
         .collect::<Result<_, _>>()?;
 
-    // the TYT container takes several regions, the SGL container one
+    let mut loaded = Vec::with_capacity(parsed.len());
+    for (address, path) in &parsed {
+        let data = read(path)?;
+        eprintln!("Adding segment {address:#010x} from {}", path.display());
+        loaded.push((*address, data));
+    }
+
+    write(output, &build_firmware(radio, &loaded, false)?)
+}
+
+/// Wrap segments into the container a radio uses.
+///
+/// `lenient` is the C++ behaviour: containers with one region take every
+/// segment laid end to end and ignore the addresses.
+fn build_firmware(
+    radio: &str,
+    segments: &[(u32, Vec<u8>)],
+    lenient: bool,
+) -> Result<Vec<u8>, String> {
+    let joined = || {
+        segments
+            .iter()
+            .flat_map(|(_, d)| d.iter().copied())
+            .collect::<Vec<u8>>()
+    };
+
     if tyt::config_for_model(radio).is_some() {
         let mut fw = tyt::TytFirmware::new(radio).map_err(|e| e.to_string())?;
-        for (address, path) in &parsed {
-            let data = read(path)?;
-            eprintln!("Adding segment {address:#010x} from {}", path.display());
-            fw.append_segment(*address, &data, 0)
+        for (address, data) in segments {
+            fw.append_segment(*address, data, 0)
                 .map_err(|e| e.to_string())?;
         }
-        return write(output, &fw.serialise().map_err(|e| e.to_string())?);
+        return fw.serialise().map_err(|e| e.to_string());
+    }
+
+    if firmware::cs::supports_model(radio) {
+        let [(address, data)] = segments else {
+            return Err("CS Firmware can only contain one segment!".to_owned());
+        };
+        let mut fw = firmware::cs::CsFirmware::new(radio).map_err(|e| e.to_string())?;
+        fw.set_segment(*address, data).map_err(|e| e.to_string())?;
+        return fw.serialise().map_err(|e| e.to_string());
     }
 
     if sgl::config_for_model(radio).is_some() {
-        let [(address, path)] = parsed.as_slice() else {
-            return Err("this radio takes exactly one segment".to_owned());
+        let data = if lenient {
+            joined()
+        } else {
+            let [(address, data)] = segments else {
+                return Err("this radio takes exactly one segment".to_owned());
+            };
+            if *address != 0 {
+                return Err(format!(
+                    "this radio writes from address 0, not {address:#x}"
+                ));
+            }
+            data.clone()
         };
-        if *address != 0 {
-            return Err(format!(
-                "this radio writes from address 0, not {address:#x}"
-            ));
-        }
-        let data = read(path)?;
-        eprintln!("Adding segment {address:#010x} from {}", path.display());
         let mut fw = sgl::SglFirmware::new(radio).map_err(|e| e.to_string())?;
         fw.set_data(&data).map_err(|e| e.to_string())?;
-        return write(output, &fw.serialise().map_err(|e| e.to_string())?);
+        return fw.serialise().map_err(|e| e.to_string());
+    }
+
+    if firmware::yaesu::supports_model(radio) {
+        if lenient {
+            return Ok(joined());
+        }
+        let mut fw = firmware::yaesu::YaesuFirmware::new(radio).map_err(|e| e.to_string())?;
+        fw.set_data(&joined()).map_err(|e| e.to_string())?;
+        return fw.serialise().map_err(|e| e.to_string());
+    }
+
+    if firmware::ailunce::supports_model(radio) {
+        let mut fw = firmware::ailunce::AilunceFirmware::new(radio).map_err(|e| e.to_string())?;
+        fw.set_data(&joined()).map_err(|e| e.to_string())?;
+        return fw.serialise().map_err(|e| e.to_string());
     }
 
     Err(format!(
@@ -457,8 +537,7 @@ fn usb_info() -> Result<(), String> {
     for radio in &found {
         println!("{radio}");
 
-        let mut usb = UsbDevice::open(radio.known.vendor, radio.known.product, timeout)
-            .map_err(|e| e.to_string())?;
+        let mut usb = UsbDevice::open_found(radio, timeout).map_err(|e| e.to_string())?;
 
         match radio.known.protocol {
             Protocol::TytDfu => {
@@ -492,7 +571,7 @@ fn usb_info() -> Result<(), String> {
                 }
             }
             Protocol::H8sx => {
-                usb.claim(0).map_err(|e| e.to_string())?;
+                claim_h8sx(&mut usb)?;
                 match device::h8sx::identify(&mut usb) {
                     Ok(id) => println!("  device: {id}"),
                     Err(e) => println!("  could not identify it: {e}"),
@@ -512,18 +591,10 @@ fn usb_registers() -> Result<(), String> {
     use device::dfu::{Dfu, tyt};
     use device::usb::{Protocol, UsbDevice};
 
-    let found = device::usb::list().map_err(|e| e.to_string())?;
-    let radio = found
-        .iter()
-        .find(|r| r.known.protocol == Protocol::TytDfu)
-        .ok_or("no TYT radio in DFU mode on USB")?;
+    let radio = &pick_radio(Some(Protocol::TytDfu), "no TYT radio in DFU mode on USB")?;
 
-    let usb = UsbDevice::open(
-        radio.known.vendor,
-        radio.known.product,
-        std::time::Duration::from_millis(5000),
-    )
-    .map_err(|e| e.to_string())?;
+    let usb = UsbDevice::open_found(radio, std::time::Duration::from_millis(5000))
+        .map_err(|e| e.to_string())?;
     let mut dfu = Dfu::new(usb);
 
     println!("{radio}");
@@ -572,16 +643,35 @@ fn hex(data: &[u8]) -> String {
 }
 
 /// Open the first TYT radio in DFU mode
+static CHOSEN: std::sync::OnceLock<device::usb::Found> = std::sync::OnceLock::new();
+
+/// The radio to work on: the one chosen by index, or else the first on the bus
+/// that speaks `protocol`
+fn pick_radio(
+    protocol: Option<device::usb::Protocol>,
+    missing: &str,
+) -> Result<device::usb::Found, String> {
+    if let Some(chosen) = CHOSEN.get() {
+        if protocol.is_some_and(|p| p != chosen.known.protocol) {
+            return Err(format!(
+                "the chosen radio is not one this works on: {chosen}"
+            ));
+        }
+        return Ok(chosen.clone());
+    }
+    device::usb::list()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .find(|r| protocol.is_none_or(|p| r.known.protocol == p))
+        .ok_or_else(|| missing.to_owned())
+}
+
 fn open_tyt_dfu(timeout: std::time::Duration) -> Result<device::usb::UsbDevice, String> {
     use device::usb::{Protocol, UsbDevice};
 
-    let found = device::usb::list().map_err(|e| e.to_string())?;
-    let radio = found
-        .iter()
-        .find(|r| r.known.protocol == Protocol::TytDfu)
-        .ok_or("no TYT radio in DFU mode on USB")?;
+    let radio = &pick_radio(Some(Protocol::TytDfu), "no TYT radio in DFU mode on USB")?;
 
-    UsbDevice::open(radio.known.vendor, radio.known.product, timeout).map_err(|e| e.to_string())
+    UsbDevice::open_found(radio, timeout).map_err(|e| e.to_string())
 }
 
 /// Read a radio's clock.
@@ -754,11 +844,7 @@ fn usb_write_codeplug(input: &Path, do_write: bool) -> Result<(), String> {
         ));
     }
 
-    let found = device::usb::list().map_err(|e| e.to_string())?;
-    let radio = found
-        .iter()
-        .find(|r| r.known.protocol == Protocol::TytDfu)
-        .ok_or("no TYT radio in DFU mode on USB")?;
+    let radio = &pick_radio(Some(Protocol::TytDfu), "no TYT radio in DFU mode on USB")?;
 
     println!("Codeplug: {} ({} bytes)", input.display(), image.len());
     println!("Radio:    {radio}");
@@ -769,12 +855,8 @@ fn usb_write_codeplug(input: &Path, do_write: bool) -> Result<(), String> {
         return Ok(());
     }
 
-    let mut usb = UsbDevice::open(
-        radio.known.vendor,
-        radio.known.product,
-        std::time::Duration::from_secs(30),
-    )
-    .map_err(|e| e.to_string())?;
+    let mut usb = UsbDevice::open_found(radio, std::time::Duration::from_secs(30))
+        .map_err(|e| e.to_string())?;
     usb.claim(0).map_err(|e| e.to_string())?;
 
     println!();
@@ -803,20 +885,13 @@ fn usb_read_codeplug(output: &Path) -> Result<(), String> {
     use device::dfu::{Dfu, codeplug};
     use device::usb::{Protocol, UsbDevice};
 
-    let found = device::usb::list().map_err(|e| e.to_string())?;
-    let radio = found
-        .iter()
-        .find(|r| r.known.protocol == Protocol::TytDfu)
-        .ok_or(
-            "no TYT radio in DFU mode on USB. Hold PTT and the button above it while switching on",
-        )?;
+    let radio = &pick_radio(
+        Some(Protocol::TytDfu),
+        "no TYT radio in DFU mode on USB. Hold PTT and the button above it while switching on",
+    )?;
 
-    let mut usb = UsbDevice::open(
-        radio.known.vendor,
-        radio.known.product,
-        std::time::Duration::from_secs(30),
-    )
-    .map_err(|e| e.to_string())?;
+    let mut usb = UsbDevice::open_found(radio, std::time::Duration::from_secs(30))
+        .map_err(|e| e.to_string())?;
 
     // dmrconfig claims the interface before it starts, and the radio wants
     // that before it will hand over its configuration memory
@@ -1031,18 +1106,10 @@ fn usb_leave(address: Option<&str>) -> Result<(), String> {
     use device::dfu::Dfu;
     use device::usb::{Protocol, UsbDevice};
 
-    let found = device::usb::list().map_err(|e| e.to_string())?;
-    let radio = found
-        .iter()
-        .find(|r| r.known.protocol == Protocol::TytDfu)
-        .ok_or("no TYT radio in DFU mode on USB")?;
+    let radio = &pick_radio(Some(Protocol::TytDfu), "no TYT radio in DFU mode on USB")?;
 
-    let usb = UsbDevice::open(
-        radio.known.vendor,
-        radio.known.product,
-        std::time::Duration::from_secs(10),
-    )
-    .map_err(|e| e.to_string())?;
+    let usb = UsbDevice::open_found(radio, std::time::Duration::from_secs(10))
+        .map_err(|e| e.to_string())?;
 
     let layout = usb.memory_layout().map_err(|e| e.to_string())?;
     let start = match address {
@@ -1071,13 +1138,27 @@ fn flash(input: &Path, do_write: bool) -> Result<(), String> {
     use device::usb::{Protocol, UsbDevice};
 
     let data = read(input)?;
+
+    let radio = &pick_radio(
+        None,
+        "no radio found on USB. Is it in bootloader or DFU mode?",
+    )?;
+    if radio.known.protocol == Protocol::H8sx {
+        return flash_h8sx(&data, radio, do_write);
+    }
+
     let firmware = format::Firmware::identify(&data)
         .ok_or("this file is not a firmware container this tool recognises")?;
-
-    let found = device::usb::list().map_err(|e| e.to_string())?;
-    let radio = found
-        .first()
-        .ok_or("no radio found on USB. Is it in bootloader or DFU mode?")?;
+    let wanted = match radio.known.protocol {
+        Protocol::TytHid => matches!(firmware, format::Firmware::Sgl(_)),
+        _ => matches!(firmware, format::Firmware::Tyt(_)),
+    };
+    if !wanted {
+        return Err(format!(
+            "this is {} firmware, which is not what the radio on USB takes",
+            firmware.radio()
+        ));
+    }
 
     // an SGL radio speaks the HID protocol and knows its own memory, so it
     // needs none of the sector work below
@@ -1085,12 +1166,8 @@ fn flash(input: &Path, do_write: bool) -> Result<(), String> {
         return flash_hid(&firmware, radio, do_write);
     }
 
-    let usb = UsbDevice::open(
-        radio.known.vendor,
-        radio.known.product,
-        std::time::Duration::from_secs(30),
-    )
-    .map_err(|e| e.to_string())?;
+    let usb = UsbDevice::open_found(radio, std::time::Duration::from_secs(30))
+        .map_err(|e| e.to_string())?;
 
     // what the radio says may be written, which is not the same as what the
     // chip has
@@ -1197,6 +1274,99 @@ fn flash(input: &Path, do_write: bool) -> Result<(), String> {
     Ok(())
 }
 
+fn claim_h8sx(usb: &mut device::usb::UsbDevice) -> Result<(), String> {
+    usb.claim_with_detach(0).map_err(|e| e.to_string())?;
+    usb.set_endpoints(0x01, 0x82);
+    Ok(())
+}
+
+/// Write firmware to a Yaesu radio over the H8SX boot protocol. The file is
+/// raw firmware, padded to a whole number of blocks.
+fn flash_h8sx(data: &[u8], radio: &device::usb::Found, do_write: bool) -> Result<(), String> {
+    let fw = firmware::yaesu::YaesuFirmware::parse(data).map_err(|e| e.to_string())?;
+
+    println!(
+        "Firmware: {} for a Yaesu radio",
+        format::format_bytes(fw.data().len() as u64)
+    );
+    println!("Radio:    {radio}");
+
+    if !do_write {
+        println!();
+        println!("Nothing was written. Pass --write to do it.");
+        return Ok(());
+    }
+
+    let mut usb = device::usb::UsbDevice::open_found(radio, std::time::Duration::from_secs(30))
+        .map_err(|e| e.to_string())?;
+    claim_h8sx(&mut usb)?;
+
+    println!();
+    println!("Writing. Do not unplug the radio.");
+    let check = device::h8sx::flash(&mut usb, fw.data(), |p| {
+        eprint!(
+            "\r  {} of {}      ",
+            format::format_bytes(p.sent as u64),
+            format::format_bytes(p.total as u64)
+        );
+    })
+    .map_err(|e| e.to_string())?;
+    eprintln!();
+    eprintln!("Sum check: {}", check.explain());
+    if !check.agrees() {
+        return Err("error during user MAT sum check!".to_owned());
+    }
+
+    println!("Done. Restart the radio.");
+    Ok(())
+}
+
+/// Write firmware to an Ailunce HD1 over its serial cable
+fn flash_ailunce(data: &[u8], port: &str, do_write: bool) -> Result<(), String> {
+    use device::ByteStream;
+
+    let fw = firmware::ailunce::AilunceFirmware::parse(data).map_err(|e| e.to_string())?;
+
+    println!(
+        "Firmware: {} for an Ailunce HD1",
+        format::format_bytes(fw.data().len() as u64)
+    );
+    println!("Port:     {port}");
+
+    if !do_write {
+        println!();
+        println!("Nothing was written. Pass --write to do it.");
+        return Ok(());
+    }
+
+    let mut stream =
+        device::serial::SerialStream::open(port, 57_600, std::time::Duration::from_millis(2000))
+            .map_err(|e| e.to_string())?;
+    stream.write_all(b"1").map_err(|e| e.to_string())?;
+    stream.sleep(100);
+
+    println!();
+    println!("Writing. Do not unplug the radio.");
+    device::ymodem::send(
+        &mut stream,
+        "firmware.bin",
+        fw.data(),
+        &device::ymodem::Config::default(),
+        |p| {
+            eprint!(
+                "\r  {} of {}      ",
+                format::format_bytes(p.sent as u64),
+                format::format_bytes(p.total as u64)
+            );
+        },
+    )
+    .map_err(|e| e.to_string())?;
+    eprintln!();
+
+    println!("Done. Restart the radio.");
+    Ok(())
+}
+
 /// Write firmware to a radio that speaks the HID protocol, which is the
 /// Radioddity GD-77 and its relatives.
 ///
@@ -1235,12 +1405,8 @@ fn flash_hid(
         return Ok(());
     }
 
-    let mut usb = UsbDevice::open(
-        radio.known.vendor,
-        radio.known.product,
-        std::time::Duration::from_secs(30),
-    )
-    .map_err(|e| e.to_string())?;
+    let mut usb = UsbDevice::open_found(radio, std::time::Duration::from_secs(30))
+        .map_err(|e| e.to_string())?;
     usb.claim_hid().map_err(|e| e.to_string())?;
 
     println!();
@@ -1279,18 +1445,10 @@ fn usb_dump(output: &Path, alt: u8) -> Result<(), String> {
     /// The most a USB control transfer can carry
     const MAX_TRANSFER: usize = 0xffff;
 
-    let found = device::usb::list().map_err(|e| e.to_string())?;
-    let radio = found
-        .iter()
-        .find(|r| r.known.protocol == Protocol::TytDfu)
-        .ok_or("no TYT radio in DFU mode on USB")?;
+    let radio = &pick_radio(Some(Protocol::TytDfu), "no TYT radio in DFU mode on USB")?;
 
-    let mut usb = UsbDevice::open(
-        radio.known.vendor,
-        radio.known.product,
-        std::time::Duration::from_secs(30),
-    )
-    .map_err(|e| e.to_string())?;
+    let mut usb = UsbDevice::open_found(radio, std::time::Duration::from_secs(30))
+        .map_err(|e| e.to_string())?;
 
     let layout = usb.memory_layout().map_err(|e| e.to_string())?;
     let memory = layout

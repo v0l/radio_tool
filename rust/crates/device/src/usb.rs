@@ -154,6 +154,22 @@ impl UsbDevice {
                 ))
             })?;
 
+        Self::from_info(&info, timeout)
+    }
+
+    /// Open one particular radio from [`list`], which matters when two of
+    /// the same model are plugged in
+    pub fn open_found(found: &Found, timeout: Duration) -> Result<Self> {
+        let info = nusb::list_devices()
+            .wait()
+            .map_err(|e| Error::Port(format!("cannot list USB devices: {e}")))?
+            .find(|d| d.bus_id() == found.bus && d.device_address() == found.address)
+            .ok_or_else(|| Error::Port("the radio is no longer on the bus".to_owned()))?;
+
+        Self::from_info(&info, timeout)
+    }
+
+    fn from_info(info: &nusb::DeviceInfo, timeout: Duration) -> Result<Self> {
         let device = info
             .open()
             .wait()
@@ -166,6 +182,17 @@ impl UsbDevice {
             bulk_out: 0x02,
             bulk_in: 0x81,
         })
+    }
+
+    /// Claim an interface, first taking it from whatever kernel driver holds it
+    pub fn claim_with_detach(&mut self, number: u8) -> Result<()> {
+        let interface = self
+            .device
+            .detach_and_claim_interface(number)
+            .wait()
+            .map_err(|e| Error::Port(format!("cannot claim interface {number}: {e}")))?;
+        self.interface = Some(interface);
+        Ok(())
     }
 
     /// Claim an interface, which bulk transfers need and control transfers

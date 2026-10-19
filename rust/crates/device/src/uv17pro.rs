@@ -235,6 +235,16 @@ impl<S: ByteStream> Session<S> {
         }
     }
 
+    /// Identify the radio without reading its memory. Spends the session like
+    /// a download does.
+    pub fn info(&mut self) -> Result<RadioInfo> {
+        if self.spent {
+            return Err(Error::SessionSpent);
+        }
+        self.spent = true;
+        self.identify()
+    }
+
     /// Identify the radio and read its whole memory.
     ///
     /// The image has the CHIRP model name appended, which is how CHIRP knows
@@ -655,6 +665,20 @@ mod tests {
             "the radio complained: {:?}",
             session.stream.complaints
         );
+    }
+
+    #[test]
+    fn info_identifies_without_reading_memory() {
+        let m = model("UV17PRO").expect("UV17PRO is known");
+        let mut session = Session::new(FakeRadio::new(m), m);
+        let info = session.info().expect("info succeeds");
+        assert!(!info.ident.is_empty());
+        assert!(
+            session.stream.complaints.is_empty(),
+            "{:?}",
+            session.stream.complaints
+        );
+        assert!(matches!(session.download(), Err(Error::SessionSpent)));
     }
 
     #[test]
