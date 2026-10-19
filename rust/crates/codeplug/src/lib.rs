@@ -112,3 +112,4 @@ pub fn parse(data: &[u8]) -> Result<Box<dyn Codeplug>> {
     let format = identify(data).ok_or(Error::Malformed("not a codeplug this tool can read"))?;
     (format.parse)(data)
 }
+

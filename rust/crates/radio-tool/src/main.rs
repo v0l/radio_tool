@@ -896,6 +896,10 @@ fn write_codeplug(
 
     let data = read(input)?;
 
+    if let Some(model) = device::uv5r::model(radio) {
+        return write_codeplug_uv5r(input, &data, port, ble, radio, model, do_write);
+    }
+
     let model = uv17pro::model(radio)
         .ok_or_else(|| format!("{radio:?} cannot be written to yet, see the models command"))?;
 
@@ -949,6 +953,66 @@ fn write_codeplug(
 
     uv17pro::Session::new(stream, model)
         .upload(&data, |done, all| {
+            eprint!("\r  {done} of {all} bytes    ");
+        })
+        .map_err(|e| e.to_string())?;
+
+    eprintln!();
+    println!("Done.");
+    Ok(())
+}
+
+/// Write a codeplug back to a UV-5R family radio over a cable.
+///
+/// Only the ranges CHIRP writes are sent, and the driver refuses images that
+/// did not come from this radio where that would matter, so the calibration
+/// the radio keeps in the gaps survives.
+fn write_codeplug_uv5r(
+    input: &Path,
+    data: &[u8],
+    port: Option<&str>,
+    ble: Option<&str>,
+    radio: &str,
+    model: &'static device::uv5r::Model,
+    do_write: bool,
+) -> Result<(), String> {
+    use device::serial::SerialStream;
+
+    if ble.is_some() {
+        return Err(format!(
+            "the {radio} has no Bluetooth, it clones over a cable only"
+        ));
+    }
+
+    let image = codeplug::uv5r::strip_chirp_metadata(data);
+
+    println!("Codeplug: {} ({} bytes)", input.display(), image.len());
+    println!("Radio:    {radio}");
+
+    match codeplug::uv5r::Uv5rCodeplug::parse(image) {
+        Ok(parsed) => {
+            println!("Firmware: {}", parsed.firmware_version());
+            println!("Channels: {} in use", parsed.used_channels().count());
+        }
+        Err(e) => println!("  warning: this does not parse as a UV-5R image ({e})"),
+    }
+
+    if !do_write {
+        println!();
+        println!("Nothing was written. Pass --write to do it.");
+        return Ok(());
+    }
+
+    let Some(port) = port else {
+        return Err("a serial port is needed, for example --port /dev/ttyUSB0".to_owned());
+    };
+
+    eprintln!("Writing the codeplug to a {radio} on {port}");
+    let timeout = std::time::Duration::from_millis(2000);
+    let stream = SerialStream::open(port, UV5R_BAUD, timeout).map_err(|e| e.to_string())?;
+
+    device::uv5r::Session::new(stream, model)
+        .upload(image, |done, all| {
             eprint!("\r  {done} of {all} bytes    ");
         })
         .map_err(|e| e.to_string())?;

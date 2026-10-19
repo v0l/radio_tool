@@ -27,6 +27,26 @@ const AUX_PRIMER: u16 = 0x1e80;
 /// Where the firmware version sits within the first aux block
 const VERSION_IN_BLOCK: std::ops::Range<usize> = 48..62;
 
+/// An image is the ident block followed by the radio memory, so a file
+/// offset is the radio address plus this
+const IDENT_LEN: usize = 0x08;
+/// The end of main memory as a file offset
+const MAIN_END_FILE: usize = IDENT_LEN + MAIN_END as usize;
+/// Where the aux block sits in a file, radio address `AUX_START`
+const AUX_IN_FILE: usize = MAIN_END_FILE;
+/// A file that also carries the aux block is at least this long
+const FULL_LEN: usize = AUX_IN_FILE + (AUX_END - AUX_START) as usize;
+/// The firmware version, as a file offset
+const FW_VER_FILE: std::ops::Range<usize> = 0x1838..0x1846;
+/// Blocks are written this many bytes at a time
+const WRITE_BLOCK: usize = 0x10;
+/// Byte 3 of the ident on the 220MHz radios
+const VHF_220: u8 = 0x02;
+
+/// Main memory, as file offsets. The gaps are calibration the radio keeps
+/// to itself and CHIRP has never written.
+const RANGES_MAIN: [(usize, usize); 3] = [(0x0008, 0x0cf8), (0x0d08, 0x0df8), (0x0e08, 0x1808)];
+
 /// A radio this driver speaks to
 #[derive(Debug, Clone, Copy)]
 pub struct Model {
@@ -36,6 +56,10 @@ pub struct Model {
     pub idents: &'static [&'static [u8]],
     /// Whether this radio has the aux memory block
     pub aux_block: bool,
+    /// Whether a firmware version below BFB291 means an 'original' radio,
+    /// which takes a different set of aux writes. Only the UV-5R is old
+    /// enough for this to be possible.
+    pub version_marks_orig: bool,
 }
 
 /// Every radio this driver speaks to. Magics from CHIRP's `uv5r.py`.
@@ -47,11 +71,13 @@ pub const ALL: &[Model] = &[
             &[0x50, 0xbb, 0xff, 0x01, 0x25, 0x98, 0x4d],
         ],
         aux_block: true,
+        version_marks_orig: true,
     },
     Model {
         name: "UV82",
         idents: &[&[0x50, 0xbb, 0xff, 0x20, 0x13, 0x01, 0x05]],
         aux_block: true,
+        version_marks_orig: false,
     },
     Model {
         name: "UV6",
@@ -60,11 +86,13 @@ pub const ALL: &[Model] = &[
             &[0x50, 0xbb, 0xff, 0x12, 0x03, 0x98, 0x4d],
         ],
         aux_block: true,
+        version_marks_orig: false,
     },
     Model {
         name: "F11",
         idents: &[&[0x50, 0xbb, 0xff, 0x13, 0xa1, 0x11, 0xdd]],
         aux_block: false,
+        version_marks_orig: false,
     },
 ];
 
@@ -166,6 +194,165 @@ impl<S: ByteStream> Session<S> {
         }
 
         Ok((image, info))
+    }
+
+    /// Write an image back to the radio.
+    ///
+    /// Only the ranges CHIRP writes are sent: the gaps in main memory hold
+    /// calibration the radio needs and the factory never re-writes, and the
+    /// aux block is written selectively because most of it is per-radio.
+    /// `progress` is called with the bytes sent so far and the total.
+    pub fn upload<F>(&mut self, image: &[u8], mut progress: F) -> Result<()>
+    where
+        F: FnMut(usize, usize),
+    {
+        if self.spent {
+            return Err(Error::SessionSpent);
+        }
+        self.spent = true;
+
+        if image.len() < MAIN_END_FILE {
+            return Err(Error::Incompatible(format!(
+                "the image is {} bytes, a {} needs at least {MAIN_END_FILE}",
+                image.len(),
+                self.model.name
+            )));
+        }
+
+        let ident = self.identify()?;
+
+        // byte 3 of the ident says which band the radio covers. Writing a
+        // 220MHz image to a 2m radio, or the other way round, bricks it.
+        let radio_band = ident.get(3).copied();
+        let image_band = image.get(3).copied();
+        if (radio_band == Some(VHF_220) || image_band == Some(VHF_220))
+            && radio_band != image_band
+        {
+            return Err(Error::Incompatible(
+                "one of the radio and the image is a 220MHz model and the other is not".to_owned(),
+            ));
+        }
+
+        let mut ranges_aux: Vec<(usize, usize)> = Vec::new();
+
+        if self.model.aux_block {
+            let aux = self.read_aux()?;
+
+            let radio_orig = self.model.version_marks_orig && is_orig(&aux.version);
+            let image_orig = self.model.version_marks_orig
+                && is_orig(image.get(FW_VER_FILE).unwrap_or_default());
+            if radio_orig != image_orig {
+                return Err(Error::Incompatible(format!(
+                    "the radio runs {} and the image came from {}, which are either \
+                     side of the BFB291 firmware split",
+                    trim(&aux.version),
+                    trim(image.get(FW_VER_FILE).unwrap_or_default()),
+                )));
+            }
+
+            if image.len() >= FULL_LEN {
+                // the per-radio areas of the aux block have to match, or the
+                // image did not come from this radio and writing the whole
+                // block would move its band limits and squelch calibration
+                let matched = image.get(0x1848..0x18a8) == Some(aux.area1.as_slice())
+                    && image.get(0x18b8..0x18c8) == Some(aux.area2.as_slice())
+                    && image.get(0x18d8..0x1908) == Some(aux.area3.as_slice());
+
+                if aux.dropped_byte && !matched {
+                    return Err(Error::Incompatible(
+                        "the aux memory in this image came from a different radio, and this \
+                         radio drops a byte when its aux memory is read, so the two cannot be \
+                         reconciled. Read this radio, change that image, write it back."
+                            .to_owned(),
+                    ));
+                }
+
+                ranges_aux = if image_orig {
+                    vec![(0x1ee0, 0x1ef0), (0x1fc0, 0x1fe0)]
+                } else if matched {
+                    vec![(usize::from(AUX_START), usize::from(AUX_END))]
+                } else {
+                    // welcome message, VHF and UHF squelch, band limits
+                    vec![
+                        (0x1ee0, 0x1ef0),
+                        (0x1f60, 0x1f70),
+                        (0x1f80, 0x1f90),
+                        (0x1fc0, 0x1fd0),
+                    ]
+                };
+            }
+        }
+
+        let span = |r: &[(usize, usize)]| r.iter().map(|(s, e)| e.saturating_sub(*s)).sum::<usize>();
+        let total = span(&RANGES_MAIN).saturating_add(span(&ranges_aux));
+        let mut done = 0usize;
+
+        for (start, end) in RANGES_MAIN {
+            for offset in (start..end).step_by(WRITE_BLOCK) {
+                let chunk = image
+                    .get(offset..offset.saturating_add(WRITE_BLOCK))
+                    .ok_or_else(|| Error::Incompatible("the image ends early".to_owned()))?;
+                // main memory addresses are file offsets less the ident
+                self.send_block((offset.saturating_sub(IDENT_LEN)) as u16, chunk)?;
+                done = done.saturating_add(WRITE_BLOCK);
+                progress(done, total);
+            }
+        }
+
+        for (start, end) in ranges_aux {
+            for addr in (start..end).step_by(WRITE_BLOCK) {
+                let offset = AUX_IN_FILE.saturating_add(addr.saturating_sub(usize::from(AUX_START)));
+                let chunk = image
+                    .get(offset..offset.saturating_add(WRITE_BLOCK))
+                    .ok_or_else(|| Error::Incompatible("the aux block ends early".to_owned()))?;
+                self.send_block(addr as u16, chunk)?;
+                done = done.saturating_add(WRITE_BLOCK);
+                progress(done, total);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// The parts of the aux block that decide what may be written back
+    fn read_aux(&mut self) -> Result<AuxData> {
+        // reading the aux area cold gives junk on newer radios, so touch a
+        // block outside it first
+        self.read_block(AUX_PRIMER, BLOCK, true)?;
+        let block1 = self.read_block(0x1ec0, BLOCK, false)?;
+        let block2 = self.read_block(0x1f00, BLOCK, false)?;
+        let block3 = self.read_block(0x1f40, BLOCK, false)?;
+        let block4 = self.read_block(0x1f80, BLOCK, false)?;
+        let block5 = self.read_block(0x1fc0, BLOCK, false)?;
+
+        let mut area1 = block2;
+        area1.extend_from_slice(block3.get(0..32).unwrap_or_default());
+
+        Ok(AuxData {
+            version: block1.get(VERSION_IN_BLOCK).unwrap_or_default().to_vec(),
+            area1,
+            area2: block3.get(48..64).unwrap_or_default().to_vec(),
+            area3: block4.get(16..64).unwrap_or_default().to_vec(),
+            dropped_byte: block5.get(15) == Some(&0xff),
+        })
+    }
+
+    /// Write one block and wait for the radio to acknowledge it
+    fn send_block(&mut self, addr: u16, data: &[u8]) -> Result<()> {
+        let mut msg = vec![b'X', (addr >> 8) as u8, (addr & 0xff) as u8, data.len() as u8];
+        msg.extend_from_slice(data);
+        self.stream.write_all(&msg)?;
+        self.stream.sleep(50);
+
+        let ack = self.stream.read(1)?;
+        if ack.first() != Some(&ACK) {
+            return Err(Error::Unexpected {
+                what: "block write acknowledgement",
+                expected: "0x06".to_owned(),
+                got: format!("{ack:02x?} after writing {addr:#06x}"),
+            });
+        }
+        Ok(())
     }
 
     /// Try each magic this model is known by until one is answered
@@ -282,6 +469,36 @@ impl<S: ByteStream> Session<S> {
     }
 }
 
+/// The parts of a radio's aux block that an upload has to look at
+#[derive(Debug, Clone, Default)]
+struct AuxData {
+    /// Firmware version, as reported by the radio
+    version: Vec<u8>,
+    /// Radio address 0x1f00 to 0x1f60
+    area1: Vec<u8>,
+    /// Radio address 0x1f70 to 0x1f80
+    area2: Vec<u8>,
+    /// Radio address 0x1f90 to 0x1fc0
+    area3: Vec<u8>,
+    /// Whether this radio drops the byte at 0x1fcf when read in 0x40 blocks
+    dropped_byte: bool,
+}
+
+/// Whether a firmware version is from before BFB291, when the aux block was
+/// laid out differently
+fn is_orig(version: &[u8]) -> bool {
+    let Some(at) = version.windows(3).position(|w| w == b"BFB") else {
+        return false;
+    };
+    let digits = version
+        .get(at.saturating_add(3)..at.saturating_add(6))
+        .unwrap_or_default();
+    std::str::from_utf8(digits)
+        .ok()
+        .and_then(|d| d.parse::<u32>().ok())
+        .is_some_and(|v| v < 291)
+}
+
 /// A radio string, up to the first terminator
 fn trim(data: &[u8]) -> String {
     let end = data
@@ -325,6 +542,8 @@ mod tests {
         first_block_done: bool,
         complaints: Vec<String>,
         blocks_read: usize,
+        /// Every block the driver wrote, as address and data
+        writes: Vec<(u16, Vec<u8>)>,
         slept: u64,
     }
 
@@ -345,6 +564,7 @@ mod tests {
                 first_block_done: false,
                 complaints: Vec::new(),
                 blocks_read: 0,
+                writes: Vec::new(),
                 slept: 0,
             }
         }
@@ -416,6 +636,25 @@ mod tests {
                         self.outgoing.extend_from_slice(&block);
                         self.awaiting_block_ack = true;
                         self.blocks_read += 1;
+                    }
+                    b'X' => {
+                        if self.incoming.len() < 4 {
+                            return;
+                        }
+                        let size = usize::from(self.incoming[3]);
+                        if self.incoming.len() < 4 + size {
+                            return;
+                        }
+                        let msg: Vec<u8> = self.incoming.drain(..4 + size).collect();
+                        let addr = usize::from(msg[1]) << 8 | usize::from(msg[2]);
+                        if addr + size > self.memory.len() {
+                            self.complain(format!("write past the end at {addr:#x}"));
+                            return;
+                        }
+                        let data = msg[4..].to_vec();
+                        self.memory[addr..addr + size].copy_from_slice(&data);
+                        self.writes.push((addr as u16, data));
+                        self.outgoing.push(ACK);
                     }
                     other => {
                         self.complain(format!("unknown command {other:#04x}"));
@@ -577,6 +816,175 @@ mod tests {
         }
         assert!(model("UV5R").is_some());
         assert!(model("NOPE").is_none());
+    }
+
+    /// An image as the driver's own download would produce: ident, main
+    /// memory, aux block, all read out of the given radio
+    fn image_from(radio: &FakeRadio) -> Vec<u8> {
+        let mut image = radio.ident.clone();
+        image.extend_from_slice(&radio.memory[0..0x1800]);
+        image.extend_from_slice(&radio.memory[0x1ec0..0x2000]);
+        image
+    }
+
+    #[test]
+    fn an_upload_writes_main_memory_but_not_the_calibration_gaps() {
+        let radio = FakeRadio::new();
+        let mut image = image_from(&radio);
+        // the aux areas match, since the image came from this radio, but the
+        // dropped byte quirk is on, which is the strictest path
+        image[0x0008..0x0018].copy_from_slice(&[0xaa; 0x10]);
+
+        let mut session = Session::new(radio, model("UV5R").expect("UV5R is known"));
+        session
+            .upload(&image, |_, _| {})
+            .expect("the upload succeeds");
+
+        let written: std::collections::BTreeSet<u16> =
+            session.stream.writes.iter().map(|(a, _)| *a).collect();
+
+        assert!(written.contains(&0x0000), "the first channel was written");
+        assert_eq!(
+            session.stream.memory[0x0000..0x0010],
+            [0xaa; 0x10],
+            "the change reached the radio"
+        );
+
+        // CHIRP skips 0x0cf8..0x0d08 and 0x0df8..0x0e08 as file offsets,
+        // which are these radio addresses
+        for gap in [0x0cf0u16, 0x0df0] {
+            assert!(
+                !written.contains(&gap),
+                "{gap:#06x} is calibration and must not be written"
+            );
+        }
+
+        assert!(
+            session.stream.complaints.is_empty(),
+            "the radio complained: {:?}",
+            session.stream.complaints
+        );
+    }
+
+    #[test]
+    fn an_image_from_this_radio_gets_the_whole_aux_block() {
+        let radio = FakeRadio::new();
+        let image = image_from(&radio);
+
+        let mut session = Session::new(radio, model("UV5R").expect("UV5R is known"));
+        session
+            .upload(&image, |_, _| {})
+            .expect("the upload succeeds");
+
+        let aux_writes = session
+            .stream
+            .writes
+            .iter()
+            .filter(|(a, _)| *a >= AUX_START)
+            .count();
+        assert_eq!(aux_writes, 0x140 / 0x10, "the full aux block was written");
+    }
+
+    #[test]
+    fn an_image_from_another_radio_is_refused_when_the_aux_cannot_be_trusted() {
+        let radio = FakeRadio::new();
+        let mut image = image_from(&radio);
+        // area 1 lives at radio 0x1f00, file 0x1848
+        image[0x1848] ^= 0xff;
+
+        let mut session = Session::new(radio, model("UV5R").expect("UV5R is known"));
+        let result = session.upload(&image, |_, _| {});
+
+        assert!(
+            matches!(result, Err(Error::Incompatible(_))),
+            "a foreign image must be refused, got {result:?}"
+        );
+        assert!(
+            session.stream.writes.is_empty(),
+            "nothing may be written before the checks pass"
+        );
+    }
+
+    #[test]
+    fn a_foreign_image_on_a_sound_radio_writes_only_the_safe_aux_ranges() {
+        let mut radio = FakeRadio::new();
+        // no dropped byte, so a mismatched aux is tolerated in part
+        radio.memory[0x1fcf] = 0x00;
+        let mut image = image_from(&radio);
+        image[0x1848] ^= 0xff;
+
+        let mut session = Session::new(radio, model("UV5R").expect("UV5R is known"));
+        session
+            .upload(&image, |_, _| {})
+            .expect("the upload succeeds");
+
+        let aux: Vec<u16> = session
+            .stream
+            .writes
+            .iter()
+            .map(|(a, _)| *a)
+            .filter(|a| *a >= AUX_START)
+            .collect();
+        assert_eq!(aux, vec![0x1ee0, 0x1f60, 0x1f80, 0x1fc0]);
+    }
+
+    #[test]
+    fn a_short_image_is_refused() {
+        let radio = FakeRadio::new();
+        let mut session = Session::new(radio, model("UV5R").expect("UV5R is known"));
+        assert!(matches!(
+            session.upload(&[0u8; 0x100], |_, _| {}),
+            Err(Error::Incompatible(_))
+        ));
+    }
+
+    #[test]
+    fn a_220mhz_image_is_refused_by_a_2m_radio() {
+        let radio = FakeRadio::new();
+        let mut image = image_from(&radio);
+        image[3] = VHF_220;
+
+        let mut session = Session::new(radio, model("UV5R").expect("UV5R is known"));
+        let result = session.upload(&image, |_, _| {});
+        assert!(
+            matches!(result, Err(Error::Incompatible(_))),
+            "got {result:?}"
+        );
+        assert!(session.stream.writes.is_empty());
+    }
+
+    #[test]
+    fn what_is_written_reads_back_the_same() {
+        // the round trip is what a user actually does: read, change, write,
+        // read again
+        let radio = FakeRadio::new();
+        let mut image = image_from(&radio);
+        image[0x0018..0x0028].copy_from_slice(&[0x5a; 0x10]);
+
+        let mut session = Session::new(radio, model("UV5R").expect("UV5R is known"));
+        session
+            .upload(&image, |_, _| {})
+            .expect("the upload succeeds");
+
+        let mut again = Session::new(
+            FakeRadio {
+                memory: session.stream.memory.clone(),
+                ..FakeRadio::new()
+            },
+            model("UV5R").expect("UV5R is known"),
+        );
+        let (read_back, _) = again.download().expect("the download succeeds");
+        assert_eq!(read_back[0x0018..0x0028], [0x5a; 0x10]);
+    }
+
+    #[test]
+    fn old_firmware_is_recognised() {
+        assert!(is_orig(b"BFB250"), "before the split");
+        assert!(!is_orig(b"BFB291"), "the split itself");
+        assert!(!is_orig(b"BFB297"), "after the split");
+        assert!(!is_orig(b"HN5RV01"), "a version with no BFB in it");
+        assert!(!is_orig(b""), "nothing at all");
+        assert!(!is_orig(b"BFB"), "a truncated version");
     }
 
     #[test]

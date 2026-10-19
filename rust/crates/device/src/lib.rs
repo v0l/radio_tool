@@ -67,6 +67,10 @@ pub enum Error {
     /// A clone session can only run once
     #[error("this session has already been used, open the port again")]
     SessionSpent,
+
+    /// The image would not be safe to write to the radio that is attached
+    #[error("this image does not belong to this radio: {0}")]
+    Incompatible(String),
 }
 
 /// Result alias for this crate
