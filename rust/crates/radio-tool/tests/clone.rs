@@ -80,7 +80,7 @@ impl Drop for Simulator {
 
 #[test]
 fn we_clone_the_same_image_the_cpp_did() {
-    if cfg!(windows) {
+    if !cfg!(target_os = "linux") {
         eprintln!("skipping: needs a pty");
         return;
     }
@@ -155,7 +155,7 @@ fn run_against_simulator(name: &str, args: &[&str]) -> Option<std::process::Outp
 
 #[test]
 fn the_cpp_flags_read_the_same_image() {
-    if cfg!(windows) {
+    if !cfg!(target_os = "linux") {
         return;
     }
     let image = std::env::temp_dir().join(format!("radio_tool_flags_{}.img", std::process::id()));
@@ -183,7 +183,7 @@ fn the_cpp_flags_read_the_same_image() {
 
 #[test]
 fn the_cpp_info_flag_reports_what_the_cpp_did() {
-    if cfg!(windows) {
+    if !cfg!(target_os = "linux") {
         return;
     }
     let Some(out) = run_against_simulator("info", &["-r", "UV5R", "--info"]) else {

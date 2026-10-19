@@ -25,14 +25,13 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: rust
     steps:
       - uses: actions/checkout@v4
-      - name: apt-install
+      - name: linux dependencies
         if: runner.os == 'Linux'
-        run: sudo apt update && sudo apt install -y libudev-dev libdbus-1-dev pkg-config
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends pkg-config libudev-dev libdbus-1-dev
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -40,33 +39,47 @@ jobs:
         with:
           workspaces: rust
           key: ${{ matrix.target }}
-      - run: cargo build --release --locked --target ${{ matrix.target }} -p radio-tool
+      - run: cargo build --release --locked -p radio-tool --target ${{ matrix.target }} --manifest-path rust/Cargo.toml
       - name: package
         shell: bash
         run: |
-          set -euo pipefail
           name=radio_tool-${{ matrix.target }}
           mkdir -p "dist/$name"
-          cp ../README.md ../LICENSE ../CHANGELOG.md "dist/$name/"
-          cp udev/99-radio-tool.rules "dist/$name/"
+          cp README.md LICENSE CHANGELOG.md rust/udev/99-radio-tool.rules "dist/$name/"
           cd dist
           if [[ "${{ matrix.target }}" == *windows* ]]; then
-            cp "../target/${{ matrix.target }}/release/radio_tool.exe" "$name/"
+            cp "../rust/target/${{ matrix.target }}/release/radio_tool.exe" "$name/"
             7z a "$name.zip" "$name" >/dev/null
             sha256sum "$name.zip" > "$name.zip.sha256"
           else
-            cp "../target/${{ matrix.target }}/release/radio_tool" "$name/"
+            cp "../rust/target/${{ matrix.target }}/release/radio_tool" "$name/"
             tar czf "$name.tar.gz" "$name"
             shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256"
           fi
+      - name: install wix
+        if: runner.os == 'Windows'
+        run: dotnet tool install --global wix --version 5.0.2
+      - name: msi
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(cargo metadata --no-deps --format-version 1 --manifest-path rust/Cargo.toml | jq -r '.packages[] | select(.name == "radio-tool") | .version')
+          name=radio_tool-${{ matrix.target }}
+          wix build -arch x64 -pdbtype none \
+            -d "Version=${version%%-*}" \
+            -d "BinDir=rust/target/${{ matrix.target }}/release" \
+            -o "dist/$name.msi" packaging/windows/radio_tool.wxs
+          (cd dist && sha256sum "$name.msi" > "$name.msi.sha256")
       - uses: actions/upload-artifact@v4
         with:
           name: radio_tool-${{ matrix.target }}
           if-no-files-found: error
           path: |
-            rust/dist/*.tar.gz
-            rust/dist/*.zip
-            rust/dist/*.sha256
+            dist/*.tar.gz
+            dist/*.zip
+            dist/*.msi
+            dist/*.sha256
 
   release:
     needs: build

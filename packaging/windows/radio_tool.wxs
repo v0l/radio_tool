@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="radio_tool"
+      Manufacturer="v0l"
+      Version="$(var.Version)"
+      UpgradeCode="2da2dd33-799c-48af-88d7-a7e83aeb1d97"
+      Scope="perMachine"
+      Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of radio_tool is already installed." />
+    <MediaTemplate EmbedCab="yes" />
+
+    <Icon Id="AppIcon" SourceFile="packaging\windows\icon.ico" />
+    <Property Id="ARPPRODUCTICON" Value="AppIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/v0l/radio_tool" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="radio_tool">
+        <Component Id="AppExe" Guid="ad224304-38d6-429e-abf1-fb9b69b20b5a">
+          <File Id="RadioToolExe" Source="$(var.BinDir)\radio_tool.exe" KeyPath="yes" />
+          <Environment Id="RadioToolPath" Name="PATH" Value="[INSTALLFOLDER]" Action="set" Part="last" System="yes" Permanent="no" />
+        </Component>
+        <Component Id="AppDocs" Guid="38da4151-8387-4eb9-b6a9-7464a6538453">
+          <File Id="ReadmeMd" Source="README.md" KeyPath="yes" />
+          <File Id="ChangelogMd" Source="CHANGELOG.md" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+
+    <Feature Id="Main" Title="radio_tool" Level="1">
+      <ComponentRef Id="AppExe" />
+      <ComponentRef Id="AppDocs" />
+    </Feature>
+  </Package>
+</Wix>
