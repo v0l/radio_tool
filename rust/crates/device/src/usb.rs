@@ -298,9 +298,32 @@ impl UsbDevice {
     }
 }
 
+#[cfg(not(target_os = "windows"))]
+type ControlTarget = nusb::Device;
+#[cfg(target_os = "windows")]
+type ControlTarget = nusb::Interface;
+
+impl UsbDevice {
+    #[cfg(not(target_os = "windows"))]
+    fn control_target(&mut self) -> Result<&ControlTarget> {
+        Ok(&self.device)
+    }
+
+    #[cfg(target_os = "windows")]
+    fn control_target(&mut self) -> Result<&ControlTarget> {
+        if self.interface.is_none() {
+            self.claim(0)?;
+        }
+        self.interface
+            .as_ref()
+            .ok_or_else(|| Error::Port("no interface to send control transfers on".to_owned()))
+    }
+}
+
 impl ControlTransfer for UsbDevice {
     fn control_out(&mut self, request: u8, value: u16, data: &[u8]) -> Result<()> {
-        self.device
+        let timeout = self.timeout;
+        self.control_target()?
             .control_out(
                 ControlOut {
                     control_type: ControlType::Class,
@@ -310,7 +333,7 @@ impl ControlTransfer for UsbDevice {
                     index: 0,
                     data,
                 },
-                self.timeout,
+                timeout,
             )
             .wait()
             .map_err(|e| Error::Port(format!("control transfer out failed: {e}")))?;
@@ -321,7 +344,8 @@ impl ControlTransfer for UsbDevice {
         let length = u16::try_from(length)
             .map_err(|_| Error::Port("control transfer longer than USB allows".to_owned()))?;
 
-        self.device
+        let timeout = self.timeout;
+        self.control_target()?
             .control_in(
                 ControlIn {
                     control_type: ControlType::Class,
@@ -331,7 +355,7 @@ impl ControlTransfer for UsbDevice {
                     index: 0,
                     length,
                 },
-                self.timeout,
+                timeout,
             )
             .wait()
             .map_err(|e| Error::Port(format!("control transfer in failed: {e}")))

@@ -16,12 +16,17 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
 
       # the serial transport needs libudev, and btleplug needs dbus, on Linux
       - name: apt-install
+        if: runner.os == 'Linux'
         run: sudo apt update && sudo apt install -y libudev-dev libdbus-1-dev pkg-config
 
       - uses: dtolnay/rust-toolchain@stable

@@ -70,6 +70,7 @@ fn fixtures(dir: &Path) {
 }
 
 #[test]
+#[cfg_attr(windows, ignore = "the recording was made on Linux")]
 fn the_flags_behave_as_the_cpp_tool_did() {
     let dir: PathBuf =
         std::env::temp_dir().join(format!("radio_tool_legacy_{}", std::process::id()));
@@ -83,13 +84,14 @@ fn the_flags_behave_as_the_cpp_tool_did() {
     let mut failures = Vec::new();
     for case in &all {
         let out = Command::new(env!("CARGO_BIN_EXE_radio_tool"))
-            .arg0("radio_tool")
             .args(&case.args)
             .current_dir(&dir)
             .output()
             .unwrap();
         let stdout = String::from_utf8_lossy(&out.stdout);
-        let stderr = String::from_utf8_lossy(&out.stderr).replace(&version, "radio_tool @VERSION@");
+        let stderr = String::from_utf8_lossy(&out.stderr)
+            .replace(&version, "radio_tool @VERSION@")
+            .replace(env!("CARGO_BIN_EXE_radio_tool"), "radio_tool");
         let rc = out.status.code().unwrap_or(-1);
         if rc != case.rc || stdout != case.stdout || stderr != case.stderr {
             failures.push(format!(
@@ -101,20 +103,4 @@ fn the_flags_behave_as_the_cpp_tool_did() {
 
     let _ = std::fs::remove_dir_all(&dir);
     assert!(failures.is_empty(), "{}", failures.join("\n\n"));
-}
-
-trait Arg0 {
-    fn arg0(&mut self, name: &str) -> &mut Self;
-}
-
-impl Arg0 for Command {
-    #[cfg(unix)]
-    fn arg0(&mut self, name: &str) -> &mut Self {
-        std::os::unix::process::CommandExt::arg0(self, name)
-    }
-
-    #[cfg(not(unix))]
-    fn arg0(&mut self, _name: &str) -> &mut Self {
-        self
-    }
 }
