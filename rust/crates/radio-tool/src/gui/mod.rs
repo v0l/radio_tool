@@ -360,8 +360,7 @@ impl App {
             |ui| {
                 ui.label(
                     RichText::new(radio.title())
-                        .size(12.5)
-                        .strong()
+                        .font(theme::legend_font(12.5))
                         .color(theme::VALUE),
                 );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
