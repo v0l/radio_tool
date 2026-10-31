@@ -26,20 +26,20 @@ codeplug = { path = "../codeplug" }
 device = { path = "../device" }
 clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
-eframe = { version = "0.35", default-features = false, features = [
+eframe = { version = "0.37", default-features = false, features = [
     "default_fonts",
     "glow",
     "wayland",
     "x11",
 ] }
-egui = "0.35"
-egui_bench = "0.5"
+egui = "0.37"
+egui_bench = "0.9.1"
 
 [dev-dependencies]
-egui_kittest = { version = "0.35", features = ["eframe"] }
+egui_kittest = { version = "0.37", features = ["eframe"] }
 
 [target.'cfg(target_os = "linux")'.dev-dependencies]
-egui_kittest = { version = "0.35", features = ["eframe", "wgpu"] }
+egui_kittest = { version = "0.37", features = ["eframe", "wgpu"] }
 
 [target.'cfg(windows)'.build-dependencies]
 winresource = "0.1"

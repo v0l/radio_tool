@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.5.1]
+
+- egui and eframe 0.37, which keeps the window running on Wayland when its workspace is hidden.
+
 ## [0.5.0]
 
 - A window. `radio_tool` with no arguments, or `radio_tool-ui`, lists the

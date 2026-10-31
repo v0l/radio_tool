@@ -659,7 +659,7 @@ impl App {
         };
         let mut go = false;
         let mut cancel = false;
-        let modal = egui::Modal::new(egui::Id::new("confirm")).show(ctx, |ui| {
+        let modal = egui::Modal::new(egui::Id::unique("confirm")).show(ctx, |ui| {
             ui.set_width(440.0);
             egui_bench::prelude::modal_title(ui, title);
             note(ui, text, theme::VALUE);
@@ -799,7 +799,7 @@ impl eframe::App for App {
             i.raw
                 .dropped_files
                 .iter()
-                .filter_map(|f| f.path.clone())
+                .map(|f| f.path().to_path_buf())
                 .collect()
         });
         if let Some(path) = dropped.into_iter().next() {
