@@ -126,6 +126,16 @@ SerialPort::SerialPort(const std::string &port, const uint32_t &baud)
 		throw std::runtime_error("Failed to open port: " + port + " (" + strerror(errno) + ")");
 	}
 
+	//keep other processes off the port while a clone or flash is in
+	//progress: a second reader (ModemManager included) shifts the byte
+	//stream and corrupts the protocol mid transfer
+	if (ioctl(f, TIOCEXCL, 0) != 0)
+	{
+		const auto open_errno = errno;
+		close(f);
+		throw std::runtime_error("Failed to lock port " + port + " (" + strerror(open_errno) + ")");
+	}
+
 	struct termios tty = {};
 	if (tcgetattr(f, &tty) != 0)
 	{
