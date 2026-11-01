@@ -55,11 +55,14 @@ auto TYTRadio::WriteFirmware(const std::string& file) -> void
 	//a radio.
 	auto radio_model = dfu.IdentifyDevice();
 	auto file_model = fw.GetRadioModel();
+	//warning, not fatal: the identify string and the counter-magic table
+	//name have never been compared on hardware, and MD446 shares MD380's
+	//magic, so this may name a perfectly valid file wrong. The confirmation
+	//prompt is what actually stops the user; this makes them look at it.
 	if (file_model != radio_model)
 	{
-		throw std::runtime_error(
-			"Firmware is for " + file_model + " but the radio identifies as " + radio_model +
-			". Refusing to flash, use a file for the connected radio.");
+		std::cerr << "WARNING: firmware is for " << file_model
+				  << " but the radio identifies as " << radio_model << std::endl;
 	}
 
 	auto dfu = this->dfu;
