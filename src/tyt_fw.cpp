@@ -27,6 +27,13 @@ auto TYTFW::Read(const std::string& file) -> void
 	auto i = std::ifstream(file, std::ios_base::binary);
 	if (i.is_open())
 	{
+		//the region table claims bytes which must exist in the file, so the
+		//total is checked against the real file length before any buffer is
+		//sized from it
+		i.seekg(0, i.end);
+		const auto file_len = (uint64_t)i.tellg();
+
+		i.seekg(0, i.beg);
 		auto header = ReadHeader(i);
 		CheckHeader(header);
 
@@ -50,13 +57,22 @@ auto TYTFW::Read(const std::string& file) -> void
 			binarySize += rLength;
 		}
 
+		//HeaderSize is larger than the on-disk header, so the subtraction
+		//is only meaningful once the file is known to be big enough
+		if (file_len < HeaderSize || binarySize > file_len - HeaderSize)
+		{
+			throw std::runtime_error("Firmware file is smaller than its region table claims");
+		}
+
 		//skip to binary
 		i.seekg(HeaderSize);
 
 		data.resize(binarySize);
 		i.read((char*)data.data(), data.size());
-
-		//meh ignore footer
+		if ((uint64_t)i.gcount() != binarySize)
+		{
+			throw std::runtime_error("Firmware file is truncated");
+		}
 	}
 	i.close();
 }
