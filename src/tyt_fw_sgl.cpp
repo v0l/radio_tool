@@ -55,6 +55,17 @@ auto TYTSGLFW::Read(const std::string& file) -> void
 	auto i = std::ifstream(file, std::ios_base::binary);
 	if (i.is_open())
 	{
+		//the header length is a 32 bit field from the file, so the payload
+		//it claims is checked against the real file size before anything is
+		//allocated - a 135 byte file declaring 0xffffffff bytes otherwise
+		//tries to resize four gibibytes
+		i.seekg(0, i.end);
+		const auto file_len = (uint64_t)i.tellg();
+		if ((uint64_t)0x400 + hdr.binary_offset + (uint64_t)hdr.length > file_len)
+		{
+			throw std::runtime_error("Firmware file is smaller than the SGL header claims");
+		}
+
 		i.seekg(0x400, i.beg);
 		i.seekg(hdr.binary_offset, i.cur);
 
