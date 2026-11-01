@@ -1,4 +1,11 @@
 cmake_minimum_required(VERSION 3.10.0)
+
+#set before project(): the compiler modules only populate the -pie link
+#options while CMP0083 is NEW, and they run inside project()
+if(POLICY CMP0083)
+  cmake_policy(SET CMP0083 NEW)
+endif()
+
 project(radio_tool VERSION 0.3.0)
 
 option(BUILD_TESTING "Enable tests" OFF)
@@ -132,9 +139,6 @@ target_link_libraries(radio_tool radiotool)
 #check_pie_supported must run before the targets exist: without it
 #POSITION_INDEPENDENT_CODE only adds -fPIE to compiles, never -pie to links
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.14)
-  #check_pie_supported refuses to run while CMP0083, which is what makes
-  #-pie appear on the link line, is still OLD from cmake_minimum_required
-  cmake_policy(SET CMP0083 NEW)
   include(CheckPIESupported)
   check_pie_supported(LANGUAGES CXX)
 endif()
