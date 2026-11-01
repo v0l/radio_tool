@@ -1206,7 +1206,7 @@ fn flash(input: &Path, do_write: bool) -> Result<(), String> {
     // instead, and write what can be written.
     let (regions, skipped): (Vec<&flashing::Region<'_>>, Vec<&flashing::Region<'_>>) =
         all.iter().partition(|region| {
-            let end = region.address + region.data.len() as u32;
+            let end = region.address.saturating_add(region.data.len() as u32);
             let covered: u32 = device::flash::split(&map, region.address, end)
                 .iter()
                 .map(|p| p.length)
@@ -1219,7 +1219,7 @@ fn flash(input: &Path, do_write: bool) -> Result<(), String> {
             "  skipping {:#010x} to {:#010x} ({}): outside the memory this radio \
              offers for writing",
             region.address,
-            region.address + region.data.len() as u32,
+            region.address.saturating_add(region.data.len() as u32),
             format::format_bytes(region.data.len() as u64)
         );
     }
@@ -1234,7 +1234,7 @@ fn flash(input: &Path, do_write: bool) -> Result<(), String> {
     let regions: Vec<flashing::Region<'_>> = regions.into_iter().copied().collect();
 
     for region in &regions {
-        let end = region.address + region.data.len() as u32;
+        let end = region.address.saturating_add(region.data.len() as u32);
         println!(
             "  {:#010x} to {:#010x}  {}",
             region.address,
