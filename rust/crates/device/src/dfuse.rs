@@ -154,7 +154,7 @@ pub fn parse(text: &str, alt: u8) -> Result<Memory> {
 
     let mut sectors = Vec::new();
     let mut permissions = Vec::new();
-    let mut index: u8 = 0;
+    let mut index: u32 = 0;
 
     // the rest is pairs of an address and the runs that start there
     while let Some(address) = parts.next() {
