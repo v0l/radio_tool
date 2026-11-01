@@ -19,7 +19,9 @@ jobs:
         configuration: [Debug, Release]
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-    
+        with:
+          persist-credentials: false        with:
+          persist-credentials: false    
     - name: Install dependencies with vcpkg
       run: |
         C:\vcpkg\vcpkg.exe install libusb:x64-windows libusb:x86-windows
