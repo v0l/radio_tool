@@ -203,7 +203,7 @@ auto TYTFW::CheckHeader(const TYTFirmwareHeader& header) -> void
 		throw std::runtime_error("Counter magic is invalid, or not supported");
 	}
 
-	if ((header.n_regions * 8) > 0x80)
+	if ((uint64_t)header.n_regions * 8 > 0x80)
 	{
 		throw std::runtime_error("Memory region count out of bounds");
 	}
