@@ -128,12 +128,23 @@ SerialPort::SerialPort(const std::string &port, const uint32_t &baud)
 
 	//keep other processes off the port while a clone or flash is in
 	//progress: a second reader (ModemManager included) shifts the byte
-	//stream and corrupts the protocol mid transfer
+	//stream and corrupts the protocol mid transfer. TIOCEXCL only blocks
+	//later opens, not descriptors already held, and not root - it is a
+	//best effort. pty and other emulated devices reject the ioctl with
+	//ENOTTY/EINVAL, which must not be fatal or the simulated-radio tests
+	//could not run
 	if (ioctl(f, TIOCEXCL, 0) != 0)
 	{
-		const auto open_errno = errno;
-		close(f);
-		throw std::runtime_error("Failed to lock port " + port + " (" + strerror(open_errno) + ")");
+		const auto lock_errno = errno;
+		if (lock_errno == ENOTTY || lock_errno == EINVAL)
+		{
+			std::cerr << "Port " << port << " does not support exclusive access, continuing" << std::endl;
+		}
+		else
+		{
+			close(f);
+			throw std::runtime_error("Failed to lock port " + port + " (" + strerror(lock_errno) + ")");
+		}
 	}
 
 	struct termios tty = {};
