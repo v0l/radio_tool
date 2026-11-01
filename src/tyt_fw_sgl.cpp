@@ -140,7 +140,8 @@ auto TYTSGLFW::ReadHeader(const std::string& file) -> const SGLHeader
 			throw std::runtime_error(msg.str());
 		}
 
-		auto header2_offset = *(uint16_t*)(header1 + 12);
+		uint16_t header2_offset = 0;
+		std::memcpy(&header2_offset, header1 + 12, sizeof(header2_offset));
 
 		i.seekg(header2_offset, i.beg);
 		uint8_t header2[Header2Len] = {};
@@ -156,7 +157,8 @@ auto TYTSGLFW::ReadHeader(const std::string& file) -> const SGLHeader
 		}
 
 		auto binary_offset = header1[11];
-		auto len = *(uint32_t*)(header2 + BinaryLenOffset);
+		uint32_t len = 0;
+		std::memcpy(&len, header2 + BinaryLenOffset, sizeof(len));
 		auto group = std::string(header2 + GroupOffset, header2 + GroupOffset + 0x10);
 		auto model = std::string(header2 + ModelOffset, header2 + ModelOffset + 0x08);
 		auto version = std::string(header2 + VersionOffset, header2 + VersionOffset + 0x08);
@@ -344,7 +346,7 @@ auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 	*(header.data() + 11) = binary_offset;
 
 	// h2 offset
-	*(uint16_t*)(header.data() + 12) = header2_offset;
+	std::memcpy(header.data() + 12, &header2_offset, sizeof(header2_offset));
 
 	// h2 xor key
 	auto h2_key_offset = 14;
@@ -352,14 +354,14 @@ auto SGLHeader::Serialize(bool encrypt) const -> std::vector<uint8_t>
 	std::default_random_engine eng(rd());
 	std::uniform_int_distribution<uint16_t> dist(0, 0xffff);
 	auto key = dist(eng);
-	*(uint16_t*)(header.data() + h2_key_offset) = key;
+	std::memcpy(header.data() + h2_key_offset, &key, sizeof(key));
 
 	auto h2 = header.data() + header2_offset;
 	*h2 = 0x02;
 	*(h2 + 1) = 0x10;
 
 	// binary length
-	*(uint32_t*)(h2 + BinaryLenOffset) = length;
+	std::memcpy(h2 + BinaryLenOffset, &length, sizeof(length));
 
 	std::copy(radio_group.begin(), radio_group.end(), h2 + GroupOffset);
 	std::copy(radio_model.begin(), radio_model.end(), h2 + ModelOffset);
