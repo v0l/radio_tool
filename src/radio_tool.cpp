@@ -40,9 +40,11 @@
 #ifdef _WIN32
 #include <io.h>
 #include <stdio.h>
+#include <fcntl.h>
 #define RT_ISATTY (::_isatty(::_fileno(stdin)))
 #else
 #include <unistd.h>
+#include <fcntl.h>
 #define RT_ISATTY (isatty(fileno(stdin)))
 #endif
 
@@ -130,6 +132,106 @@ auto tytCommands(const cxxopts::ParseResult &cmd, RadioOperations *radio) -> boo
 
     return true;
 }
+
+
+namespace
+{
+	/**
+	 * Read the whole file once, so everything downstream (the hash the user
+	 * confirms, and the bytes actually written) comes from the same buffer
+	 * rather than from two separate opens of a path that could change.
+	 */
+	auto ReadWholeFile(const std::string &path) -> std::vector<uint8_t>
+	{
+		std::ifstream in(path, std::ios_base::binary);
+		if (!in.is_open())
+		{
+			throw std::runtime_error("Cant open file: " + path);
+		}
+		std::vector<uint8_t> data((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+		if (data.empty())
+		{
+			throw std::runtime_error("File is empty: " + path);
+		}
+		return data;
+	}
+
+	/**
+	 * Write the confirmed bytes to a private exclusive temp file and flash or
+	 * program from that, so the approved hash is bound to the bytes the radio
+	 * receives even if the original path changes underneath us.
+	 */
+	auto StageVerifiedCopy(const std::vector<uint8_t> &data) -> std::string
+	{
+		auto dir = std::filesystem::temp_directory_path();
+		for (unsigned attempt = 0;; attempt++)
+		{
+			auto candidate = dir / ("radio_tool-" + std::to_string(getpid()) + "-" + std::to_string(attempt) + ".tmp");
+#ifdef _WIN32
+			auto fd = ::_open(candidate.string().c_str(), _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY, _S_IREAD | _S_IWRITE);
+#else
+			auto fd = ::open(candidate.string().c_str(), O_CREAT | O_EXCL | O_WRONLY, 0600);
+#endif
+			if (fd >= 0)
+			{
+				auto written = ::write(fd, data.data(), data.size());
+				::close(fd);
+				if (written < 0 || (size_t)written != data.size())
+				{
+					throw std::runtime_error("Failed to stage the verified copy of " + candidate.string());
+				}
+				return candidate.string();
+			}
+			if (attempt > 32)
+			{
+				throw std::runtime_error("Cant create a staging file in " + dir.string());
+			}
+		}
+	}
+
+	/**
+	 * The one gate every destructive device write goes through: print what is
+	 * about to be written where, and require either --yes or a typed YES.
+	 * Returns the path of a staged, verified copy to write from.
+	 */
+	auto StageConfirmedWrite(const cxxopts::ParseResult &cmd, RadioOperations *radio,
+							 const std::string &path, const char *what) -> std::string
+	{
+		auto data = ReadWholeFile(path);
+
+		std::string model;
+		try
+		{
+			model = radio->ToString();
+		}
+		catch (const std::exception &e)
+		{
+			model = std::string("<radio did not identify itself: ") + e.what() + ">";
+		}
+
+		SHA256 h;
+		h.Update(data.data(), data.size());
+		std::cerr << "About to write " << what << " " << path << " ("
+				  << radio_tool::FormatBytes(data.size()) << ", sha256 " << h.Digest() << ") to:" << std::endl
+				  << model << std::endl;
+
+		if (!cmd.count("yes"))
+		{
+			if (!RT_ISATTY)
+			{
+				throw std::runtime_error("Refusing to write without a confirmation, re-run with --yes");
+			}
+			std::cerr << "Type YES to erase and write, anything else to abort: ";
+			std::string line;
+			if (!std::getline(std::cin, line) || line != "YES")
+			{
+				throw std::runtime_error("Aborted");
+			}
+		}
+
+		return StageVerifiedCopy(data);
+	}
+} // namespace
 
 int main(int argc, char **argv)
 {
@@ -407,7 +509,9 @@ int main(int argc, char **argv)
             if (cmd.count("program"))
             {
                 auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-                radio->WriteCodeplug(in_file);
+                auto staged = StageConfirmedWrite(cmd, radio.get(), in_file, "codeplug");
+                radio->WriteCodeplug(staged);
+                std::filesystem::remove(staged);
                 std::cout << "Done!" << std::endl;
                 exit(0);
             }
@@ -455,39 +559,9 @@ int main(int argc, char **argv)
         if (cmd.count("flash"))
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-
-            //flashing erases the radio, so it never starts without either a
-            //typed confirmation or --yes
-            std::string model;
-            try
-            {
-                model = radio->ToString();
-            }
-            catch (const std::exception &e)
-            {
-                model = std::string("<radio did not identify itself: ") + e.what() + ">";
-            }
-            auto hash = radio_tool::SHA256::File(in_file);
-            auto size = std::filesystem::file_size(in_file);
-            std::cerr << "About to flash " << in_file << " ("
-                      << radio_tool::FormatBytes(size) << ", sha256 " << hash << ") to:" << std::endl
-                      << model << std::endl;
-
-            if (!cmd.count("yes"))
-            {
-                if (!RT_ISATTY)
-                {
-                    throw std::runtime_error("Refusing to flash without a confirmation, re-run with --yes");
-                }
-                std::cerr << "Type YES to erase and write, anything else to abort: ";
-                std::string line;
-                if (!std::getline(std::cin, line) || line != "YES")
-                {
-                    throw std::runtime_error("Aborted");
-                }
-            }
-
-            radio->WriteFirmware(in_file);
+            auto staged = StageConfirmedWrite(cmd, radio.get(), in_file, "firmware");
+            radio->WriteFirmware(staged);
+            std::filesystem::remove(staged);
             std::cout << "Done!" << std::endl;
             exit(0);
         }
@@ -503,7 +577,9 @@ int main(int argc, char **argv)
         if (cmd.count("program"))
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-            radio->WriteCodeplug(in_file);
+            auto staged = StageConfirmedWrite(cmd, radio.get(), in_file, "codeplug");
+            radio->WriteCodeplug(staged);
+            std::filesystem::remove(staged);
             std::cout << "Done!" << std::endl;
             exit(0);
         }
