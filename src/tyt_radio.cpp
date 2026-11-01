@@ -49,6 +49,19 @@ auto TYTRadio::WriteFirmware(const std::string& file) -> void
 	auto fw = fw::TYTFW();
 	fw.Read(file);
 
+	//the radio tells us what it is, the file says what it is for, and they
+	//must agree before anything is erased. The C++ tool talks to the
+	//generic ST DFU id 0483:df11, so the device on the bus may not even be
+	//a radio.
+	auto radio_model = dfu.IdentifyDevice();
+	auto file_model = fw.GetRadioModel();
+	if (file_model != radio_model)
+	{
+		throw std::runtime_error(
+			"Firmware is for " + file_model + " but the radio identifies as " + radio_model +
+			". Refusing to flash, use a file for the connected radio.");
+	}
+
 	auto dfu = this->dfu;
 	dfu.SendTYTCommand(dfu::TYTCommand::FirmwareUpgrade);
 	for (auto& r : fw.GetDataSegments())
