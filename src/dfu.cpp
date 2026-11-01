@@ -115,7 +115,7 @@ auto DFU::GetState() const -> DFUState
         //a device can legally answer a control IN with a short packet, and
         //reading the uninitialized byte would feed a garbage value into the
         //state machine
-        throw DFUException("Short GETSTATE reply from device");
+        throw DFUException("Short GETSTATE reply from device, got " + std::to_string(err) + " of 1 byte");
     }
     else
     {
@@ -142,7 +142,7 @@ auto DFU::GetStatus() const -> const DFUStatusReport
         {
             //status fields beyond what the device actually sent would be
             //uninitialized stack memory
-            throw DFUException("Short GETSTATUS reply from device");
+            throw DFUException("Short GETSTATUS reply from device, got " + std::to_string(err) + " of 6 bytes");
         }
         return DFUStatusReport::Parse(data);
     }
