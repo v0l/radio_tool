@@ -21,6 +21,8 @@ link_libraries(radiotool)
 add_executable(test_fw test_fw.cpp)
 add_executable(test_util test_util.cpp)
 add_test(NAME test_util COMMAND test_util)
+add_executable(test_sha256 test_sha256.cpp)
+add_test(NAME test_sha256 COMMAND test_sha256)
 add_executable(test_codeplug test_codeplug.cpp)
 add_test(NAME test_codeplug COMMAND test_codeplug)
 

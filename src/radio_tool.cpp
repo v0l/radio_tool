@@ -28,6 +28,7 @@
 #include <radio_tool/util.hpp>
 #include <radio_tool/version.hpp>
 #include <radio_tool/xor_tool.hpp>
+#include <radio_tool/util/sha256.hpp>
 
 #include <iostream>
 #include <filesystem>
@@ -35,6 +36,15 @@
 #include <fstream>
 #include <ctime>
 #include <limits>
+
+#ifdef _WIN32
+#include <io.h>
+#include <stdio.h>
+#define RT_ISATTY (::_isatty(::_fileno(stdin)))
+#else
+#include <unistd.h>
+#define RT_ISATTY (isatty(fileno(stdin)))
+#endif
 
 using namespace radio_tool::fw;
 using namespace radio_tool::radio;
@@ -140,7 +150,8 @@ int main(int argc, char **argv)
             ("ble", "Bluetooth LE address, for radios which clone over Bluetooth", cxxopts::value<std::string>(), "<00:11:22:33:44:55>")
             ("ble-adapter", "Bluetooth adapter to use, if this machine has more than one", cxxopts::value<std::string>(), "<hci0>")
             ("i,in", "Input file", cxxopts::value<std::string>(), "<file>")
-            ("o,out", "Output file", cxxopts::value<std::string>(), "<file>");
+            ("o,out", "Output file", cxxopts::value<std::string>(), "<file>")
+            ("yes", "Confirm flashing without prompting, for scripts");
 
         options.add_options("Programming")
             ("f,flash", "Flash firmware")
@@ -444,6 +455,38 @@ int main(int argc, char **argv)
         if (cmd.count("flash"))
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
+
+            //flashing erases the radio, so it never starts without either a
+            //typed confirmation or --yes
+            std::string model;
+            try
+            {
+                model = radio->ToString();
+            }
+            catch (const std::exception &e)
+            {
+                model = std::string("<radio did not identify itself: ") + e.what() + ">";
+            }
+            auto hash = radio_tool::SHA256::File(in_file);
+            auto size = std::filesystem::file_size(in_file);
+            std::cerr << "About to flash " << in_file << " ("
+                      << radio_tool::FormatBytes(size) << ", sha256 " << hash << ") to:" << std::endl
+                      << model << std::endl;
+
+            if (!cmd.count("yes"))
+            {
+                if (!RT_ISATTY)
+                {
+                    throw std::runtime_error("Refusing to flash without a confirmation, re-run with --yes");
+                }
+                std::cerr << "Type YES to erase and write, anything else to abort: ";
+                std::string line;
+                if (!std::getline(std::cin, line) || line != "YES")
+                {
+                    throw std::runtime_error("Aborted");
+                }
+            }
+
             radio->WriteFirmware(in_file);
             std::cout << "Done!" << std::endl;
             exit(0);
