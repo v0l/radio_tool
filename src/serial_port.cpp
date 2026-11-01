@@ -18,6 +18,7 @@
 #include <radio_tool/device/serial_port.hpp>
 
 #include <chrono>
+#include <iostream>
 #include <stdexcept>
 #include <thread>
 
