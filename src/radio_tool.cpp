@@ -518,7 +518,7 @@ int main(int argc, char **argv)
             if (cmd.count("program"))
             {
                 auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-                auto staged = StageConfirmedWrite(cmd, radio, in_file, "codeplug");
+                auto staged = StageConfirmedWrite(cmd, radio.get(), in_file, "codeplug");
                 radio->WriteCodeplug(staged);
                 std::filesystem::remove(staged);
                 std::cout << "Done!" << std::endl;
@@ -568,7 +568,7 @@ int main(int argc, char **argv)
         if (cmd.count("flash"))
         {
             auto in_file = GetOptionOrErr<std::string>(cmd, "in", "Input file not specified");
-            auto staged = StageConfirmedWrite(cmd, radio.get(), in_file, "firmware");
+            auto staged = StageConfirmedWrite(cmd, radio, in_file, "firmware");
             radio->WriteFirmware(staged);
             std::filesystem::remove(staged);
             std::cout << "Done!" << std::endl;
