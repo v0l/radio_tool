@@ -166,7 +166,12 @@ namespace
 		auto dir = std::filesystem::temp_directory_path();
 		for (unsigned attempt = 0;; attempt++)
 		{
-			auto candidate = dir / ("radio_tool-" + std::to_string(getpid()) + "-" + std::to_string(attempt) + ".tmp");
+#ifdef _WIN32
+			auto pid = (long)::_getpid();
+#else
+			auto pid = (long)getpid();
+#endif
+			auto candidate = dir / ("radio_tool-" + std::to_string(pid) + "-" + std::to_string(attempt) + ".tmp");
 #ifdef _WIN32
 			auto fd = ::_open(candidate.string().c_str(), _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY, _S_IREAD | _S_IWRITE);
 #else
@@ -174,7 +179,11 @@ namespace
 #endif
 			if (fd >= 0)
 			{
+#ifdef _WIN32
+				auto written = ::_write(fd, data.data(), (unsigned)data.size());
+#else
 				auto written = ::write(fd, data.data(), data.size());
+#endif
 				::close(fd);
 				if (written < 0 || (size_t)written != data.size())
 				{
