@@ -23,6 +23,13 @@
 use crate::flash::Sector;
 use crate::{Error, Result};
 
+/// A real DfuSe target declares tens of sectors. The count in each run comes
+/// straight from the string the device returns, so it is capped before the
+/// loop that turns it into sectors: a device answering
+/// `@Flash /0x00000000/4000000000*1g` would otherwise walk until the address
+/// space runs out and allocate gigabytes on the way.
+const MAX_SECTORS: usize = 4096;
+
 /// What may be done to a region
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Permissions {
@@ -169,6 +176,14 @@ pub fn parse(text: &str, alt: u8) -> Result<Memory> {
             let (count, size, permission) = parse_run(run.trim())?;
 
             for _ in 0..count {
+                if sectors.len() >= MAX_SECTORS {
+                    return Err(Error::Unexpected {
+                        what: "memory layout",
+                        expected: format!("no more than {MAX_SECTORS} sectors"),
+                        got: "a layout that never ends".to_owned(),
+                    });
+                }
+
                 sectors.push(Sector {
                     index,
                     start: at,
@@ -256,6 +271,19 @@ mod tests {
     /// Exactly what a DM-1701 reports, read off the radio over USB
     const DM1701_INTERNAL: &str = "@Internal Flash   /0x0800C000/01*016Kg,01*064Kg,07*128Kg";
     const DM1701_SPI: &str = "@SPI Flash Memory /0x00000000/16*064Kg";
+
+    #[test]
+    fn an_absurd_sector_count_is_rejected() {
+        // the count arrives from the radio, so it must not drive the
+        // allocation: both a huge count and one just past the cap are
+        // rejected without ever materialising the sectors
+        assert!(parse("@Flash /0x00000000/4000000000*1g", 0).is_err());
+        assert!(parse("@Flash /0x00000000/4097*1g", 0).is_err());
+
+        // large but inside the cap still parses
+        let mem = parse("@Flash /0x00000000/4096*1g", 0).expect("inside the cap parses");
+        assert_eq!(mem.sectors.len(), 4096);
+    }
 
     #[test]
     fn a_real_radio_layout_is_read_correctly() {
