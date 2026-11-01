@@ -68,6 +68,26 @@ elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   add_definitions(-DNOMINMAX -DVC_EXTRALEAN -DWIN32_LEAN_AND_MEAN)
 endif()
 
+#position independent code everywhere, and full RELRO on the executable.
+#this has to happen before any target or subdirectory is created: the
+#static library objects must be compiled -fPIE for the executable to link
+#with -pie, and check_pie_supported registers the -pie flag with the
+#compiler modules, which decide on it inside project() under CMP0083 NEW
+if(NOT WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.14)
+  include(CheckPIESupported)
+  check_pie_supported(LANGUAGES CXX)
+  if(CMAKE_CXX_LINK_PIE_SUPPORTED)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  endif()
+endif()
+if(NOT WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
+  include(CheckLinkerFlag)
+  check_linker_flag(CXX "-Wl,-z,relro,-z,now" RELRO_SUPPORTED)
+  if(RELRO_SUPPORTED)
+    set(RELRO_FLAGS "-Wl,-z,relro,-z,now")
+  endif()
+endif()
+
 #SimpleBLE, for radios which clone over Bluetooth LE instead of a cable
 if(BUILD_BLE)
   include(FetchContent)
@@ -134,21 +154,8 @@ endif()
 add_executable(radio_tool src/radio_tool.cpp)
 target_include_directories(radio_tool PUBLIC include)
 target_link_libraries(radio_tool radiotool)
-
-#position independent executables with full RELRO where the linker takes it.
-#check_pie_supported must run before the targets exist: without it
-#POSITION_INDEPENDENT_CODE only adds -fPIE to compiles, never -pie to links
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.14)
-  include(CheckPIESupported)
-  check_pie_supported(LANGUAGES CXX)
-endif()
-if(NOT WIN32 AND CMAKE_CXX_LINK_PIE_SUPPORTED)
-  set_target_properties(radio_tool PROPERTIES POSITION_INDEPENDENT_CODE ON)
-  include(CheckLinkerFlag)
-  check_linker_flag(CXX "-Wl,-z,relro,-z,now" RELRO_SUPPORTED)
-  if(RELRO_SUPPORTED)
-    target_link_options(radio_tool PRIVATE -Wl,-z,relro,-z,now)
-  endif()
+if(RELRO_FLAGS)
+  target_link_options(radio_tool PRIVATE ${RELRO_FLAGS})
 endif()
 
 if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL AppleClang)
