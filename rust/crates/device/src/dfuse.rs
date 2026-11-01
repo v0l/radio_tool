@@ -30,6 +30,10 @@ use crate::{Error, Result};
 /// space runs out and allocate gigabytes on the way.
 const MAX_SECTORS: usize = 4096;
 
+/// The layout string itself comes off the device too, so it is bounded before
+/// parsing: a real one is one interface string, nowhere near this.
+const MAX_LAYOUT_LEN: usize = 64 * 1024;
+
 /// What may be done to a region
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Permissions {
@@ -133,6 +137,14 @@ fn human_size(bytes: u64) -> String {
 
 /// Read one alternate setting's layout string
 pub fn parse(text: &str, alt: u8) -> Result<Memory> {
+    if text.len() > MAX_LAYOUT_LEN {
+        return Err(Error::Unexpected {
+            what: "memory layout",
+            expected: format!("a layout string of at most {MAX_LAYOUT_LEN} bytes"),
+            got: format!("{} bytes", text.len()),
+        });
+    }
+
     let text = text.trim();
 
     let body = text.strip_prefix('@').ok_or(Error::Unexpected {
