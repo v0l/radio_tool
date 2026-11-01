@@ -166,16 +166,28 @@ auto USBRadioFactory::GetDeviceString(const uint8_t &desc, libusb_device_handle 
 	auto err = 0;
 	int prd_len = 0;
 	unsigned char lang[42], prd[255];
-	memset(prd, 0, 255);
+	memset(lang, 0, sizeof(lang));
+	memset(prd, 0, sizeof(prd));
 
-	err = libusb_get_string_descriptor(h, 0, 0, lang, 42);
+	err = libusb_get_string_descriptor(h, 0, 0, lang, sizeof(lang));
 	if (LIBUSB_SUCCESS > err)
 	{
 		throw std::runtime_error(libusb_error_name(err));
 	}
-	if (LIBUSB_SUCCESS > (prd_len = libusb_get_string_descriptor(h, desc, lang[2] << 8 | lang[3], prd, 255)))
+	//the language table must hold its 2 byte header before index 2..3 mean
+	//anything, and the string itself needs its 2 byte prefix to be UTF-16
+	if (err < 4)
+	{
+		throw std::runtime_error("Device returned a short language table");
+	}
+	prd_len = libusb_get_string_descriptor(h, desc, lang[2] << 8 | lang[3], prd, sizeof(prd));
+	if (LIBUSB_SUCCESS > prd_len)
 	{
 		throw std::runtime_error(libusb_error_name(prd_len));
+	}
+	if (prd_len < 2 || prd_len % 2 != 0)
+	{
+		throw std::runtime_error("Device returned a short or odd sized string descriptor");
 	}
 
 	// Encoded as UTF-16 (LE), Prefixed with length and some other byte.

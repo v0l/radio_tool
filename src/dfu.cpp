@@ -110,6 +110,13 @@ auto DFU::GetState() const -> DFUState
     {
         throw DFUException(libusb_error_name(err));
     }
+    else if (err != 1)
+    {
+        //a device can legally answer a control IN with a short packet, and
+        //reading the uninitialized byte would feed a garbage value into the
+        //state machine
+        throw DFUException("Short GETSTATE reply from device");
+    }
     else
     {
         auto s = static_cast<DFUState>((int)state);
@@ -131,6 +138,12 @@ auto DFU::GetStatus() const -> const DFUStatusReport
     }
     else
     {
+        if (err != StatusSize)
+        {
+            //status fields beyond what the device actually sent would be
+            //uninitialized stack memory
+            throw DFUException("Short GETSTATUS reply from device");
+        }
         return DFUStatusReport::Parse(data);
     }
     return DFUStatusReport::Empty();
