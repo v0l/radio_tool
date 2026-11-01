@@ -39,11 +39,15 @@ if (${CMAKE_CXX_COMPILER_ID} STREQUAL GNU OR ${CMAKE_CXX_COMPILER_ID} STREQUAL A
   if(STACK_PROTECTOR_SUPPORTED)
     add_compile_options(-fstack-protector-strong)
   endif()
-  if(NOT CMAKE_BUILD_TYPE STREQUAL Debug)
-    check_cxx_compiler_flag(-D_FORTIFY_SOURCE=3 FORTIFY_SUPPORTED)
-    if(FORTIFY_SUPPORTED)
-      add_compile_definitions($<$<NOT:$<CONFIG:Debug>>:_FORTIFY_SOURCE=3>)
+  #ordered -U then -D so an inherited definition cannot clash, and Debug
+  #stays unfortified: the checks need optimization to do anything
+  check_cxx_compiler_flag(-U_FORTIFY_SOURCE FORTIFY_U_SUPPORTED)
+  check_cxx_compiler_flag(-D_FORTIFY_SOURCE=3 FORTIFY_SUPPORTED)
+  if(FORTIFY_SUPPORTED)
+    if(FORTIFY_U_SUPPORTED)
+      add_compile_options($<$<NOT:$<CONFIG:Debug>>:-U_FORTIFY_SOURCE>)
     endif()
+    add_compile_options($<$<NOT:$<CONFIG:Debug>>:-D_FORTIFY_SOURCE=3>)
   endif()
 elseif (${CMAKE_CXX_COMPILER_ID} STREQUAL MSVC)
   set(VCPKG_INCLUDE_DIR $ENV{VCPKG_ROOT}\\installed\\${CMAKE_GENERATOR_PLATFORM}-windows\\include)
@@ -124,14 +128,19 @@ add_executable(radio_tool src/radio_tool.cpp)
 target_include_directories(radio_tool PUBLIC include)
 target_link_libraries(radio_tool radiotool)
 
-#position independent executables with full RELRO where the linker takes it
-set_target_properties(radio_tool PROPERTIES POSITION_INDEPENDENT_CODE ON)
-if(NOT WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
+#position independent executables with full RELRO where the linker takes it.
+#check_pie_supported must run before the targets exist: without it
+#POSITION_INDEPENDENT_CODE only adds -fPIE to compiles, never -pie to links
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.14)
+  include(CheckPIESupported)
+  check_pie_supported(LANGUAGES CXX)
+endif()
+if(NOT WIN32 AND CMAKE_PIE_SUPPORTED)
+  set_target_properties(radio_tool PROPERTIES POSITION_INDEPENDENT_CODE ON)
   include(CheckLinkerFlag)
   check_linker_flag(CXX "-Wl,-z,relro,-z,now" RELRO_SUPPORTED)
   if(RELRO_SUPPORTED)
     target_link_options(radio_tool PRIVATE -Wl,-z,relro,-z,now)
-    target_link_options(radiotool PRIVATE -Wl,-z,relro,-z,now)
   endif()
 endif()
 
