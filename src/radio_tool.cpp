@@ -218,7 +218,7 @@ namespace
 			model = std::string("<radio did not identify itself: ") + e.what() + ">";
 		}
 
-		SHA256 h;
+		radio_tool::SHA256 h;
 		h.Update(data.data(), data.size());
 		std::cerr << "About to write " << what << " " << path << " ("
 				  << radio_tool::FormatBytes(data.size()) << ", sha256 " << h.Digest() << ") to:" << std::endl
