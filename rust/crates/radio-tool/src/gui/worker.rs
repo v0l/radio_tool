@@ -450,12 +450,19 @@ fn flash(radio: &Radio, data: &[u8], send: Send) -> Result<(), String> {
                     data,
                 })
                 .filter(|r| {
-                    let end = r.address + r.data.len() as u32;
-                    device::flash::split(&map, r.address, end)
-                        .iter()
-                        .map(|p| p.length)
-                        .sum::<u32>()
-                        == end.saturating_sub(r.address)
+                    //a region that cannot fit the address space is not
+                    //writable anywhere, so it filters out the same as one
+                    //outside the reported map
+                    r.address
+                        .checked_add(r.data.len() as u32)
+                        .map(|end| {
+                            device::flash::split(&map, r.address, end)
+                                .iter()
+                                .map(|p| p.length)
+                                .sum::<u32>()
+                                == end.saturating_sub(r.address)
+                        })
+                        .unwrap_or(false)
                 })
                 .collect();
             if regions.is_empty() {

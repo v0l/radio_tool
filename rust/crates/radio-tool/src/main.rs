@@ -1204,22 +1204,41 @@ fn flash(input: &Path, do_write: bool) -> Result<(), String> {
     // flash alongside the firmware for the internal flash. The C++ drops
     // those silently because its hardcoded map does not contain them. Say so
     // instead, and write what can be written.
-    let (regions, skipped): (Vec<&flashing::Region<'_>>, Vec<&flashing::Region<'_>>) =
-        all.iter().partition(|region| {
-            let end = region.address.saturating_add(region.data.len() as u32);
-            let covered: u32 = device::flash::split(&map, region.address, end)
-                .iter()
-                .map(|p| p.length)
-                .sum();
-            covered == end.saturating_sub(region.address)
-        });
+    //a region that cannot fit the address space is an invalid file, not a
+    //skippable one, so it errors instead of clamping past it
+    let ends: Vec<u32> = all
+        .iter()
+        .map(|region| {
+            region.address.checked_add(region.data.len() as u32).ok_or_else(|| {
+                format!(
+                    "region at {:#010x} plus {} bytes runs past the end of the address space",
+                    region.address,
+                    region.data.len()
+                )
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
-    for region in &skipped {
+    let mut regions: Vec<&flashing::Region<'_>> = Vec::new();
+    let mut skipped: Vec<(&flashing::Region<'_>, u32)> = Vec::new();
+    for (region, end) in all.iter().zip(&ends) {
+        let covered: u32 = device::flash::split(&map, region.address, *end)
+            .iter()
+            .map(|p| p.length)
+            .sum();
+        if covered == *end - region.address {
+            regions.push(region);
+        } else {
+            skipped.push((region, *end));
+        }
+    }
+
+    for (region, end) in &skipped {
         println!(
             "  skipping {:#010x} to {:#010x} ({}): outside the memory this radio \
              offers for writing",
             region.address,
-            region.address.saturating_add(region.data.len() as u32),
+            end,
             format::format_bytes(region.data.len() as u64)
         );
     }
