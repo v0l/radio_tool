@@ -29,38 +29,17 @@ Db = Codeplug database
 ```
 # Download
 
-Download pre-built binaries from [GitHub Actions](https://github.com/v0l/radio_tool/actions)
-
-![Ubuntu](https://github.com/v0l/radio_tool/workflows/UbuntuRelease/badge.svg)
-![Windows](https://github.com/v0l/radio_tool/workflows/WindowsRelease/badge.svg)
-![macOS](https://github.com/v0l/radio_tool/workflows/OSXRelease/badge.svg)
-
-Otherwise you can use the instructions below to build
+Pre-built binaries are attached to each [release](https://github.com/v0l/radio_tool/releases).
 
 # Building
-Dependencies Linux (Ubuntu/Debian):
 
 ```bash
-sudo apt install libusb-1.0-0-dev cmake gcc g++ pkg-config
+cd rust
+cargo build --release
+./target/release/radio-tool --help
 ```
 
-Dependencies Mac:
-```bash
-brew install libusb cmake pkg-config
-```
-
-Build:
-```bash
-git clone https://github.com/v0l/radio_tool
-cd radio_tool
-mkdir build && cd build
-cmake ..
-make -j4
-./radio_tool --help
-```
-
-# Docs
-Code documentation: https://data.v0l.io/radio_tool/docs
+On Linux you need `libudev-dev libdbus-1-dev pkg-config`.
 
 # Usage
 ```
