@@ -9,7 +9,7 @@ Radio Firmware tool
 | TYT | MD-2017, MD-9600, MD-UV380, MD-UV390, MD-390, MD-380, MD-446, MD-280 | ✅ | ✅ | ✅ | ✅ | ❌ |
 | Baofeng | DM-1701 | ✅ | ✅ | ✅ | ✅ | ✅ all four |
 | Baofeng | DM-1801, RD-5R, BF-5R | ✅ | ✅ | ❌ | ❌ | ❌ |
-| Radioddity | GD-77, GD-77S | ✅ | ✅ | ❌ | ❌ | ❌ write fails with a USB error (EPROTO) in the bootloader |
+| Radioddity | GD-77, GD-77S | ✅ | ✅ | ❌ | ❌ | ❌ |
 | Baofeng | UV-5R, UV-82, UV-6, F11 (cable) | ❌ | ❌ | ✅ | ✅ | ❌ |
 | Baofeng | UV-5R Mini, UV-5G Mini, UV-17Pro, UV-17ProGPS (Bluetooth) | ❌ | ❌ | ✅ | ✅ | ✅ UV-5R Mini read only |
 | Connect Systems | CS800, CS800D | ❌ | ✅ | ❌ | ❌ | ❌ |
@@ -69,7 +69,7 @@ Run against a real radio:
 | - | - | - |
 | Baofeng DM-1701 | USB DFU | identify, firmware write, codeplug read and write, bootloader dump, clock, reboot all work |
 | Baofeng UV-5R Mini | Bluetooth | scan and codeplug read work |
-| Radioddity GD-77 | USB HID | detected in bootloader mode. Firmware write fails below the tool (EPROTO) |
+| Radioddity GD-77 | USB HID | detected in bootloader mode. Firmware write is untested |
 
 Tested against fakes only, never against a radio: codeplug write for the UV-17Pro family, the TYT HID protocol for SGL radios, YMODEM for the Ailunce HD1, H8SX for the Yaesu FT-70D, and UV-5R codeplug read over a cable.
 
