@@ -9,7 +9,7 @@
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sector {
     /// Index, as the chip numbers them
-    pub index: u8,
+    pub index: u32,
     /// Where it starts
     pub start: u32,
     /// How big it is
