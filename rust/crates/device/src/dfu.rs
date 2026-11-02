@@ -670,7 +670,7 @@ pub mod flashing {
                     got: format!("{:#010x} + {}", region.address, region.data.len()),
                 })
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>>>()?;
 
         for (region, end) in regions.iter().zip(&ends) {
             for piece in flash::split(map, region.address, *end) {
