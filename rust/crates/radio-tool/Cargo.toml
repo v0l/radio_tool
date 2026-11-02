@@ -33,7 +33,7 @@ eframe = { version = "0.37", default-features = false, features = [
     "x11",
 ] }
 egui = "0.37"
-egui_bench = "0.9.1"
+egui_bench = "0.9.2"
 
 [dev-dependencies]
 egui_kittest = { version = "0.37", features = ["eframe"] }

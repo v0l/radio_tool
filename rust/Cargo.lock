@@ -1070,9 +1070,9 @@ dependencies = [
 
 [[package]]
 name = "egui_bench"
-version = "0.9.1"
+version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f58549465c0d9785970ffd5d296ce9c42f17caef75ba47c04639b67f433c882"
+checksum = "3decd5040e37033b7a35a547b9babed56d317180a20c6dff4e29d4a456be9a79"
 dependencies = [
  "egui",
  "web-time",
