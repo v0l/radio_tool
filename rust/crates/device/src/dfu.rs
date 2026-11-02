@@ -659,10 +659,21 @@ pub mod flashing {
 
         tyt::send_command(dfu, tyt::Command::FirmwareUpgrade)?;
 
-        for region in regions {
-            let end = region.address + region.data.len() as u32;
+        //validate every region end once, up front, so the erase pass and the
+        //write pass share the same bounds
+        let ends: Vec<u32> = regions
+            .iter()
+            .map(|region| {
+                region.address.checked_add(region.data.len() as u32).ok_or(Error::Unexpected {
+                    what: "firmware region",
+                    expected: "a region inside the address space".to_owned(),
+                    got: format!("{:#010x} + {}", region.address, region.data.len()),
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-            for piece in flash::split(map, region.address, end) {
+        for (region, end) in regions.iter().zip(&ends) {
+            for piece in flash::split(map, region.address, *end) {
                 progress(Step::Erasing {
                     address: piece.address,
                     sector: piece.sector,
@@ -674,10 +685,8 @@ pub mod flashing {
         let total: usize = regions.iter().map(|r| r.data.len()).sum();
         let mut written = 0usize;
 
-        for region in regions {
-            let end = region.address + region.data.len() as u32;
-
-            for piece in flash::split(map, region.address, end) {
+        for (region, end) in regions.iter().zip(&ends) {
+            for piece in flash::split(map, region.address, *end) {
                 let offset = (piece.address - region.address) as usize;
                 let length = piece.length as usize;
                 let bytes = region
