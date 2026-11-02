@@ -2,7 +2,7 @@
 //!
 //! The fixtures in `tests/fixtures` were written by the C++ implementation
 //! that has been flashing real radios for years, captured with
-//! `rust/tools/make_fixtures.py`. They are committed, so these tests need no
+//! the original C++ tool. They are committed, so these tests need no
 //! C++ toolchain, no cmake and no `radio_tool` binary. Once the C++ is gone
 //! the fixtures remain as the record of what the radios accept.
 //!

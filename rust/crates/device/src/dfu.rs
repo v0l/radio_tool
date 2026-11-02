@@ -664,11 +664,14 @@ pub mod flashing {
         let ends: Vec<u32> = regions
             .iter()
             .map(|region| {
-                region.address.checked_add(region.data.len() as u32).ok_or(Error::Unexpected {
-                    what: "firmware region",
-                    expected: "a region inside the address space".to_owned(),
-                    got: format!("{:#010x} + {}", region.address, region.data.len()),
-                })
+                region
+                    .address
+                    .checked_add(region.data.len() as u32)
+                    .ok_or(Error::Unexpected {
+                        what: "firmware region",
+                        expected: "a region inside the address space".to_owned(),
+                        got: format!("{:#010x} + {}", region.address, region.data.len()),
+                    })
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -1672,6 +1675,26 @@ mod tests {
             )
             .is_err(),
             "RAM is not somewhere to write firmware"
+        );
+        assert!(dfu.into_inner().downloads.is_empty());
+    }
+
+    #[test]
+    fn a_region_that_runs_past_the_address_space_is_refused() {
+        let data = vec![0x44; 0x20];
+        let mut dfu = Dfu::new(Device::new());
+
+        assert!(
+            flashing::write(
+                &mut dfu,
+                &[Region {
+                    address: 0xFFFF_FFF0,
+                    data: &data,
+                }],
+                STM32F40X,
+                |_| {},
+            )
+            .is_err()
         );
         assert!(dfu.into_inner().downloads.is_empty());
     }

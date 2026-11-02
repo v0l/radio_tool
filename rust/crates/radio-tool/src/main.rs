@@ -1206,18 +1206,18 @@ fn flash(input: &Path, do_write: bool) -> Result<(), String> {
     // instead, and write what can be written.
     //a region that cannot fit the address space is an invalid file, not a
     //skippable one, so it errors instead of clamping past it
-    let ends: Vec<u32> = all
-        .iter()
-        .map(|region| {
-            region.address.checked_add(region.data.len() as u32).ok_or_else(|| {
+    let ends: Vec<u32> =
+        all.iter()
+            .map(|region| {
+                region.address.checked_add(region.data.len() as u32).ok_or_else(|| {
                 format!(
                     "region at {:#010x} plus {} bytes runs past the end of the address space",
                     region.address,
                     region.data.len()
                 )
             })
-        })
-        .collect::<Result<Vec<_>, _>>()?;
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
     let mut regions: Vec<&flashing::Region<'_>> = Vec::new();
     let mut skipped: Vec<(&flashing::Region<'_>, u32)> = Vec::new();
@@ -1280,6 +1280,15 @@ fn flash(input: &Path, do_write: bool) -> Result<(), String> {
     println!("Writing {model} firmware. Do not unplug the radio.");
 
     let mut dfu = Dfu::new(usb);
+    match device::dfu::tyt::identify(&mut dfu) {
+        Ok(identified) if identified != model => {
+            eprintln!(
+                "WARNING: this firmware is for {model} but the radio identifies as {identified}"
+            );
+        }
+        Ok(_) => {}
+        Err(e) => eprintln!("WARNING: could not read the radio model: {e}"),
+    }
     flashing::write(&mut dfu, &regions, &map, |step| match step {
         flashing::Step::Erasing { address, .. } => {
             eprint!("\r  erasing {address:#010x}          ");

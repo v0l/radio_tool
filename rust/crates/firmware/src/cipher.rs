@@ -2,7 +2,7 @@
 //!
 //! The tables are byte for byte copies of the arrays in
 //! `include/radio_tool/fw/cipher/*.hpp`, extracted mechanically by
-//! `rust/tools/extract_ciphers.py`. They are never edited by hand.
+//! the original C++ headers. They are never edited by hand.
 
 /// TYT DM-1701
 pub const DM1701: &[u8] = include_bytes!("../ciphers/dm1701.bin");

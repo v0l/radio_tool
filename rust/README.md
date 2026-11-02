@@ -1,20 +1,7 @@
 # radio_tool, Rust port
 
-An in-progress rewrite of radio_tool in Rust, starting with the firmware file
-formats. This is a replacement, not a second implementation to be maintained
-alongside the C++: the C++ goes away when the port is complete.
-
-## Why the formats first
-
-The container formats are pure functions of their input, so every byte this
-crate produces could be compared against the C++ implementation that has been
-flashing real radios for years. The USB, HID and serial layers cannot be
-validated that way without hardware, so they come later.
-
-That comparison has already been made and its result is committed. The C++
-output for every supported model is stored in `tests/fixtures`, so nothing
-here depends on the C++ tool being present, or on it continuing to exist.
-Deleting it will not weaken these tests.
+A Rust implementation of radio_tool. It replaced the C++ tool, which is no
+longer in the repository.
 
 ## Layout
 
@@ -26,9 +13,6 @@ Deleting it will not weaken these tests.
 | `crates/device` | clone mode protocols, and the serial transport |
 | `crates/firmware/ciphers/*.bin` | cipher tables, generated, never hand edited |
 | `crates/firmware/tests/fixtures` | reference files written by the C++ tool |
-| `tools/extract_ciphers.py` | regenerated those tables from the C++ headers |
-| `tools/make_fixtures.py` | regenerated those reference files |
-| `tools/capture_legacy.py` | recorded what the C++ prints for its flags |
 | `crates/radio-tool/tests/legacy/cases.txt` | that recording, the contract for the old flags |
 
 ## The window
@@ -109,35 +93,10 @@ adds four later GD-77 versions.
 All 20 round trip byte for byte, across the TYT and SGL containers. Set
 `RADIO_TOOL_CORPUS_REQUIRED=1` to turn a missing corpus into a failure.
 
-### The two generator scripts
-
-Both read the C++ and are only useful while it still exists. They are kept
-for provenance, so that anyone can re-derive the committed artefacts and
-satisfy themselves that nothing was transcribed by hand. Once the C++ is
-deleted, delete these too: the `.bin` files become the source of truth.
-
-```sh
-cmake -S .. -B ../build && cmake --build ../build
-python3 tools/extract_ciphers.py   # cipher tables
-python3 tools/make_fixtures.py     # reference firmware files
-```
-
-Regenerating must be a no-op. If either changes a committed file without you
-intending it, that is a bug, not something to commit.
-
 ## Cipher tables
 
-The tables under `crates/firmware/ciphers/` are extracted mechanically
-from `include/radio_tool/fw/cipher/*.hpp` so that no table byte is ever
-retyped by hand:
-
-```sh
-python3 tools/extract_ciphers.py
-```
-
-The script prints a sha256 per table and refuses to write a table whose
-length disagrees with the `*_length` constant in the C++ header. The output
-has been checked byte for byte against the arrays as the compiler sees them.
+The tables under `crates/firmware/ciphers/` were extracted mechanically from
+the original C++ headers and are never edited by hand.
 
 ## Status
 
