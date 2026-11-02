@@ -36,15 +36,71 @@ Pre-built binaries are attached to each [release](https://github.com/v0l/radio_t
 ```bash
 cd rust
 cargo build --release
-./target/release/radio-tool --help
+./target/release/radio_tool --help
 ```
 
-On Linux you need `libudev-dev libdbus-1-dev pkg-config`.
+On Linux you need `libudev-dev libdbus-1-dev pkg-config`. Without root, USB radios need the udev rules in `rust/udev/99-radio-tool.rules`.
+
+```bash
+cargo test
+```
+
+CI also runs `cargo fmt --check` and `cargo clippy -- -D warnings`.
+
+# The window
+
+`radio_tool` with no arguments, or with one file, opens a window. On the left are the radios: USB ones are found by scanning, a Baofeng on a cable or Bluetooth needs its model picked. On the right are cards for what that radio can do. Writing a codeplug, flashing, setting the clock and restarting each ask before they start. A firmware or codeplug file dropped on the window is described, a codeplug with its channels.
+
+# Layout
+
+| path | what it holds |
+| - | - |
+| `rust/crates/radio-tool` | the command line tool and the window |
+| `rust/crates/firmware` | firmware container formats and the XOR ciphers |
+| `rust/crates/codeplug` | codeplug (channel memory) formats |
+| `rust/crates/device` | USB, HID, serial and Bluetooth protocols |
+| `test/firmware` | sha256 manifest of the vendor firmware corpus, and `recover.py` to fetch what survives |
+| `references/` | third party sources the protocols were checked against, with their licences in `manifest.tsv` |
+
+The corpus test round trips real vendor firmware and skips when none is present:
+
+```bash
+python3 test/firmware/recover.py --download
+cargo test -p firmware --test corpus
+```
+
+# Hardware status
+
+Run against a real radio:
+
+| radio | over | result |
+| - | - | - |
+| Baofeng DM-1701 | USB DFU | identify, firmware write, codeplug read and write, bootloader dump, clock, reboot all work |
+| Baofeng UV-5R Mini | Bluetooth | scan and codeplug read work |
+| Radioddity GD-77 | USB HID | detected in bootloader mode. Firmware write fails below the tool (EPROTO) |
+
+Tested against fakes only, never against a radio: codeplug write for the UV-17Pro family, the TYT HID protocol for SGL radios, YMODEM for the Ailunce HD1, H8SX for the Yaesu FT-70D, and UV-5R codeplug read over a cable.
+
+# Subcommands
+
+The flags below are the original interface and still work. New use is better served by subcommands (`radio_tool help`), where anything that writes to a radio only checks the file unless given `--write`. Examples: `fw-info`, `wrap`, `unwrap`, `flash`, `usb-read-codeplug`, `usb-write-codeplug`, `read-codeplug`, `write-codeplug`, `ble-scan`, `models`.
+
+# Cloning and editing codeplugs
+
+This tool moves a codeplug to and from the radio and does not edit it. For the DM-1701 family dmrconfig does the editing:
+
+```bash
+radio_tool usb-read-codeplug --output dm1701.img
+dmrconfig dm1701.img > dm1701.conf
+$EDITOR dm1701.conf
+dmrconfig -c dm1701.img dm1701.conf
+radio_tool usb-write-codeplug --input dm1701.img --write
+```
 
 # Usage
 ```
 Usage:
-  ./radio_tool [OPTION...]
+  radio_tool [OPTION...]
 
  General options:
   -h, --help [=<command>(=)]    Show this message
@@ -93,7 +149,7 @@ Usage:
 
 ## Flash Firmware
 ```bash
-./radio_tool -d 0 -f -i new_firmware.bin
+radio_tool -d 0 -f -i new_firmware.bin
 ```
 
 ## Download a codeplug (Baofeng UV-5R family)
@@ -102,8 +158,8 @@ other serial cable, so the port and the model are given explicitly. Turn the rad
 seat the cable fully in the mic/speaker jack, then turn the radio back on before running:
 
 ```bash
-./radio_tool --port /dev/ttyUSB0 --radio UV5R --read-codeplug -o my_radio.img
-./radio_tool --codeplug-info -i my_radio.img
+radio_tool --port /dev/ttyUSB0 --radio UV5R --read-codeplug -o my_radio.img
+radio_tool --codeplug-info -i my_radio.img
 ```
 
 The image is byte compatible with a CHIRP `.img` for the same radio, so it can be opened
@@ -116,10 +172,10 @@ cable at all and clones over Bluetooth LE. Enable Bluetooth on the radio, then f
 and read it:
 
 ```bash
-./radio_tool --list-ble
+radio_tool --list-ble
 0C:64:8F:1E:00:75  walkie-talkie
 
-./radio_tool --ble 0C:64:8F:1E:00:75 --radio UV5RMINI --read-codeplug -o my_radio.img
+radio_tool --ble 0C:64:8F:1E:00:75 --radio UV5RMINI --read-codeplug -o my_radio.img
 ```
 
 Use `--ble-adapter hci1` if the machine has more than one Bluetooth adapter. A BLE link
@@ -128,12 +184,12 @@ finding it can take several seconds.
 
 ## Wrap Firmware
 ```bash
-./radio_tool --wrap -o wrapped.bin -r DM1701 -s 0x0800C000:main.bin
+radio_tool --wrap -o wrapped.bin -r DM1701 -s 0x0800C000:main.bin
 ```
 
 ## Unwrap Firmware
 Output file in this case is a file prefix, the filename will be `unwrapped_0x0800C000` and others if you have
 firmware will more than one segment
 ```bash
-./radio_tool --unwrap -i wrapped.bin -o unwrapped 
+radio_tool --unwrap -i wrapped.bin -o unwrapped 
 ```

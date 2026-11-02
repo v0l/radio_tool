@@ -20,7 +20,7 @@
 //! ```
 //!
 //! Two details differ from the C++ implementation on purpose, both noted in
-//! `rust/README.md`: the header secrets come from real entropy rather than a
+//! the project history: the header secrets come from real entropy rather than a
 //! default seeded PRNG, and the version field is read as the three digits the
 //! writer emits rather than starting one byte in.
 //!
