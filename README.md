@@ -43,6 +43,10 @@ CI also runs `cargo fmt --check` and `cargo clippy -- -D warnings`.
 
 `radio_tool` with no arguments, or with one file, opens a window. On the left are the radios: USB ones are found by scanning, a Baofeng on a cable or Bluetooth needs its model picked. On the right are cards for what that radio can do. Writing a codeplug, flashing, setting the clock and restarting each ask before they start. A firmware or codeplug file dropped on the window is described, a codeplug with its channels.
 
+![Window](docs/window.png)
+
+![Describing a firmware file](docs/firmware.png)
+
 # Layout
 
 | path | what it holds |
