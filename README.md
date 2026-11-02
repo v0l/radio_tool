@@ -4,28 +4,20 @@ Radio Firmware tool
 
 ## Radio Support
 
-| Manufacturer | Radio Model | Fw Read | Fw Write | Fw Wrap | Db Read | Db Write |
+| Manufacturer | Radio | Fw Write | Fw Wrap | Codeplug Read | Codeplug Write | Tried on a radio |
 | - | - | - | - | - | - | - |
-| TYT | [MD-2017](https://www.tyt888.com/?mod=product_show&id=110)| ❌ | ✅ | ✅ | ❌ | ❌ |
-| TYT | [MD-9600](https://www.tyt888.com/?mod=product_show&id=108) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| TYT | [MD-UV380](https://www.tyt888.com/?mod=product_show&id=127) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| TYT | [MD-UV390](https://www.tyt888.com/?mod=product_show&id=129) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| TYT | [MD-390](https://www.tyt888.com/?mod=product_show&id=77) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| TYT | [MD-380](https://www.tyt888.com/?mod=product_show&id=78) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| TYT | [MD-446](https://www.tyt888.com/?mod=product_show&id=75) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| TYT | [MD-280](https://www.tyt888.com/?mod=product_show&id=80) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Baofeng | [DM-1701](https://www.baofengradio.com/products/dm-1701) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Baofeng | [DM-1801](https://www.baofengradio.com/products/dm-1801) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Baofeng | [RD-5R](https://www.baofengradio.com/products/rd-5r) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Baofeng | UV-5R / UV-82 / UV-6 | ❌ | ❌ | ❌ | ✅ | ❌ |
-| Connect Systems | [CS800D](https://www.connectsystems.com/products/top/radios/CS800D.htm) | ❌ | ❌ | ✅ | ❌ | ❌ |
-| Ailunce | [HD1](https://www.ailunce.com/Product/HD1/Overview) | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Yaesu | [FT-70DR](https://www.yaesu.com/indexVS.cfm?cmd=DisplayProducts&ProdCatID=249&encProdID=7CDB93B02164B1FB036530FBD7D37F1A&DivisionID=65&isArchived=0) | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Radioddity | [GD-77](https://www.radioddity.com/products/radioddity-gd-77-dmr-two-way-radio) | ❌ | ✅ | ✅ | ❌ | ❌ |
+| TYT | MD-2017, MD-9600, MD-UV380, MD-UV390, MD-390, MD-380, MD-446, MD-280 | ✅ | ✅ | ✅ | ✅ | ❌ |
+| Baofeng | DM-1701 | ✅ | ✅ | ✅ | ✅ | ✅ all four |
+| Baofeng | DM-1801, RD-5R, BF-5R | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Radioddity | GD-77, GD-77S | ✅ | ✅ | ❌ | ❌ | ❌ write fails with a USB error (EPROTO) in the bootloader |
+| Baofeng | UV-5R, UV-82, UV-6, F11 (cable) | ❌ | ❌ | ✅ | ✅ | ❌ |
+| Baofeng | UV-5R Mini, UV-5G Mini, UV-17Pro, UV-17ProGPS (Bluetooth) | ❌ | ❌ | ✅ | ✅ | ✅ UV-5R Mini read only |
+| Connect Systems | CS800, CS800D | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Ailunce | HD1 | ✅ | ✅ | ❌ | ❌ | ❌ |
+| Yaesu | FT-70D | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 ```
 Fw = Firmware
-Db = Codeplug database
 ```
 # Download
 
