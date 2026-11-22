@@ -28,10 +28,11 @@ clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 eframe = { version = "0.37", default-features = false, features = [
     "default_fonts",
-    "glow",
+    "wgpu",
     "wayland",
     "x11",
 ] }
+pollster = "0.4"
 egui = "0.37"
 egui_bench = "0.9.2"
 

@@ -1,3 +1,4 @@
+pub mod render_check;
 mod worker;
 
 use egui::{RichText, Ui};
@@ -861,8 +862,14 @@ pub fn run(open: Option<PathBuf>) -> std::process::ExitCode {
     {
         viewport = viewport.with_icon(icon);
     }
+    let mut wgpu_options = eframe::egui_wgpu::WgpuConfiguration::default();
+    if let eframe::egui_wgpu::WgpuSetup::CreateNew(setup) = &mut wgpu_options.wgpu_setup {
+        setup.instance_descriptor.backends = render_check::pick_backends();
+    }
     let options = eframe::NativeOptions {
         viewport,
+        renderer: eframe::Renderer::Wgpu,
+        wgpu_options,
         ..Default::default()
     };
     let result = eframe::run_native(
