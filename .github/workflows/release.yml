@@ -109,6 +109,14 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          submodules: recursive
+      - name: Source archive
+        run: |
+          mkdir -p dist
+          name=radio_tool-${GITHUB_REF_NAME}-source.tar.gz
+          git ls-files --recurse-submodules -z | tar --null -T - --transform "s,^,radio_tool-${GITHUB_REF_NAME}/," -czf "dist/$name"
+          (cd dist && sha256sum "$name" > "$name.sha256")
       - name: Release notes
         env:
           TAG: ${{ github.ref_name }}
