@@ -721,7 +721,7 @@ dependencies = [
 
 [[package]]
 name = "codeplug"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "thiserror 2.0.20",
 ]
@@ -901,7 +901,7 @@ dependencies = [
 
 [[package]]
 name = "device"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "btleplug",
  "futures",
@@ -1269,7 +1269,7 @@ checksum = "d45db016d36b838f563236e9193d0ee6ce38f3f68b6c94e914b4929c96bbb890"
 
 [[package]]
 name = "firmware"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "thiserror 2.0.20",
 ]
@@ -2891,7 +2891,7 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "radio-tool"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "chrono",
  "clap",

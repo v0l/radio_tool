@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0]
+
+- Every release now includes a source archive with its checksum.
+- The window opens with the wgpu renderer and checks at startup that it draws, so it no longer opens blank on machines where the OpenGL renderer fails.
+- The C++ implementation is gone. The Rust program is the only one, with one README and a support table rebuilt from the code (boxed check marks, a red cross for unsupported).
+- Firmware parsing bounds every region end, sector index and DfuSe layout string, and reports an error where it used to clamp, so a damaged file can no longer read or write outside its region.
+- Screenshots in the README.
+
 ## [0.5.1]
 
 - egui and eframe 0.37, which keeps the window running on Wayland when its workspace is hidden.
